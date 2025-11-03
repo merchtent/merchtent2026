@@ -13,9 +13,14 @@ export default function SignInPage() {
     const [err, setErr] = useState<string | null>(null);
 
     async function requestLink(targetEmail: string) {
+
+        const appUrl =
+            process.env.NEXT_PUBLIC_SITE_URL ??
+            (typeof window !== "undefined" ? window.location.origin : "");
+
         const { error } = await supabase.auth.signInWithOtp({
             email: targetEmail,
-            options: { emailRedirectTo: `${location.origin}/auth/callback` },
+            options: { emailRedirectTo: `${appUrl}/auth/callback` },
         });
         return error;
     }
