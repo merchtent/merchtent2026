@@ -6,6 +6,7 @@ import { useCart } from "@/components/CartProvider";
 import Link from "next/link";
 import { clearCartStorage } from "@/lib/cart/storage";
 import { CheckCircle2, ArrowRight, Truck, Mail, Sparkles } from "lucide-react";
+import ClearCheckoutDraft from "./ClearCheckoutDraft";
 
 export default function SuccessPage() {
     const { clear, close } = useCart();
@@ -20,6 +21,7 @@ export default function SuccessPage() {
 
     return (
         <main className="min-h-screen bg-neutral-950 text-neutral-100">
+            <ClearCheckoutDraft />
             {/* angled banner */}
             <section className="relative py-0">
                 <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">

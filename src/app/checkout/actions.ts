@@ -12,11 +12,13 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
         data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-        return { error: "Not signed in" };
+    // guests supported now – take email from form
+    const email = String(formData.get("email") || "").trim();
+    if (!email) {
+        return { error: "Email is required" };
     }
 
-    // 👇 this comes from the client (CheckoutFormClient + CartProvider)
+    // cart
     const rawCart = formData.get("cart_json") as string | null;
     const cartItems: Array<{
         product_id: string;
@@ -43,7 +45,6 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
 
     const currency = cartItems[0]?.currency || "AUD";
 
-    // 👉 build REAL Stripe line items from the local cart
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = cartItems.map(
         (item) => ({
             quantity: item.qty ?? 1,
@@ -52,7 +53,6 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
                 unit_amount: item.price_cents,
                 product_data: {
                     name: item.title,
-                    // 👇 THIS is fine – small, per-line, < 500 chars
                     metadata: {
                         product_id: item.product_id,
                         sku: item.sku ?? "",
@@ -64,7 +64,6 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
         })
     );
 
-    // add shipping as a line item
     if (shippingAmountCents > 0) {
         line_items.push({
             quantity: 1,
@@ -78,20 +77,16 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
         });
     }
 
-    // ❗️IMPORTANT: DO NOT PUT cart_json in Stripe metadata
-    // Stripe limit is 500 chars *per value* and cart JSON will blow it up.
-
     const session = await stripe.checkout.sessions.create({
         mode: "payment",
         line_items,
-        customer_email: String(formData.get("email") || ""),
+        customer_email: email, // ✅ guest/signed-in both supported
         success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/checkout/success`,
         cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/checkout`,
         metadata: {
-            user_id: user.id,
+            user_id: user?.id ?? "guest",
             shippingMethod,
             voucher,
-            // the rest we slice to be safe
             first_name: String(formData.get("first_name") || "").slice(0, 500),
             last_name: String(formData.get("last_name") || "").slice(0, 500),
             line1: String(formData.get("line1") || "").slice(0, 500),

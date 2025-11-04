@@ -272,7 +272,6 @@ export default function HeaderClient({ initialEmail }: Props) {
                                     >
                                         {loadingSignOut ? "Signing out…" : "Sign out"}
                                     </button>
-
                                 </>
                             ) : (
                                 <nav className="hidden md:flex gap-6">

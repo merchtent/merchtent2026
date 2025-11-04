@@ -60,12 +60,31 @@ export default function ProductViewClient({
     const selectedColor = colors.find((c) => c.id === selectedColorId) || null;
 
     // choose front/back image based on colour, falling back to original gallery
+    // const frontImage =
+    //     selectedColor?.front_image_url ??
+    //     galleryUrls[0] ??
+    //     product.primary_image_url;
+    // const backImage =
+    //     selectedColor?.back_image_url ?? galleryUrls[1] ?? null;
+
+    // choose front/back image based on colour, falling back to original gallery
     const frontImage =
         selectedColor?.front_image_url ??
         galleryUrls[0] ??
         product.primary_image_url;
     const backImage =
         selectedColor?.back_image_url ?? galleryUrls[1] ?? null;
+
+    // 👉 NEW: Track which image is currently "main"
+    const [activeImage, setActiveImage] = React.useState<string | null>(
+        frontImage ?? product.primary_image_url ?? null
+    );
+
+    // When colour changes, reset main image to the colour's front
+    React.useEffect(() => {
+        setActiveImage(frontImage ?? product.primary_image_url ?? null);
+    }, [frontImage, product.primary_image_url]);
+
 
     return (
         <main className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -95,9 +114,8 @@ export default function ProductViewClient({
                 <div className="grid lg:grid-cols-[1.2fr_1fr] gap-8 items-start">
                     {/* IMAGE COLUMN */}
                     <div>
-                        <div className="group relative rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden">
+                        {/* <div className="group relative rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden">
                             <div className="relative w-full">
-                                {/* Primary / current front */}
                                 {frontImage ? (
                                     <Image
                                         key={frontImage}
@@ -115,7 +133,6 @@ export default function ProductViewClient({
                                     </div>
                                 )}
 
-                                {/* Hover image (back of selected colour) */}
                                 {backImage ? (
                                     <Image
                                         key={backImage}
@@ -128,7 +145,6 @@ export default function ProductViewClient({
                                 ) : null}
                             </div>
 
-                            {/* label rail */}
                             <div className="px-4 py-3 border-t border-neutral-800 bg-neutral-900/70 flex items-center justify-between text-xs">
                                 <span className="inline-flex items-center gap-1 text-neutral-300">
                                     <BadgePercent className="h-3.5 w-3.5" />
@@ -139,10 +155,51 @@ export default function ProductViewClient({
                                     className="inline-flex items-center gap-1 underline"
                                 />
                             </div>
+                        </div> */}
+
+                        <div className="group relative rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden">
+                            <div className="relative w-full">
+                                {/* Primary / current front (now from activeImage) */}
+                                {activeImage ? (
+                                    <Image
+                                        key={activeImage}
+                                        alt={product.title}
+                                        src={activeImage}
+                                        width={1600}
+                                        height={1600}
+                                        className={`w-full h-auto object-cover transition-opacity duration-300 ${
+                                            // Only let hover flip show when we're currently on *frontImage*
+                                            backImage && activeImage === frontImage ? "group-hover:opacity-0" : ""
+                                            }`}
+                                        priority
+                                    />
+                                ) : (
+                                    <div className="aspect-square grid place-items-center text-neutral-500">
+                                        No image
+                                    </div>
+                                )}
+
+                                {/* Hover image (only if we're on the front image) */}
+                                {backImage && activeImage === frontImage ? (
+                                    <Image
+                                        key={`${backImage}-hover`}
+                                        alt={`${product.title} — alternate`}
+                                        src={backImage}
+                                        width={1600}
+                                        height={1600}
+                                        className="w-full h-auto object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                    />
+                                ) : null}
+                            </div>
+
+                            {/* label rail stays the same... */}
+                            <div className="px-4 py-3 border-t border-neutral-800 bg-neutral-900/70 flex items-center justify-between text-xs">
+                                {/* ... */}
+                            </div>
                         </div>
 
                         {/* Thumbs – show whichever is currently active for colour */}
-                        {(frontImage || backImage || galleryUrls.length > 1) && (
+                        {/* {(frontImage || backImage || galleryUrls.length > 1) && (
                             <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar">
                                 {frontImage ? (
                                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-neutral-800">
@@ -164,7 +221,6 @@ export default function ProductViewClient({
                                         />
                                     </div>
                                 ) : null}
-                                {/* fallback extra gallery thumbs */}
                                 {galleryUrls.slice(2).map((u, idx) => (
                                     <div
                                         key={`thumb-extra-${idx}`}
@@ -174,7 +230,37 @@ export default function ProductViewClient({
                                     </div>
                                 ))}
                             </div>
+                        )} */}
+                        {/* Thumbs – clickable now */}
+                        {(frontImage || backImage || galleryUrls.length > 0) && (
+                            <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar">
+                                {Array.from(
+                                    new Set(
+                                        [
+                                            frontImage,
+                                            backImage,
+                                            // include the rest of the gallery
+                                            //...galleryUrls,
+                                        ].filter(Boolean) as string[]
+                                    )
+                                ).map((u, idx) => {
+                                    const isActive = u === activeImage;
+                                    return (
+                                        <button
+                                            key={`thumb-${idx}-${u}`}
+                                            type="button"
+                                            onClick={() => setActiveImage(u)}
+                                            className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border ${isActive ? "border-red-500" : "border-neutral-800"
+                                                }`}
+                                            aria-label={`View image ${idx + 1}`}
+                                        >
+                                            <Image alt={`Thumb ${idx + 1}`} src={u} fill className="object-cover" />
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         )}
+
                     </div>
 
                     {/* BUY COLUMN (client) */}

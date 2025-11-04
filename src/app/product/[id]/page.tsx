@@ -59,6 +59,8 @@ export default async function ProductPage({
         error = byId.error ?? null;
     }
 
+
+
     if (error || !product) {
         return (
             <main className="min-h-screen bg-neutral-950 text-neutral-100 flex items-center justify-center">

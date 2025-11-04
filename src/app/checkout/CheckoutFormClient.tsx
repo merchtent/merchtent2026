@@ -1,7 +1,7 @@
 // app/checkout/CheckoutFormClient.tsx
 "use client";
 
-import { useState } from "react";
+import * as React from "react";
 import { Loader2 } from "lucide-react";
 import { placeOrderAndGoToStripe } from "./actions";
 import { useCart } from "@/components/CartProvider";
@@ -9,7 +9,7 @@ import { useCart } from "@/components/CartProvider";
 const SHIPPING_OPTIONS = [
     { id: "standard", label: "Standard (3-7 days)", amount_cents: 1000 },
     { id: "express", label: "Express (1-3 days)", amount_cents: 2000 },
-];
+] as const;
 
 type CheckoutFormClientProps = {
     userEmail: string;
@@ -17,20 +17,94 @@ type CheckoutFormClientProps = {
     setShippingMethod: (id: "standard" | "express") => void;
 };
 
+const DRAFT_KEY = "checkout_draft_v1";
+
+type Draft = {
+    email: string;
+    first_name: string;
+    last_name: string;
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    country: string;
+    phone: string;
+    voucher: string;
+};
+
+function loadDraft(): Draft | null {
+    try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        return raw ? (JSON.parse(raw) as Draft) : null;
+    } catch {
+        return null;
+    }
+}
+function saveDraft(d: Draft) {
+    try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    } catch { }
+}
+
 export default function CheckoutFormClient({
     userEmail,
     shippingMethod,
     setShippingMethod,
 }: CheckoutFormClientProps) {
     const { items: cartItems, subtotal_cents } = useCart();
-    const [voucher, setVoucher] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+
+    // form state (controlled inputs)
+    const [form, setForm] = React.useState<Draft>({
+        email: userEmail || "",
+        first_name: "",
+        last_name: "",
+        line1: "",
+        line2: "",
+        city: "",
+        state: "",
+        postal_code: "",
+        country: "AU",
+        phone: "",
+        voucher: "",
+    });
+
+    // hydrate once
+    React.useEffect(() => {
+        const d = loadDraft();
+        if (d) {
+            setForm((f) => ({
+                ...f,
+                ...d,
+                // prefer prop email if present and different
+                email: f.email || d.email || userEmail || "",
+            }));
+        } else if (userEmail) {
+            // ensure email is seeded on first load
+            setForm((f) => ({ ...f, email: f.email || userEmail }));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // debounce save
+    const saveRef = React.useRef<number | null>(null);
+    React.useEffect(() => {
+        if (saveRef.current) window.clearTimeout(saveRef.current);
+        saveRef.current = window.setTimeout(() => saveDraft(form), 250);
+        return () => {
+            if (saveRef.current) window.clearTimeout(saveRef.current);
+        };
+    }, [form]);
 
     const selectedShipping =
         SHIPPING_OPTIONS.find((s) => s.id === shippingMethod) ?? SHIPPING_OPTIONS[0];
-
     const totalCents = subtotal_cents + selectedShipping.amount_cents;
+
+    function update<K extends keyof Draft>(key: K, val: Draft[K]) {
+        setForm((f) => ({ ...f, [key]: val }));
+    }
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -39,13 +113,24 @@ export default function CheckoutFormClient({
         setIsSubmitting(true);
         setErrorMsg(null);
 
-        const formData = new FormData(e.currentTarget);
-        formData.set("shipping_method", shippingMethod);
-        formData.set("voucher", voucher);
-        formData.set("cart_json", JSON.stringify(cartItems));
+        // build FormData from controlled state (reliable)
+        const fd = new FormData();
+        fd.set("email", form.email);
+        fd.set("first_name", form.first_name);
+        fd.set("last_name", form.last_name);
+        fd.set("line1", form.line1);
+        fd.set("line2", form.line2);
+        fd.set("city", form.city);
+        fd.set("state", form.state);
+        fd.set("postal_code", form.postal_code);
+        fd.set("country", form.country);
+        fd.set("phone", form.phone);
+        fd.set("shipping_method", shippingMethod);
+        fd.set("voucher", form.voucher);
+        fd.set("cart_json", JSON.stringify(cartItems));
 
         try {
-            const res = await placeOrderAndGoToStripe(formData);
+            const res = await placeOrderAndGoToStripe(fd);
             if (res?.url) {
                 window.location.href = res.url;
             } else if (res?.error) {
@@ -53,7 +138,7 @@ export default function CheckoutFormClient({
             }
         } catch (err: any) {
             console.error(err);
-            setErrorMsg(err.message ?? "Something went wrong");
+            setErrorMsg(err?.message ?? "Something went wrong");
         } finally {
             setIsSubmitting(false);
         }
@@ -62,11 +147,14 @@ export default function CheckoutFormClient({
     return (
         <form onSubmit={handleSubmit} className="space-y-5">
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-4">
-                <p className="text-xs uppercase tracking-wide text-neutral-400">Contact</p>
+                <p className="text-xs uppercase tracking-wide text-neutral-400">
+                    Contact
+                </p>
                 <input
                     name="email"
                     type="email"
-                    defaultValue={userEmail}
+                    value={form.email}
+                    onChange={(e) => update("email", e.target.value)}
                     required
                     className="w-full h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
                 />
@@ -80,12 +168,16 @@ export default function CheckoutFormClient({
                     <input
                         name="first_name"
                         placeholder="First name"
+                        value={form.first_name}
+                        onChange={(e) => update("first_name", e.target.value)}
                         required
                         className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
                     />
                     <input
                         name="last_name"
                         placeholder="Last name"
+                        value={form.last_name}
+                        onChange={(e) => update("last_name", e.target.value)}
                         required
                         className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
                     />
@@ -93,43 +185,56 @@ export default function CheckoutFormClient({
                 <input
                     name="line1"
                     placeholder="Address line 1"
+                    value={form.line1}
+                    onChange={(e) => update("line1", e.target.value)}
                     required
                     className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
                 />
                 <input
                     name="line2"
                     placeholder="Address line 2 (optional)"
+                    value={form.line2}
+                    onChange={(e) => update("line2", e.target.value)}
                     className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
                 />
                 <div className="grid md:grid-cols-3 gap-3">
                     <input
                         name="city"
                         placeholder="City / Suburb"
+                        value={form.city}
+                        onChange={(e) => update("city", e.target.value)}
                         required
                         className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
                     />
                     <input
                         name="state"
                         placeholder="State"
+                        value={form.state}
+                        onChange={(e) => update("state", e.target.value)}
                         required
                         className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
                     />
                     <input
                         name="postal_code"
                         placeholder="Postcode"
+                        value={form.postal_code}
+                        onChange={(e) => update("postal_code", e.target.value)}
                         required
                         className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
                     />
                 </div>
                 <input
                     name="country"
-                    defaultValue="AU"
+                    value={form.country}
+                    onChange={(e) => update("country", e.target.value)}
                     required
                     className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
                 />
                 <input
                     name="phone"
                     placeholder="Phone (for delivery)"
+                    value={form.phone}
+                    onChange={(e) => update("phone", e.target.value)}
                     className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
                 />
             </div>
@@ -160,14 +265,14 @@ export default function CheckoutFormClient({
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
+            {/* <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
                 <p className="text-xs uppercase tracking-wide text-neutral-400">
                     Voucher / coupon
                 </p>
                 <div className="flex gap-3">
                     <input
-                        value={voucher}
-                        onChange={(e) => setVoucher(e.target.value)}
+                        value={form.voucher}
+                        onChange={(e) => update("voucher", e.target.value)}
                         placeholder="Enter code"
                         className="flex-1 h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
                     />
@@ -175,7 +280,7 @@ export default function CheckoutFormClient({
                 <p className="text-[11px] text-neutral-500">
                     We’ll validate it on the server.
                 </p>
-            </div>
+            </div> */}
 
             {errorMsg ? (
                 <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">
@@ -187,7 +292,7 @@ export default function CheckoutFormClient({
                 <div className="text-sm text-neutral-300">
                     Total today:{" "}
                     <span className="font-bold text-white">
-                        {(totalCents / 100).toLocaleString("en-AU", {
+                        {((subtotal_cents + selectedShipping.amount_cents) / 100).toLocaleString("en-AU", {
                             style: "currency",
                             currency: "AUD",
                         })}
