@@ -8,6 +8,9 @@ import ShareButton from "@/components/ShareButton";
 import ProductBuyBox from "@/components/ProductBuyBox";
 import AddToCartButton from "@/components/AddToCartButton";
 
+// tiny React import at top
+import * as React from "react";
+
 type ProductViewClientProps = {
     product: {
         id: string;
@@ -16,6 +19,8 @@ type ProductViewClientProps = {
         price_cents: number;
         currency: string;
         primary_image_url: string | null;
+        // NEW: category to vary copy
+        category?: string | null; // "tees" | "hoodies" | "tanks" | ...
     };
     galleryUrls: string[];
     colors: Array<{
@@ -43,13 +48,41 @@ function publicImageUrl(path: string) {
     )}`;
 }
 
+// NEW: category → details copy
+function getDetailsCopy(categoryRaw?: string | null) {
+    const category = (categoryRaw || "").toLowerCase();
+
+    if (category.includes("hoodie")) {
+        return [
+            "Mid-weight fleece hoodie designed for everyday warmth with a relaxed, unisex fit.",
+            "Ribbed cuffs and hem, double-layer hood, and a soft brushed interior for comfort.",
+            "Print-on-demand: your hoodie is made to order to reduce overproduction and waste."
+        ];
+    }
+
+    if (category.includes("tank")) {
+        return [
+            "Lightweight tank with a breathable, athletic feel — ideal for warm days or layering.",
+            "Slightly elongated torso with a clean armhole finish for comfort and movement.",
+            "Print-on-demand: we make your tank after you order, so it arrives freshly printed."
+        ];
+    }
+
+    // default → tees
+    return [
+        "Soft, breathable tee with a clean, modern fit — built for everyday wear.",
+        "Smooth hand-feel with durable, vivid print that holds up wash after wash.",
+        "Print-on-demand: this tee is made to order, reducing waste and overproduction."
+    ];
+}
+
 export default function ProductViewClient({
     product,
     galleryUrls,
     colors,
     related,
     priceLabel,
-    split4Label,
+    split4Label
 }: ProductViewClientProps) {
     // ✅ shared state
     const [selectedColorId, setSelectedColorId] = React.useState<string | null>(
@@ -60,22 +93,11 @@ export default function ProductViewClient({
     const selectedColor = colors.find((c) => c.id === selectedColorId) || null;
 
     // choose front/back image based on colour, falling back to original gallery
-    // const frontImage =
-    //     selectedColor?.front_image_url ??
-    //     galleryUrls[0] ??
-    //     product.primary_image_url;
-    // const backImage =
-    //     selectedColor?.back_image_url ?? galleryUrls[1] ?? null;
-
-    // choose front/back image based on colour, falling back to original gallery
     const frontImage =
-        selectedColor?.front_image_url ??
-        galleryUrls[0] ??
-        product.primary_image_url;
-    const backImage =
-        selectedColor?.back_image_url ?? galleryUrls[1] ?? null;
+        selectedColor?.front_image_url ?? galleryUrls[0] ?? product.primary_image_url;
+    const backImage = selectedColor?.back_image_url ?? galleryUrls[1] ?? null;
 
-    // 👉 NEW: Track which image is currently "main"
+    // 👉 Track which image is currently "main"
     const [activeImage, setActiveImage] = React.useState<string | null>(
         frontImage ?? product.primary_image_url ?? null
     );
@@ -85,6 +107,8 @@ export default function ProductViewClient({
         setActiveImage(frontImage ?? product.primary_image_url ?? null);
     }, [frontImage, product.primary_image_url]);
 
+    // NEW: precompute category copy
+    const detailsCopy = getDetailsCopy(product.category);
 
     return (
         <main className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -114,49 +138,6 @@ export default function ProductViewClient({
                 <div className="grid lg:grid-cols-[1.2fr_1fr] gap-8 items-start">
                     {/* IMAGE COLUMN */}
                     <div>
-                        {/* <div className="group relative rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden">
-                            <div className="relative w-full">
-                                {frontImage ? (
-                                    <Image
-                                        key={frontImage}
-                                        alt={product.title}
-                                        src={frontImage}
-                                        width={1600}
-                                        height={1600}
-                                        className={`w-full h-auto object-cover transition-opacity duration-300 ${backImage ? "group-hover:opacity-0" : ""
-                                            }`}
-                                        priority
-                                    />
-                                ) : (
-                                    <div className="aspect-square grid place-items-center text-neutral-500">
-                                        No image
-                                    </div>
-                                )}
-
-                                {backImage ? (
-                                    <Image
-                                        key={backImage}
-                                        alt={`${product.title} — alternate`}
-                                        src={backImage}
-                                        width={1600}
-                                        height={1600}
-                                        className="w-full h-auto object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                    />
-                                ) : null}
-                            </div>
-
-                            <div className="px-4 py-3 border-t border-neutral-800 bg-neutral-900/70 flex items-center justify-between text-xs">
-                                <span className="inline-flex items-center gap-1 text-neutral-300">
-                                    <BadgePercent className="h-3.5 w-3.5" />
-                                    Official artist merch • Limited runs
-                                </span>
-                                <ShareButton
-                                    title={product.title}
-                                    className="inline-flex items-center gap-1 underline"
-                                />
-                            </div>
-                        </div> */}
-
                         <div className="group relative rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden">
                             <div className="relative w-full">
                                 {/* Primary / current front (now from activeImage) */}
@@ -167,9 +148,9 @@ export default function ProductViewClient({
                                         src={activeImage}
                                         width={1600}
                                         height={1600}
-                                        className={`w-full h-auto object-cover transition-opacity duration-300 ${
-                                            // Only let hover flip show when we're currently on *frontImage*
-                                            backImage && activeImage === frontImage ? "group-hover:opacity-0" : ""
+                                        className={`w-full h-auto object-cover transition-opacity duration-300 ${backImage && activeImage === frontImage
+                                                ? "group-hover:opacity-0"
+                                                : ""
                                             }`}
                                         priority
                                     />
@@ -192,55 +173,25 @@ export default function ProductViewClient({
                                 ) : null}
                             </div>
 
-                            {/* label rail stays the same... */}
+                            {/* label rail (kept minimal) */}
                             <div className="px-4 py-3 border-t border-neutral-800 bg-neutral-900/70 flex items-center justify-between text-xs">
-                                {/* ... */}
+                                <span className="inline-flex items-center gap-1 text-neutral-300">
+                                    <BadgePercent className="h-3.5 w-3.5" />
+                                    Official artist merch • Limited runs
+                                </span>
+                                <ShareButton title={product.title} className="inline-flex items-center gap-1 underline" />
                             </div>
                         </div>
 
-                        {/* Thumbs – show whichever is currently active for colour */}
-                        {/* {(frontImage || backImage || galleryUrls.length > 1) && (
-                            <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar">
-                                {frontImage ? (
-                                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-neutral-800">
-                                        <Image
-                                            alt="Front"
-                                            src={frontImage}
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    </div>
-                                ) : null}
-                                {backImage ? (
-                                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-neutral-800">
-                                        <Image
-                                            alt="Back"
-                                            src={backImage}
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    </div>
-                                ) : null}
-                                {galleryUrls.slice(2).map((u, idx) => (
-                                    <div
-                                        key={`thumb-extra-${idx}`}
-                                        className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-neutral-800"
-                                    >
-                                        <Image alt={`Thumb ${idx + 3}`} src={u} fill className="object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                        )} */}
-                        {/* Thumbs – clickable now */}
+                        {/* Thumbs – clickable */}
                         {(frontImage || backImage || galleryUrls.length > 0) && (
                             <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar">
                                 {Array.from(
                                     new Set(
                                         [
                                             frontImage,
-                                            backImage,
-                                            // include the rest of the gallery
-                                            //...galleryUrls,
+                                            backImage
+                                            // ...galleryUrls // (uncomment if you want more thumbs)
                                         ].filter(Boolean) as string[]
                                     )
                                 ).map((u, idx) => {
@@ -260,7 +211,6 @@ export default function ProductViewClient({
                                 })}
                             </div>
                         )}
-
                     </div>
 
                     {/* BUY COLUMN (client) */}
@@ -282,23 +232,115 @@ export default function ProductViewClient({
                             overrideImage={frontImage ?? null}
                         />
 
-                        {/* Details / Care / Shipping — pure HTML <details> */}
+                        {/* Details / Care / Shipping — HTML <details> */}
                         <div className="rounded-2xl border border-neutral-800 bg-neutral-900">
-                            {[
-                                { h: "Details", b: "High-quality print. Soft handfeel. True to size." },
-                                { h: "Care", b: "Cold wash inside-out. Do not tumble dry. Do not iron print." },
-                                { h: "Shipping", b: "Ships worldwide from Australia. Free express over A$100." },
-                            ].map((row, i) => (
-                                <details key={i} className="group border-b border-neutral-800 last:border-0">
-                                    <summary className="list-none flex items-center justify-between px-4 py-3 cursor-pointer select-none">
-                                        <span className="text-sm">{row.h}</span>
-                                        <span className="text-xs text-neutral-400 group-open:rotate-90 transition-transform">
-                                            ^
-                                        </span>
-                                    </summary>
-                                    <div className="px-4 pb-4 text-sm text-neutral-300">{row.b}</div>
-                                </details>
-                            ))}
+                            {/* DETAILS — open by default and uses product.description + category copy */}
+                            <details open className="group border-b border-neutral-800">
+                                <summary className="list-none flex items-center justify-between px-4 py-3 cursor-pointer select-none">
+                                    <span className="text-sm">Details</span>
+                                    <span className="text-xs text-neutral-400 group-open:rotate-90 transition-transform">
+                                        ^
+                                    </span>
+                                </summary>
+                                <div className="px-4 pb-4 text-sm text-neutral-300 space-y-3">
+                                    {/* Safely render the merchant-provided description first (if any) */}
+                                    {product.description && product.description.trim().length > 0 ? (
+                                        product.description
+                                            .split(/\n{2,}|\r\n\r\n/)
+                                            .map((para, i) => (
+                                                <p key={`desc-${i}`} className="whitespace-pre-wrap">
+                                                    {para.trim()}
+                                                </p>
+                                            ))
+                                    ) : (
+                                        <p>High-quality print. Soft hand-feel. True to size.</p>
+                                    )}
+
+                                    {/* Category-specific helpful bullets */}
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        {detailsCopy.map((line, i) => (
+                                            <li key={`dc-${i}`}>{line}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </details>
+
+                            {/* CARE — expanded */}
+                            <details className="group border-b border-neutral-800">
+                                <summary className="list-none flex items-center justify-between px-4 py-3 cursor-pointer select-none">
+                                    <span className="text-sm">Care</span>
+                                    <span className="text-xs text-neutral-400 group-open:rotate-90 transition-transform">
+                                        ^
+                                    </span>
+                                </summary>
+                                <div className="px-4 pb-4 text-sm text-neutral-300 space-y-2">
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        <li>Cold gentle wash inside-out with similar colours.</li>
+                                        <li>Avoid bleach and fabric softeners to preserve the print.</li>
+                                        <li>Do not tumble dry; line dry in shade to minimise shrinkage.</li>
+                                        <li>Cool iron inside-out if needed. Do not iron the print.</li>
+                                        <li>For best longevity, wash less and spot-clean when possible.</li>
+                                    </ul>
+                                </div>
+                            </details>
+
+                            {/* SHIPPING — updated pricing, keep free express over A$100 */}
+                            <details className="group border-b border-neutral-800">
+                                <summary className="list-none flex items-center justify-between px-4 py-3 cursor-pointer select-none">
+                                    <span className="text-sm">Shipping</span>
+                                    <span className="text-xs text-neutral-400 group-open:rotate-90 transition-transform">
+                                        ^
+                                    </span>
+                                </summary>
+                                <div className="px-4 pb-4 text-sm text-neutral-300 space-y-2">
+                                    <p>Ships worldwide from Australia.</p>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        <li>Standard: A$10</li>
+                                        <li>Express: A$20</li>
+                                        <li>Free **express** on orders over A$100</li>
+                                    </ul>
+                                    <p>Tracking provided for all orders. Times vary by destination.</p>
+                                </div>
+                            </details>
+
+                            {/* NEW: Sizing & Fit */}
+                            <details className="group border-b border-neutral-800">
+                                <summary className="list-none flex items-center justify-between px-4 py-3 cursor-pointer select-none">
+                                    <span className="text-sm">Sizing &amp; Fit</span>
+                                    <span className="text-xs text-neutral-400 group-open:rotate-90 transition-transform">
+                                        ^
+                                    </span>
+                                </summary>
+                                <div className="px-4 pb-4 text-sm text-neutral-300 space-y-2">
+                                    <p>Unisex sizing. Choose your usual size for a regular fit.</p>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        <li>Prefer an oversized look? Size up.</li>
+                                        <li>Between sizes? Check the size guide in the buy box.</li>
+                                        <li>Garment measurements may vary by 2–3% due to production.</li>
+                                    </ul>
+                                </div>
+                            </details>
+
+                            {/* NEW: Returns & Exchanges */}
+                            <details className="group">
+                                <summary className="list-none flex items-center justify-between px-4 py-3 cursor-pointer select-none">
+                                    <span className="text-sm">Returns &amp; Exchanges</span>
+                                    <span className="text-xs text-neutral-400 group-open:rotate-90 transition-transform">
+                                        ^
+                                    </span>
+                                </summary>
+                                <div className="px-4 pb-4 text-sm text-neutral-300 space-y-2">
+                                    <p>
+                                        We accept returns for manufacturing defects or misprints.
+                                        Because items are made to order, change-of-mind returns are limited.
+                                    </p>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        <li>Contact us within 14 days of delivery with your order number.</li>
+                                        <li>Item must be unworn and unwashed.</li>
+                                        <li>We’ll replace faulty items or issue a refund where applicable.</li>
+                                    </ul>
+                                </div>
+                            </details>
                         </div>
 
                         {/* tiny promo rail */}
@@ -350,7 +392,7 @@ export default function ProductViewClient({
                                             <p className="text-sm text-neutral-400">
                                                 {(p.price_cents / 100).toLocaleString("en-AU", {
                                                     style: "currency",
-                                                    currency: p.currency,
+                                                    currency: p.currency
                                                 })}
                                             </p>
                                         </div>
@@ -370,7 +412,7 @@ export default function ProductViewClient({
                         <p className="text-base font-bold text-red-400">{priceLabel}</p>
                     </div>
                     <div className="min-w-[140px]">
-                        {/* ✅ mobile ATC – now uses SAME size/colour as buy box */}
+                        {/* ✅ mobile ATC – uses SAME size/colour as buy box */}
                         <AddToCartButton
                             product_id={product.id}
                             title={product.title}
@@ -389,6 +431,3 @@ export default function ProductViewClient({
         </main>
     );
 }
-
-// tiny React import at top
-import * as React from "react";

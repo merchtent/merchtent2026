@@ -42,7 +42,7 @@ export default function FeaturedArtistsSection() {
     }, []);
 
     return (
-        <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14">
+        <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-0 md:py-0">
             <div className="flex items-end justify-between mb-6">
                 <div>
                     <h2 className="text-xl md:text-2xl font-semibold">Featured artists</h2>

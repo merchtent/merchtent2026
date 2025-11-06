@@ -58,7 +58,7 @@ export default function CategoryClient({ initialProducts }: { initialProducts: C
     return (
         <section className="grid lg:grid-cols-[260px_1fr] gap-6">
             {/* Sidebar filters (live) */}
-            <aside className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4 self-start sticky top-4">
+            <aside className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4 self-start lg:sticky lg:top-4">
                 {/* Price */}
                 <div className="space-y-3">
                     <p className="text-xs uppercase tracking-wide text-neutral-400">Price (A$)</p>

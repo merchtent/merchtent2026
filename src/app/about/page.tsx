@@ -31,7 +31,7 @@ export default function AboutPage() {
                 {/* Section: Mission */}
                 <article
                     className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8"
-                    style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
+                    style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
                 >
                     <h2 className="text-xl md:text-2xl font-bold">We’re Two Things in One</h2>
                     <p className="text-neutral-300 mt-3 leading-relaxed">
@@ -49,7 +49,7 @@ export default function AboutPage() {
                 {/* Section: Artist platform */}
                 <article
                     className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8"
-                    style={{ clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)" }}
+                    style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
                 >
                     <h2 className="text-xl md:text-2xl font-bold">Empowering Independent Artists</h2>
                     <p className="text-neutral-300 mt-3 leading-relaxed">
@@ -72,7 +72,7 @@ export default function AboutPage() {
                 {/* Section: Dashboard features */}
                 <article
                     className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8"
-                    style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
+                    style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
                 >
                     <h2 className="text-xl md:text-2xl font-bold">Artist Dashboard</h2>
                     <p className="text-neutral-300 mt-3 leading-relaxed">
@@ -95,7 +95,7 @@ export default function AboutPage() {
                 {/* Section: Sustainability */}
                 <article
                     className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8"
-                    style={{ clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)" }}
+                    style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
                 >
                     <h2 className="text-xl md:text-2xl font-bold">Sustainable by Design</h2>
                     <p className="text-neutral-300 mt-3 leading-relaxed">
@@ -112,7 +112,7 @@ export default function AboutPage() {
                 {/* CTA Section */}
                 <section
                     className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
-                    style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
+                    style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
                 >
                     <div>
                         <h3 className="text-lg font-bold text-neutral-100">Want to Join as an Artist?</h3>
@@ -122,7 +122,7 @@ export default function AboutPage() {
                     </div>
                     <div className="flex gap-3">
                         <Link
-                            href="/artists/signup"
+                            href="/auth/sign-up"
                             className="rounded-xl bg-red-600 text-white px-5 py-2.5 text-sm hover:bg-red-500"
                         >
                             Get Started

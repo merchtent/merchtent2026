@@ -481,27 +481,59 @@ export default function BandMerchOnePage() {
         <div>
             {/* EDGY HERO — split layout, oversized type, sticker */}
             <section className="relative border-b border-neutral-800">
-                <div className="grid md:grid-cols-2 min-h-[70vh]">
-                    {/* Left: type + CTA */}
-                    <div className="relative flex items-end md:items-center justify-center md:justify-end p-8 md:p-14">
+                <div className="grid md:grid-cols-2 min-h-[50vh]">
+                    {/* Image first on mobile, second on desktop */}
+                    <div className="relative order-1 md:order-2">
+                        {/* Mobile: intrinsic (no fill) */}
+                        <div className="relative md:hidden">
+                            <Image src={spank} alt="Hero" priority />
+                        </div>
+
+                        {/* Desktop: fill */}
+                        <div className="relative hidden md:block md:min-h-[70vh] overflow-visible">
+                            <Image
+                                src={spank}
+                                alt="Hero"
+                                fill
+                                className="object-cover"
+                                priority
+                            />
+                        </div>
+
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(to_bottom,transparent_0%,rgba(0,0,0,0.6)_100%)]" />
+                        <div className="absolute top-6 right-6">
+                            <div className="h-16 w-16 rounded-full bg-red-600 grid place-items-center text-white font-black text-xl rotate-[15deg]">★</div>
+                        </div>
+                    </div>
+
+                    {/* Text second on mobile, first on desktop */}
+                    <div className="relative order-2 md:order-1 flex items-start md:items-center justify-center md:justify-end p-8 md:p-14">
                         <div className="max-w-xl">
                             <p className="uppercase tracking-[0.3em] text-xs text-red-400">SPANK THE 90s Tour '25</p>
-                            <h1 className="mt-3 leading-[0.9] text-5xl md:text-7xl font-black"><GlitchText lines={["GET", "YOUR", "SPANK", "ON  "]} /></h1>
+                            <h1 className="mt-3 leading-[0.9] text-5xl md:text-7xl font-black">
+                                <GlitchText lines={["GET", "YOUR", "SPANK", "ON  "]} />
+                            </h1>
                             <p className="mt-4 text-neutral-300">Warning, these merch items might increase spanking!</p>
-                            <div className="mt-6 flex flex-wrap gap-3"><Button asChild><a href="/artists/spank-the-90s">Shop Spank the 90s</a></Button><Button variant="secondary" asChild><a href="/artists/spank-the-90s">View Merch</a></Button></div>
+                            <div className="mt-6 flex flex-wrap gap-3">
+                                <Button asChild><a href="/artists/spank-the-90s">Shop Spank the 90s</a></Button>
+                                <Button variant="secondary" asChild><a href="/artists/spank-the-90s">View Merch</a></Button>
+                            </div>
                         </div>
+
                         {/* Sticker */}
-                        <div className="absolute -top-6 -left-500 md:top-6 md:-left-0 rotate-[-12deg]"><div className="bg-white text-neutral-900 px-3 py-2 rounded-full shadow-md border border-neutral-200 text-xs font-semibold">MERCH TENT EXCLUSIVE</div></div>
-                    </div>
-                    {/* Right: image collage */}
-                    <div className="relative">
-                        <Image src={spank} alt="Hero" fill className="object-cover" />
-                        <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(to_bottom,transparent_0%,rgba(0,0,0,0.6)_100%)]" />
-                        <div className="absolute top-6 right-6"><div className="h-16 w-16 rounded-full bg-red-600 grid place-items-center text-white font-black text-xl rotate-[15deg]">★</div></div>
+                        <div className="absolute -top-6 left-[-500px] md:top-6 md:left-0 rotate-[-12deg]">
+                            <div className="bg-white text-neutral-900 px-3 py-2 rounded-full shadow-md border border-neutral-200 text-xs font-semibold">
+                                MERCH TENT EXCLUSIVE
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div className="relative h-6 overflow-hidden"><div className="absolute inset-0 -skew-y-3 bg-neutral-950 border-b border-neutral-800" /></div>
+
+                <div className="relative h-6 overflow-hidden">
+                    <div className="absolute inset-0 -skew-y-3 bg-neutral-950 border-b border-neutral-800" />
+                </div>
             </section>
+
 
             {/* COLLECTION STRIP */}
             {/* <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14">
@@ -652,12 +684,12 @@ export default function BandMerchOnePage() {
                             image: hoodie_cat,
                             href: "/category/hoodies",
                         },
-                        {
-                            title: "Tank Tops",
-                            sub: "Cut for the pit",
-                            image: tank_cat,
-                            href: "/category/tank-tops",
-                        },
+                        // {
+                        //     title: "Tank Tops",
+                        //     sub: "Cut for the pit",
+                        //     image: tank_cat,
+                        //     href: "/category/tank-tops",
+                        // },
                     ].map((c) => (
                         <a
                             key={c.title}

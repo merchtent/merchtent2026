@@ -294,11 +294,11 @@ export function ProductCard({
                         selectedColorLabel={selectedColorLabel}
                         selectedSize={activeSize}
                         overrideImage={frontSrc}
-                        className="flex-1 h-10 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
+                        className="flex-1 inline-flex items-center justify-center h-10 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
                     />
                     <Button
                         type="button"
-                        className="flex-1 h-10 rounded-lg text-white text-xs font-semibold relative rounded-xl px-4 text-sm font-black tracking-wide text-white shadow-lg border disabled:opacity-50"
+                        className="flex-1 inline-flex items-center justify-center h-12 rounded-lg text-white font-semibold relative px-4 font-black tracking-wide shadow-lg border disabled:opacity-50"
                         style={{ clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)" }}
                         onClick={() => {
                             window.location.href = `/product/${p.slug ?? p.id}`;
@@ -307,6 +307,7 @@ export function ProductCard({
                         View Merch
                     </Button>
                 </div>
+
             </CardContent>
         </Card>
     );

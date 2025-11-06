@@ -28,7 +28,7 @@ const Footer = () => {
                 <div><p className="font-medium">Shop</p>
                     <ul className="mt-3 space-y-2 text-neutral-400">
                         {nav.slice(0, 5).map((n) => (<li key={n.label}><a href={n.href}>{n.label}</a></li>))}</ul></div>
-                <div><p className="font-medium">Support</p><ul className="mt-3 space-y-2 text-neutral-400"><li><a href="/shipping-and-Returns">Shipping & returns</a></li><li><a href="size-guide">Size guide</a></li><li><a href="/contact  ">Contact us</a></li></ul></div>
+                <div><p className="font-medium">Support</p><ul className="mt-3 space-y-2 text-neutral-400"><li><a href="/shipping-and-returns">Shipping & Returns</a></li><li><a href="size-guide">Size guide</a></li><li><a href="/contact  ">Contact us</a></li></ul></div>
                 {/* <div><p className="font-medium">About</p><ul className="mt-3 space-y-2 text-neutral-400"><li><a
                     href="https://www.instagram.com/merchtent.au/"
                     target="_blank"

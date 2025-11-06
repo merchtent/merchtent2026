@@ -33,7 +33,7 @@ const brand = {
 const nav = [
     { label: "Tees", href: "/category/tees" },
     { label: "Hoodies", href: "/category/hoodies" }, // <- fixed leading slash
-    { label: "Tank Tops", href: "/category/tanks" },  // <- fixed leading slash
+    // { label: "Tank Tops", href: "/category/tanks" },
     { label: "Artists", href: "/artists" },
 ];
 
@@ -242,14 +242,15 @@ export default function HeaderClient({ initialEmail }: Props) {
                             </nav>
                         </div>
                         {/* Center */}
-                        <div className="flex justify-center">
+                        <div className="w-full text-center">
                             <a
                                 href="/"
-                                className="font-black tracking-[0.25em] text-lg hover:text-red-400 transition-colors"
+                                className="inline-block font-black tracking-[0.25em] text-lg hover:text-red-400 transition-colors"
                             >
                                 {brand.name}
                             </a>
                         </div>
+
                         {/* Right */}
                         <div className="flex items-center justify-end gap-3">
                             {email ? (
