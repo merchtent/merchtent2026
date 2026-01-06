@@ -7,8 +7,8 @@ import { placeOrderAndGoToStripe } from "./actions";
 import { useCart } from "@/components/CartProvider";
 
 const SHIPPING_OPTIONS = [
-    { id: "standard", label: "Standard (3-7 days)", amount_cents: 1000 },
-    { id: "express", label: "Express (1-3 days)", amount_cents: 2000 },
+    { id: "standard", label: "Standard (3-7 days)", amount_cents: 0 },
+    { id: "express", label: "Express (1-3 days)", amount_cents: 1700 },
 ] as const;
 
 type CheckoutFormClientProps = {
