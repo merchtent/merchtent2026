@@ -4,8 +4,8 @@
 import { useCart } from "@/components/CartProvider";
 
 const SHIPPING_OPTIONS = {
-    standard: 1000,
-    express: 2000,
+    standard: 0,
+    express: 1700,
 } as const;
 
 function publicImageUrl(path: string) {
