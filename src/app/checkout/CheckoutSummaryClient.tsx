@@ -4,7 +4,7 @@
 import { useCart } from "@/components/CartProvider";
 
 const SHIPPING_OPTIONS = {
-    standard: 1000,
+    standard: 0,
     express: 1700,
 } as const;
 
