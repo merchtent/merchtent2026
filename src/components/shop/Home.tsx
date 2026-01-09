@@ -112,7 +112,7 @@ export type Product = {
     badge?: string;
     colors?: ProductColorVariant[]; // 👈 NOW rich
     kind?: "tee" | "hoodie" | "vinyl" | "cassette" | "poster" | "accessory";
-    sizes: ["XS", "S", "M", "L", "XL"], // 👈 add this if the product should be sizeable
+    sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"], // 👈 add this if the product should be sizeable
 };
 
 export type ProductColorVariant = {
@@ -122,41 +122,12 @@ export type ProductColorVariant = {
     back?: string | null;
 };
 
-// const products: Product[] = [
-//     { id: "p1", title: "Tour Tee — Sydney", price: 45, image: "https://picsum.photos/id/1049/900/1200", hover: "https://picsum.photos/id/1050/900/1200", badge: "Limited", colors: ["#111111", "#E5E5E5"], kind: "tee" },
-//     { id: "p2", title: "Classic Logo Tee", price: 39, image: "https://picsum.photos/id/1051/900/1200", hover: "https://picsum.photos/id/1052/900/1200", badge: "Bestseller", colors: ["#111111", "#f5f5f5"], kind: "tee" },
-//     { id: "p3", title: "Midnight Feedback — Vinyl LP", price: 32, image: "https://picsum.photos/id/1069/900/1200", hover: "https://picsum.photos/id/1070/900/1200", colors: ["#111111"], kind: "vinyl" },
-//     { id: "p4", title: "Logo Hoodie", price: 79, image: "https://picsum.photos/id/1055/900/1200", hover: "https://picsum.photos/id/1056/900/1200", badge: "New", colors: ["#111111", "#bdbdbd"], kind: "hoodie" },
-//     { id: "p5", title: "Tour Poster — 18x24", price: 25, image: "https://picsum.photos/id/1081/900/1200", hover: "https://picsum.photos/id/1082/900/1200", colors: ["#111111", "#ffffff"], kind: "poster" },
-//     { id: "p6", title: "Cassette — Smoke Shell", price: 16, image: "https://picsum.photos/id/1060/900/1200", hover: "https://picsum.photos/id/1061/900/1200", badge: "Tour Only", colors: ["#111111"], kind: "cassette" },
-//     { id: "p7", title: "City Tee — Tokyo", price: 45, image: "https://picsum.photos/id/1074/900/1200", hover: "https://picsum.photos/id/1075/900/1200", colors: ["#111111", "#d1d1d1"], kind: "tee" },
-//     { id: "p8", title: "City Tee — Melbourne", price: 45, image: "https://picsum.photos/id/1053/900/1200", hover: "https://picsum.photos/id/1054/900/1200", colors: ["#111111", "#E5E5E5"], kind: "tee" },
-// ];
-
 const products: Product[] = [
 
 ];
 
-// // Second capsule
-// const products2: Product[] = [
-//     { id: "p9", title: "Asterisk Tee — Neon", price: 49, image: "https://picsum.photos/id/1010/900/1200", hover: "https://picsum.photos/id/1011/900/1200", badge: "Restock", colors: ["#111111", "#f5f5f5"], kind: "tee" },
-//     { id: "p10", title: "Skate Deck — Logo", price: 99, image: "https://picsum.photos/id/1012/900/1200", hover: "https://picsum.photos/id/1013/900/1200", colors: ["#111111"], kind: "poster" },
-//     { id: "p11", title: "Patches Trio", price: 25, image: "https://picsum.photos/id/1014/900/1200", hover: "https://picsum.photos/id/1015/900/1200", badge: "New", colors: ["#111111", "#E5E5E5"], kind: "accessory" },
-//     { id: "p12", title: "Logo Beanie", price: 35, image: "https://picsum.photos/id/1016/900/1200", hover: "https://picsum.photos/id/1017/900/1200", colors: ["#111111", "#bdbdbd"], kind: "hoodie" },
-//     { id: "p13", title: "Tour Tee — Berlin", price: 45, image: "https://picsum.photos/id/1018/900/1200", hover: "https://picsum.photos/id/1019/900/1200", colors: ["#111111", "#E5E5E5"], kind: "tee" },
-//     { id: "p14", title: "Sticker/Pick Pack", price: 25, image: "https://picsum.photos/id/1020/900/1200", hover: "https://picsum.photos/id/1021/900/1200", badge: "Tour Only", colors: ["#111111"], kind: "accessory" },
-//     { id: "p15", title: "Windbreaker — Classic", price: 104, image: "https://picsum.photos/id/1022/900/1200", hover: "https://picsum.photos/id/1023/900/1200", colors: ["#111111", "#d1d1d1"], kind: "hoodie" },
-//     { id: "p16", title: "Women’s Baby Tee — Love", price: 57, image: "https://picsum.photos/id/1024/900/1200", hover: "https://picsum.photos/id/1025/900/1200", colors: ["#111111", "#f5f5f5"], kind: "tee" },
-// ];
-
-const collections = [
-    { title: "New Tees", sub: "Fresh tour designs", image: "https://picsum.photos/id/1020/1600/1200", href: "#tees" },
-    { title: "Vinyl & Cassettes", sub: "Spin the new record", image: "https://picsum.photos/id/1035/1600/1200", href: "#music" },
-    { title: "Tour Exclusives", sub: "Drops from the road", image: "https://picsum.photos/id/1012/1600/1200", href: "#tour" },
-];
-
 const tourDates = [
-    { date: "Nov 15", artist: "Spank the 90s", city: "Bendigo", venue: "Golden Vine Hotel", href: "https://www.facebook.com/events/1544058490109285" }
+    { date: "Jan 17", artist: "Spank the 90s", city: "Seymour", venue: "The Royal Hotel", href: "https://www.facebook.com/events/1736814940317563" },
 ];
 
 // ---------- Helper UI ----------

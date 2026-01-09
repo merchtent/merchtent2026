@@ -90,7 +90,7 @@ export function ProductCard({
     // state
     const [activeColorIdx, setActiveColorIdx] = useState(0);
     const defaultSizes =
-        p.sizes && p.sizes.length ? p.sizes : ["XS", "S", "M", "L", "XL"];
+        p.sizes && p.sizes.length ? p.sizes : ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
     const [activeSize, setActiveSize] = useState<string | null>(
         defaultSizes[0] ?? null
     );

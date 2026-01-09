@@ -128,7 +128,7 @@ export default function ProductBuyBox({
             <div className="mt-4 space-y-2">
                 <p className="text-xs text-neutral-400">Size</p>
                 <div className="grid grid-cols-5 gap-2">
-                    {["XS", "S", "M", "L", "XL"].map((s) => {
+                    {["XS", "S", "M", "L", "XL", "2XL", "3XL"].map((s) => {
                         const active = size === s;
                         return (
                             <button

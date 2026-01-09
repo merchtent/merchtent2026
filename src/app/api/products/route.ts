@@ -100,7 +100,7 @@ export async function GET() {
                 badge: artistName,
                 colors: colorVariants,
                 kind: "tee" as const,
-                sizes: ["XS", "S", "M", "L", "XL"], // 👈 add this if the product should be sizeable
+                sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"], // 👈 add this if the product should be sizeable
             };
         }) ?? [];
 
