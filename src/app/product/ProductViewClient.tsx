@@ -149,8 +149,8 @@ export default function ProductViewClient({
                                         width={1600}
                                         height={1600}
                                         className={`w-full h-auto object-cover transition-opacity duration-300 ${backImage && activeImage === frontImage
-                                                ? "group-hover:opacity-0"
-                                                : ""
+                                            ? "group-hover:opacity-0"
+                                            : ""
                                             }`}
                                         priority
                                     />
@@ -295,9 +295,9 @@ export default function ProductViewClient({
                                 <div className="px-4 pb-4 text-sm text-neutral-300 space-y-2">
                                     <p>Ships worldwide from Australia.</p>
                                     <ul className="list-disc pl-5 space-y-1">
-                                        <li>Standard: A$10</li>
-                                        <li>Express: A$20</li>
-                                        <li>Free **express** on orders over A$100</li>
+                                        <li>Standard: A$10.50</li>
+                                        <li>Express: A$17</li>
+                                        {/* <li>Free **express** on orders over A$100</li> */}
                                     </ul>
                                     <p>Tracking provided for all orders. Times vary by destination.</p>
                                 </div>

@@ -241,7 +241,7 @@ export default function CartPageClient() {
                                 </button>
 
                                 <p className="mt-3 text-[11px] text-neutral-500">
-                                    Taxes calculated at checkout. Free express over A$100.
+                                    Taxes calculated at checkout.
                                 </p>
                             </div>
 

@@ -40,8 +40,8 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
     const shippingMethod = String(formData.get("shipping_method") || "standard");
     const voucher = String(formData.get("voucher") || "").trim();
 
-    let shippingAmountCents = 1000;
-    if (shippingMethod === "express") shippingAmountCents = 2000;
+    let shippingAmountCents = 1050;
+    if (shippingMethod === "express") shippingAmountCents = 1700;
 
     const currency = cartItems[0]?.currency || "AUD";
 

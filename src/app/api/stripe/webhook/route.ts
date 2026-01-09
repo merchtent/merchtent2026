@@ -207,8 +207,8 @@ export async function POST(req: NextRequest) {
                 (session.metadata?.voucher as string | undefined) ?? null;
 
             let shipping_cents = 0;
-            if (shippingMethod === "standard") shipping_cents = 1000;
-            if (shippingMethod === "express") shipping_cents = 2000;
+            if (shippingMethod === "standard") shipping_cents = 1050;
+            if (shippingMethod === "express") shipping_cents = 1700;
 
             const subtotal_incl_shipping = Number(session.amount_subtotal ?? 0);
             const subtotal_cents = Math.max(
