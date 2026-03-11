@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
                 .from("orders")
                 .insert({
                     user_id: safeUserId,
+                    email: session.metadata?.email ?? null,
                     stripe_session_id: session.id,
                     stripe_payment_intent: stripePaymentIntentId,
                     subtotal_cents: Number(session.amount_subtotal ?? 0),

@@ -49,6 +49,7 @@ import Link from "next/link";
 import FeaturedArtistsSection from "../FeaturedArtists";
 import JoinTheList from "../JoinTheList";
 import { ProductCard } from "./ProductCard";
+import TourSection from "../TourSection";
 
 // ============================================================
 // BAND MERCH — "NOISE // NIGHT DRIVE" (maximum‑edgy edition)
@@ -127,7 +128,9 @@ const products: Product[] = [
 ];
 
 const tourDates = [
-    { date: "Jan 17", artist: "Spank the 90s", city: "Seymour", venue: "The Royal Hotel", href: "https://www.facebook.com/events/1736814940317563" },
+    { date: "March 21", artist: "Lionel Loves Vinyl", city: "Warragul", venue: "Jak's Music", href: "https://www.facebook.com/events/1581983439718449/" },
+    { date: "April 4", artist: "Spank The 90s", city: "Bendigo", venue: "Golden Vine Hotel", href: "https://www.facebook.com/events/897566879459518/" },
+    { date: "Oct 31", artist: "Spank The 90s", city: "Ballarat", venue: "Millers Arms Hotel", href: "https://www.facebook.com/events/1210020217949679/" },
 ];
 
 // ---------- Helper UI ----------
@@ -428,7 +431,20 @@ function EditorsRail({
 //     );
 // }
 
-export default function BandMerchOnePage() {
+type TourDate = {
+    id: string;
+    artist: string;
+    venue: string;
+    city: string;
+    event_date: string;
+    ticket_url: string;
+};
+
+export default function BandMerchOnePage({
+    tourDates,
+}: {
+    tourDates: TourDate[];
+}) {
     // const [cart, setCart] = useState<{ id: string; title: string; price: number; qty: number }[]>([]);
     const [mobileMenu, setMobileMenu] = useState(false);
     const [quickView, setQuickView] = useState<Product | null>(null);
@@ -818,7 +834,7 @@ export default function BandMerchOnePage() {
             </section> */}
 
             {/* TOUR DATES STRIP */}
-            <section id="tour" className="bg-neutral-900 py-12 md:py-16 border-y border-neutral-800">
+            {/* <section id="tour" className="bg-neutral-900 py-12 md:py-16 border-y border-neutral-800">
                 <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
                     <div className="flex items-center justify-between mb-6"><h2 className="text-xl md:text-2xl font-semibold">Tour Dates</h2></div>
                     <div className="grid md:grid-cols-4 gap-4 md:gap-6">
@@ -836,7 +852,9 @@ export default function BandMerchOnePage() {
                         ))}
                     </div>
                 </div>
-            </section>
+            </section> */}
+
+            <TourSection dates={tourDates} />
 
             {/* FAN SHOUTS / REVIEWS */}
             <section className="bg-neutral-950 py-12 md:py-16">

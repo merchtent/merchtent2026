@@ -148,10 +148,11 @@ export default function CheckoutFormClient({
         <form onSubmit={handleSubmit} className="space-y-5">
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-4">
                 <p className="text-xs uppercase tracking-wide text-neutral-400">
-                    Contact
+                    Email Address
                 </p>
                 <input
                     name="email"
+                    placeholder="Email"
                     type="email"
                     value={form.email}
                     onChange={(e) => update("email", e.target.value)}

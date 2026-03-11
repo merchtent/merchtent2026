@@ -87,6 +87,7 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
             user_id: user?.id ?? "guest",
             shippingMethod,
             voucher,
+            email: String(formData.get("email") || "").slice(0, 500),
             first_name: String(formData.get("first_name") || "").slice(0, 500),
             last_name: String(formData.get("last_name") || "").slice(0, 500),
             line1: String(formData.get("line1") || "").slice(0, 500),
