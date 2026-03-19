@@ -7,12 +7,17 @@ import {
     buildOrderEmailPayloadFromStripe,
     type OrderEmailItem,
 } from "@/lib/postmark";
+import { sendSms, normalisePhone } from "@/lib/sms";
 
 function isUuidLike(s: string | null | undefined): s is string {
     if (!s) return false;
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
         s
     );
+}
+
+function formatOrderNumber(id: number | string) {
+    return `MT-${String(id).padStart(6, "0")}`;
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -51,8 +56,20 @@ export async function POST(req: NextRequest) {
         amount_total: session.amount_total,
     });
 
+    const { data: existingOrder } = await supabaseAdmin
+        .from("orders")
+        .select("id")
+        .eq("stripe_session_id", session.id)
+        .single();
+
+    if (existingOrder) {
+        console.log("⚠️ Order already processed for session", session.id);
+        return NextResponse.json({ ok: true });
+    }
+
     // default: if DB insert fails, we fall back to the Stripe session ID
     let orderId: string | number | null = null;
+    let orderNumber: string | null = null;
 
     try {
         // 1) fetch full line items so we can read our metadata back
@@ -87,7 +104,6 @@ export async function POST(req: NextRequest) {
                     currency: session.currency?.toUpperCase() ?? "AUD",
                     shipping_method: session.metadata?.shippingMethod ?? null,
                     voucher_code: session.metadata?.voucher ?? null,
-                    // store address-ish stuff
                     first_name: session.metadata?.first_name ?? null,
                     last_name: session.metadata?.last_name ?? null,
                     line1: session.metadata?.line1 ?? null,
@@ -104,8 +120,20 @@ export async function POST(req: NextRequest) {
             if (orderErr) {
                 console.error("❌ failed to insert order", orderErr);
             } else {
+
                 orderId = orderRow.id;
+                orderNumber = formatOrderNumber(orderRow.id);
+
+                const { error: updateErr } = await supabaseAdmin
+                    .from("orders")
+                    .update({ order_number: orderNumber })
+                    .eq("id", orderRow.id);
+
+                if (updateErr) {
+                    console.error("❌ failed to set order_number", updateErr);
+                }
             }
+
         } catch (dbErr) {
             console.error("❌ Exception inserting order row", dbErr);
         }
@@ -300,7 +328,9 @@ export async function POST(req: NextRequest) {
             const stripe_payment_intent_id = stripePaymentIntentId;
 
             // Use orderId if we have it, otherwise fall back to session.id
-            const order_number = String(orderId ?? session.id);
+            //const order_number = String(orderId ?? session.id);
+
+            const order_number = orderNumber ?? session.id;
 
             const payload = buildOrderEmailPayloadFromStripe({
                 order_number,
@@ -339,6 +369,50 @@ export async function POST(req: NextRequest) {
             console.error("⚠️ Failed to send Postmark emails", emailErr);
             // don't throw – we still want 200 to Stripe
         }
+
+        // 7) 📱 SEND SMS CONFIRMATION
+        try {
+
+            const phone = normalisePhone(session.metadata?.phone);
+
+            if (phone) {
+
+                const order_number = orderNumber ?? session.id;
+
+                const first_name = session.metadata?.first_name ?? "";
+                const last_name = session.metadata?.last_name ?? "";
+
+                const customer_name =
+                    (first_name || last_name
+                        ? `${first_name} ${last_name}`.trim()
+                        : null) ?? null;
+
+                const smsMessage = `Merch Tent 🎸
+
+                    Thanks for your order ${customer_name ?? ""}!
+
+                    Order ${order_number} confirmed.
+
+                    We'll send tracking once it ships 📦`;
+
+                //  const smsMessage = `Merch Tent 🎸
+
+                // Thanks for your order ${customer_name ?? ""}!
+
+                // Order ${order_number} confirmed.
+
+                // We'll send tracking once it ships 📦
+
+                // View order:
+                // https://merchtent.com.au/orders/${order_number}`;
+
+                await sendSms(phone, smsMessage);
+            }
+
+        } catch (smsErr) {
+            console.error("⚠️ SMS failed", smsErr);
+        }
+
     } catch (err) {
         // If *anything* above escaped, we log it but still acknowledge the webhook
         console.error("❌ Unhandled error in Stripe webhook", err);

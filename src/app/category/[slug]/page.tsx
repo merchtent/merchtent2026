@@ -89,7 +89,7 @@ export default async function CategoryPage({
                 hover,
                 slug: p.slug ?? undefined,
                 colors,
-                sizes: ["XS", "S", "M", "L", "XL"], // keep for ProductCard
+                sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"], // keep for ProductCard
                 created_at: p.created_at as string | null,
                 price_cents: p.price_cents ?? 0,
             };

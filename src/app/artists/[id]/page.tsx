@@ -202,7 +202,7 @@ export default async function ArtistDetail({ params }: { params: Promise<{ id: s
                 hover,
                 slug: p.slug ?? undefined,
                 colors,
-                sizes: ["XS", "S", "M", "L", "XL"], // if you have per-product sizes, swap this later
+                sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"], // if you have per-product sizes, swap this later
             };
         }) ?? [];
 
