@@ -44,7 +44,7 @@ export default async function CategoryPage({
         )
         .eq("is_published", true)
         .eq("category", slug)
-        .order("created_at", { ascending: false });
+        .order("price_cents", { ascending: true });
 
     if (error) {
         return (

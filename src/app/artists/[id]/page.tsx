@@ -151,7 +151,7 @@ export default async function ArtistDetail({ params }: { params: Promise<{ id: s
         )
         .eq("artist_id", artist.id)
         .eq("is_published", true)
-        .order("created_at", { ascending: false });
+        .order("price_cents", { ascending: true });
 
     if (prodErr) {
         return (
