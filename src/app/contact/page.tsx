@@ -49,12 +49,6 @@ export default async function ContactPage({
                                 support@merchtent.com.au
                             </a>
                         </div>
-                        <div>
-                            <span className="text-neutral-400">FAQ:</span>{" "}
-                            <Link href="/help" className="underline">
-                                Browse help articles
-                            </Link>
-                        </div>
                     </div>
 
                     <div className="mt-6 text-xs text-neutral-500">

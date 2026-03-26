@@ -48,8 +48,7 @@ export default function ShippingAndReturnsPage() {
                             weight, destination, and service level.
                         </p>
                         <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>Free AU shipping on orders over A$100.</li>
-                            <li>Carrier options shown at checkout (standard / express where available).</li>
+                            <li>Shipping options shown at checkout (standard / express where available).</li>
                             <li>Some items may ship separately to speed up delivery.</li>
                         </ul>
                     </div>
@@ -116,36 +115,54 @@ export default function ShippingAndReturnsPage() {
 
                 {/* Returns & Refunds */}
                 <section id="returns" className="grid md:grid-cols-2 gap-6">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
-                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}>
+
+                    {/* RETURNS */}
+                    <div
+                        className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
+                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
+                    >
                         <h2 className="text-lg font-bold">Returns & Exchanges</h2>
+
                         <p className="text-neutral-300 mt-2">
-                            We accept returns within <strong>30 days</strong> of delivery for unworn, unwashed
-                            items in original packaging with tags attached.
+                            All items are printed on demand — made specifically for each order.
+                            Because of this, we <strong>don’t offer returns or exchanges for change of mind</strong>,
+                            including incorrect size selection.
                         </p>
+
                         <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>To start a return, email <a className="underline" href="mailto:support@merchtent.example">support@merchtent.example</a> with your order #.</li>
-                            <li>Exchanges are processed as a return + new order to ensure stock availability.</li>
-                            <li>Final-sale items (e.g., digital, custom, or clearance) are not returnable.</li>
+                            <li>Please double-check sizing before ordering.</li>
+                            <li>Each item is made to order and cannot be restocked.</li>
+                            <li>We recommend reviewing size guides on each product page.</li>
                         </ul>
-                        <p className="text-xs text-neutral-500 mt-2">
-                            For hygiene reasons, headwear and opened media (vinyl/cassette) can only be returned if defective.
+
+                        <p className="text-xs text-neutral-500 mt-3">
+                            As a print-on-demand platform, this helps reduce waste and overproduction.
                         </p>
                     </div>
 
-                    <div id="refunds" className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
-                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}>
-                        <h2 className="text-lg font-bold">Refunds</h2>
+                    {/* ISSUES / REFUNDS */}
+                    <div
+                        id="refunds"
+                        className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
+                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
+                    >
+                        <h2 className="text-lg font-bold">Damaged or Incorrect Items</h2>
+
                         <p className="text-neutral-300 mt-2">
-                            Once your return is received and inspected, we’ll issue a refund to your original
-                            payment method within 3–7 business days.
+                            If your order arrives damaged, misprinted, or incorrect, we’ll make it right.
                         </p>
+
                         <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>Original shipping fees are non-refundable unless we made an error.</li>
-                            <li>Return shipping is the customer’s responsibility unless the item arrived damaged/incorrect.</li>
-                            <li>If approved, you’ll receive a confirmation email when your refund is issued.</li>
+                            <li>Email us at <a className="underline" href="mailto:support@merchtent.com.au">support@merchtent.com.au</a> within 7 days of delivery.</li>
+                            <li>Include your order number and clear photos of the issue.</li>
+                            <li>If approved, we’ll arrange a replacement or refund at no cost.</li>
                         </ul>
+
+                        <p className="text-xs text-neutral-500 mt-3">
+                            We stand by the quality of our products and will always fix genuine issues.
+                        </p>
                     </div>
+
                 </section>
 
                 {/* FAQ */}

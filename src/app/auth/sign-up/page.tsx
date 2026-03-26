@@ -68,12 +68,58 @@ export default function SignUpPage() {
                     Create your artist account
                 </h1>
                 <p className="mt-2 text-sm text-neutral-300">
+                    It’s free to join.
+                </p>
+            </section>
+
+            {/* Early Access Notice */}
+            <section className="rounded-2xl border border-yellow-600/40 bg-yellow-500/10 p-4 mb-6">
+                <p className="text-xs uppercase tracking-widest text-yellow-400">
+                    Early access
+                </p>
+
+                <h2 className="text-sm font-semibold text-yellow-200 mt-1">
+                    We’re not fully open just yet
+                </h2>
+
+                <p className="text-sm text-neutral-300 mt-2">
+                    We’re currently onboarding a small group of artists while we refine the platform.
+                    Shoot us an email at support@merchtent.com.au — and we'll chat merch!
+                </p>
+            </section>
+        </main>
+    );
+
+    return (
+        <main className="max-w-2xl mx-auto px-4 py-10">
+            {/* Header / Welcome */}
+            <section className="mb-6">
+                <p className="uppercase tracking-[0.25em] text-xs text-red-500">Join</p>
+                <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
+                    Create your artist account
+                </h1>
+                <p className="mt-2 text-sm text-neutral-300">
                     It’s free to join. You’ll receive a secure magic link via email to finish
                     setting up your account—no password required.
                 </p>
             </section>
 
-            {/* How it works */}
+            {/* Early Access Notice */}
+            <section className="rounded-2xl border border-yellow-600/40 bg-yellow-500/10 p-4 mb-6">
+                <p className="text-xs uppercase tracking-widest text-yellow-400">
+                    Early access
+                </p>
+
+                <h2 className="text-sm font-semibold text-yellow-200 mt-1">
+                    We’re not fully open just yet
+                </h2>
+
+                <p className="text-sm text-neutral-300 mt-2">
+                    We’re currently onboarding a small group of artists while we refine the platform.
+                    You can still sign up below — we’ll invite you as soon as spots open.
+                </p>
+            </section>
+
             {!sent && (
                 <section className="rounded-2xl border border-neutral-700 bg-neutral-900 p-4 mb-6 text-sm">
                     <p className="font-semibold mb-2 text-neutral-100">How sign up works</p>
@@ -88,7 +134,6 @@ export default function SignUpPage() {
                 </section>
             )}
 
-            {/* Form / Sent states */}
             {sent ? (
                 <section className="rounded-2xl border border-neutral-700 bg-neutral-900 p-5 space-y-4">
                     <div>
@@ -129,7 +174,6 @@ export default function SignUpPage() {
 
                     {err && <p className="text-sm text-red-400">{err}</p>}
 
-                    {/* What you can do next */}
                     <div className="pt-4 border-t border-neutral-700">
                         <h3 className="text-sm font-semibold text-neutral-100">What you’ll get after sign-up</h3>
                         <ul className="mt-2 grid gap-2 text-sm text-neutral-300">
@@ -143,7 +187,6 @@ export default function SignUpPage() {
                 </section>
             ) : (
                 <form className="space-y-4" onSubmit={onSubmit}>
-                    {/* Field: Artist name */}
                     <div>
                         <label className="block text-[11px] font-semibold text-neutral-200 mb-1">
                             Artist / Band name
@@ -165,7 +208,6 @@ export default function SignUpPage() {
                         </p>
                     </div>
 
-                    {/* Field: Email */}
                     <div>
                         <label className="block text-[11px] font-semibold text-neutral-200 mb-1">
                             Email address
@@ -201,7 +243,6 @@ export default function SignUpPage() {
                 </form>
             )}
 
-            {/* Footer note */}
             <section className="mt-8 text-xs text-neutral-400">
                 By continuing you agree to our{" "}
                 <Link href="/terms" className="underline">Terms</Link> and{" "}

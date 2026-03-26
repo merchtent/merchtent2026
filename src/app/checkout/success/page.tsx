@@ -131,7 +131,11 @@ export default function SuccessPage() {
                         <ul className="mt-4 space-y-3 text-sm">
                             <li className="flex items-start gap-2">
                                 <span className="mt-1 h-2 w-2 rounded-full bg-red-500" aria-hidden />
-                                <div className="text-neutral-300">Check your inbox for the receipt</div>
+                                <div className="text-neutral-300">Check your inbox for the order confirmation</div>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="mt-1 h-2 w-2 rounded-full bg-red-500" aria-hidden />
+                                <div className="text-neutral-300">Your order will be sent to production (2 - 3 days to be made)</div>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="mt-1 h-2 w-2 rounded-full bg-red-500" aria-hidden />
@@ -139,7 +143,7 @@ export default function SuccessPage() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="mt-1 h-2 w-2 rounded-full bg-red-500" aria-hidden />
-                                <div className="text-neutral-300">Need help? Reply to your receipt email</div>
+                                <div className="text-neutral-300">Need help? Reply to your confirmation email</div>
                             </li>
                         </ul>
 

@@ -166,7 +166,7 @@ export default function HeaderClient({ initialEmail }: Props) {
                     >
                         <div className="flex items-center gap-8 pr-8">
                             <span className="inline-flex items-center gap-2">
-                                <Disc3 className="h-4 w-4" /> New artists every week
+                                <Disc3 className="h-4 w-4" /> New Artists Every Week
                             </span>
                             <span className="inline-flex items-center gap-2">
                                 <Ticket className="h-4 w-4" /> Launch Sales
@@ -175,16 +175,16 @@ export default function HeaderClient({ initialEmail }: Props) {
                                 <Music2 className="h-4 w-4" /> Free shipping over $100
                             </span> */}
                             <span className="inline-flex items-center gap-2">
-                                <Star className="h-4 w-4" /> Limited edition drops
+                                <Star className="h-4 w-4" /> Limited Edition Drops
                             </span>
                             <span className="inline-flex items-center gap-2">
-                                <Heart className="h-4 w-4" /> Official band merch
+                                <Heart className="h-4 w-4" /> Official Band Merch
                             </span>
                             <span className="inline-flex items-center gap-2">
-                                <Globe className="h-4 w-4" /> Worldwide shipping
+                                <Globe className="h-4 w-4" /> Worldwide Shipping
                             </span>
                             <span className="inline-flex items-center gap-2">
-                                <Sparkles className="h-4 w-4" /> Sustainable materials
+                                <Sparkles className="h-4 w-4" /> Sustainable Materials
                             </span>
                         </div>
                     </motion.div>
