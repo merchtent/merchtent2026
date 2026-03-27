@@ -171,9 +171,9 @@ export default function HeaderClient({ initialEmail }: Props) {
                             <span className="inline-flex items-center gap-2">
                                 <Ticket className="h-4 w-4" /> Launch Sales
                             </span>
-                            {/* <span className="inline-flex items-center gap-2">
-                                <Music2 className="h-4 w-4" /> Free shipping over $100
-                            </span> */}
+                            <span className="inline-flex items-center gap-2">
+                                <Music2 className="h-4 w-4" /> Print On Demand
+                            </span>
                             <span className="inline-flex items-center gap-2">
                                 <Star className="h-4 w-4" /> Limited Edition Drops
                             </span>

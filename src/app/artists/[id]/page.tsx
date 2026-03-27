@@ -1,306 +1,308 @@
-// app/artists/[id]/page.tsx
-import { getServerSupabase } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import ArtistProductsGrid from "./ArtistProductsGrid";
-import { ArrowLeft, Globe, Instagram, Music, Radio } from "lucide-react";
+import TourSection from "@/components/TourSection";
 
 export const revalidate = 60;
 
-function isUuidLike(s: string) {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-}
-
-function publicImageUrl(path?: string | null) {
+function artistImage(path?: string | null) {
     if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(path)}`;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${path}`;
 }
 
-function publicArtistImageUrl(path?: string | null) {
+function productImage(path?: string | null) {
     if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${encodeURIComponent(path)}`;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
 }
 
-function initials(name: string | null) {
-    const n = (name || "").trim();
-    if (!n) return "??";
-    const parts = n.split(/\s+/).slice(0, 2);
-    return parts.map((p) => p[0]?.toUpperCase() || "").join("") || "??";
-}
-
-export default async function ArtistDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function ArtistPage({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}) {
     const { id } = await params;
-    const supabase = getServerSupabase();
 
-    // ---- 1) try to load with extended fields ----
-    let artist:
-        | {
-            id: string;
-            display_name: string | null;
-            slug: string | null;
-            hero_image_path: string | null;
-            bio?: string | null;
-            facebook_url?: string | null;
-            instagram_url?: string | null;
-            bandcamp_url?: string | null;
-            spotify_url?: string | null;
-            website_url?: string | null;
-        }
-        | null = null;
-    let artistErr: any = null;
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false, autoRefreshToken: false } }
+    );
 
-    {
-        let q = supabase
-            .from("artists_public")
-            .select(
-                `
-        id,
-        display_name,
-        slug,
-        hero_image_path,
-        bio,
-        facebook_url,
-        instagram_url,
-        bandcamp_url,
-        spotify_url,
-        website_url
-      `
-            )
-            .limit(1);
+    // 🔥 GET ARTIST
+    const { data: artist } = await supabase
+        .from("artists")
+        .select("id, display_name, slug, hero_image_path, bio")
+        .eq("slug", id)
+        .single();
 
-        q = isUuidLike(id) ? q.eq("id", id) : q.eq("slug", id);
-
-        const { data, error } = await q.maybeSingle();
-        if (!error) {
-            artist = data;
-        } else {
-            artistErr = error;
-        }
-    }
-
-    // ---- 2) fallback minimal ----
     if (!artist) {
-        let q = supabase.from("artists_public").select("id, display_name, slug, hero_image_path").limit(1);
-        q = isUuidLike(id) ? q.eq("id", id) : q.eq("slug", id);
-        const { data, error } = await q.maybeSingle();
-        if (error) {
-            artistErr = error;
-        }
-        artist = data;
-    }
-
-    if (artistErr) {
         return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">ARTIST // ERROR</h1>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <p className="text-red-400">Error: {artistErr.message}</p>
-                        <div className="mt-4">
-                            <Link href="/artists" className="underline inline-flex items-center gap-2">
-                                <ArrowLeft className="h-4 w-4" /> Back to artists
-                            </Link>
-                        </div>
-                    </div>
-                </div>
+            <main className="p-6 max-w-7xl mx-auto">
+                <p>Artist not found.</p>
             </main>
         );
     }
 
-    if (!artist) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">Artist not found</h1>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <Link className="underline inline-flex items-center gap-2" href="/artists">
-                        <ArrowLeft className="h-4 w-4" /> Back to artists
-                    </Link>
-                </div>
-            </main>
-        );
-    }
+    const heroUrl = artistImage(artist.hero_image_path);
 
-    const heroUrl = artist.hero_image_path ? publicArtistImageUrl(artist.hero_image_path) : null;
-
-    // ---- products for this artist ----
-    const { data: products, error: prodErr } = await supabase
+    // 🔥 GET PRODUCTS
+    const { data: productData } = await supabase
         .from("products")
-        .select(
-            `
-      id,
-      title,
-      slug,
-      price_cents,
-      currency,
-      is_published,
-      created_at,
-      product_images:product_images ( path, sort_order, side ),
-      product_colors:product_colors ( hex, label, sort_order, front_image_path, back_image_path )
-    `
-        )
+        .select(`
+            id,
+            title,
+            price_cents,
+            slug,
+            created_at,
+            product_images ( path, sort_order ),
+            product_colors ( hex, label, sort_order, front_image_path, back_image_path )
+        `)
         .eq("artist_id", artist.id)
         .eq("is_published", true)
-        .order("price_cents", { ascending: true });
+        .order("created_at", { ascending: false });
 
-    if (prodErr) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">{artist.display_name ?? "Artist"}</h1>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <p className="text-red-400">Error loading products: {prodErr.message}</p>
-                    </div>
-                </div>
-            </main>
-        );
-    }
+    const products =
+        (productData ?? []).map((p: any) => {
+            const imgs = (p.product_images ?? []).sort(
+                (a: any, b: any) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
+            );
 
-    // ---- map to ProductCard shape ----
-    const cardProducts =
-        products?.map((p) => {
-            // images
-            const imgs = Array.isArray(p.product_images)
-                ? [...p.product_images].sort((a, b) => (a?.sort_order ?? 999) - (b?.sort_order ?? 999))
-                : [];
-            const primary = publicImageUrl(imgs[0]?.path) ?? "https://picsum.photos/seed/fallback1/900/1200";
-            const hover = publicImageUrl(imgs[1]?.path) ?? primary;
+            const primary =
+                productImage(imgs[0]?.path) ??
+                "https://picsum.photos/seed/fallback/900/1200";
 
-            // colours (ProductCard expects {hex,label,front,back})
-            const colors = Array.isArray(p.product_colors)
-                ? [...p.product_colors]
-                    .sort((a, b) => (a?.sort_order ?? 999) - (b?.sort_order ?? 999))
-                    .map((c) => ({
-                        hex: c.hex ?? "#111111",
-                        label: c.label ?? "",
-                        front: c.front_image_path ? publicImageUrl(c.front_image_path) : primary,
-                        back: c.back_image_path ? publicImageUrl(c.back_image_path) : hover,
-                    }))
-                : [];
+            const hover =
+                productImage(imgs[1]?.path) ??
+                primary;
+
+            const colors = (p.product_colors ?? []).map((c: any) => ({
+                hex: c.hex,
+                label: c.label,
+                front: c.front_image_path
+                    ? productImage(c.front_image_path)
+                    : primary,
+                back: c.back_image_path
+                    ? productImage(c.back_image_path)
+                    : hover,
+            }));
 
             return {
                 id: String(p.id),
-                title: p.title ?? "Untitled",
-                price: ((p.price_cents ?? 0) / 100) as number,
+                title: p.title,
+                price: (p.price_cents ?? 0) / 100,
                 image: primary,
                 hover,
-                slug: p.slug ?? undefined,
+                slug: p.slug,
                 colors,
-                sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"], // if you have per-product sizes, swap this later
+                sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
+                created_at: p.created_at,
             };
         }) ?? [];
 
+    function artistImage(path?: string | null) {
+        if (!path) return null;
+        return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${path}`;
+    }
+
+    // 🔥 TOUR DATES
+    const today = new Date().toISOString();
+
+    const { data: tourDates } = await supabase
+        .from("tour_dates")
+        .select("id, artist, venue, city, event_date, ticket_url")
+        .eq("artist", artist.id)
+        .gte("event_date", today)
+        .order("event_date", { ascending: true });
+
+    // 🔥 JOURNAL
+    const { data: journals } = await supabase
+        .from("journal")
+        .select(`
+        id,
+        title,
+        slug,
+        created_at,
+        artist:artists (
+            display_name,
+            hero_image_path
+        )
+    `)
+        .eq("artist_id", artist.id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* Hero / header */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-6xl mx-auto px-4 pt-8 pb-10 flex items-start justify-between gap-6">
-                        <div className="flex items-start gap-4">
-                            {/* round avatar that uses hero image */}
-                            <div className="relative h-16 w-16 rounded-full overflow-hidden bg-neutral-900 text-white grid place-items-center font-black shrink-0">
-                                {heroUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={heroUrl} alt={artist.display_name ?? "Artist"} className="w-full h-full object-cover" />
-                                ) : (
-                                    initials(artist.display_name)
-                                )}
-                            </div>
-                            <div>
-                                <p className="uppercase tracking-[0.25em] text-[10px] text-red-600">Artist</p>
-                                <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">{artist.display_name ?? "Artist"}</h1>
-                                <p className="mt-2 text-sm text-neutral-600 max-w-2xl">
-                                    {artist.bio ? artist.bio : "Independent artist. Drops, collabs and live merch. Follow to get the next run."}
-                                </p>
-                            </div>
+        <main className="bg-neutral-950 text-white">
+
+            {/* 🔥 HERO */}
+            <section className="relative h-[60vh] min-h-[420px] w-full overflow-hidden">
+
+                {heroUrl && (
+                    <img
+                        src={heroUrl}
+                        alt={artist.display_name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                    />
+                )}
+
+                <div className="absolute inset-0 bg-black/60" />
+                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-neutral-950 to-transparent" />
+
+                <div className="relative z-10 max-w-6xl mx-auto px-4 h-full flex flex-col justify-end pb-10">
+
+                    <p className="uppercase tracking-[0.3em] text-xs text-red-400">
+                        Artist
+                    </p>
+
+                    <h1 className="text-4xl md:text-6xl font-black leading-[0.95] mt-2">
+                        {artist.display_name}
+                    </h1>
+
+                    <p className="mt-3 text-neutral-300 max-w-xl">
+                        {artist.bio || "Official merch. Limited runs. Built for fans."}
+                    </p>
+
+                    {tourDates?.length ? (
+                        <span className="inline-block mt-2 text-xs bg-red-600 px-2 py-1 rounded w-fit">
+                            ON TOUR
+                        </span>
+                    ) : null}
+
+                    <div className="mt-5 flex gap-3 flex-wrap">
+                        <a
+                            href="#products"
+                            className="bg-red-600 px-5 py-3 rounded-xl font-bold hover:bg-red-500"
+                        >
+                            Shop Merch
+                        </a>
+
+                        <a
+                            href="#tour"
+                            className="border border-neutral-600 px-5 py-3 rounded-xl hover:bg-neutral-800"
+                        >
+                            View Tour
+                        </a>
+                    </div>
+
+                </div>
+            </section>
+
+            <section className="max-w-6xl mx-auto px-4 py-6">
+
+                <div className="grid md:grid-cols-[180px_1fr] gap-4 items-center border border-neutral-800 rounded-2xl bg-neutral-900 overflow-hidden">
+
+                    {/* IMAGE */}
+                    <div className="relative h-36 md:h-full">
+                        <img
+                            src={products[0]?.image}
+                            alt={products[0]?.title}
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+
+                    {/* CONTENT */}
+                    <div className="p-4 md:p-5 flex items-center justify-between gap-4">
+
+                        <div>
+                            <p className="text-xs uppercase text-neutral-400">
+                                Featured Drop
+                            </p>
+
+                            <h3 className="text-lg md:text-xl font-black mt-1">
+                                {products[0]?.title}
+                            </h3>
+
+                            <p className="text-xs md:text-sm text-neutral-400 mt-1">
+                                Limited run. Built for fans.
+                            </p>
                         </div>
-                        <Link href="/artists" className="underline text-sm inline-flex items-center gap-2 mt-1">
-                            <ArrowLeft className="h-4 w-4" /> All artists
-                        </Link>
-                    </div>
-                </div>
-            </section>
 
-            {/* Content: 2-column layout → products + about/links */}
-            <section className="max-w-6xl mx-auto px-4 py-8 grid lg:grid-cols-[1.1fr_0.4fr] gap-8 items-start">
-                {/* products */}
-                <div>
-                    <h2 className="text-sm uppercase tracking-[0.3em] text-neutral-500 mb-3">Products</h2>
-                    <ArtistProductsGrid products={cardProducts} />
+                        <a
+                            href={`/product/${products[0]?.slug}`}
+                            className="whitespace-nowrap bg-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-500"
+                        >
+                            Shop →
+                        </a>
+
+                    </div>
+
                 </div>
 
-                {/* side panel */}
-                <aside className="space-y-5">
-                    {/* About */}
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                        <h3 className="text-sm uppercase tracking-[0.25em] text-neutral-400">About</h3>
-                        <p className="mt-3 text-sm text-neutral-200 leading-relaxed">
-                            {artist.bio ? artist.bio : "This artist hasn’t added a full bio yet. Merch on this page is officially published by the artist."}
-                        </p>
-                    </div>
-
-                    {/* Links */}
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-2">
-                        <h3 className="text-sm uppercase tracking-[0.25em] text-neutral-400">Links</h3>
-                        <ul className="space-y-2 text-sm">
-                            {artist.website_url ? (
-                                <li>
-                                    <Link href={artist.website_url} className="inline-flex items-center gap-2 text-neutral-100 hover:underline" target="_blank" rel="noopener noreferrer">
-                                        <Globe className="h-4 w-4" /> Website
-                                    </Link>
-                                </li>
-                            ) : null}
-                            {artist.facebook_url ? (
-                                <li>
-                                    <Link href={artist.facebook_url} className="inline-flex items-center gap-2 text-neutral-100 hover:underline" target="_blank" rel="noopener noreferrer">
-                                        <Instagram className="h-4 w-4" /> Facebook
-                                    </Link>
-                                </li>
-                            ) : null}
-                            {artist.instagram_url ? (
-                                <li>
-                                    <Link href={artist.instagram_url} className="inline-flex items-center gap-2 text-neutral-100 hover:underline" target="_blank" rel="noopener noreferrer">
-                                        <Instagram className="h-4 w-4" /> Instagram
-                                    </Link>
-                                </li>
-                            ) : null}
-                            {artist.bandcamp_url ? (
-                                <li>
-                                    <Link href={artist.bandcamp_url} className="inline-flex items-center gap-2 text-neutral-100 hover:underline" target="_blank" rel="noopener noreferrer">
-                                        <Music className="h-4 w-4" /> Bandcamp
-                                    </Link>
-                                </li>
-                            ) : null}
-                            {artist.spotify_url ? (
-                                <li>
-                                    <Link href={artist.spotify_url} className="inline-flex items-center gap-2 text-neutral-100 hover:underline" target="_blank" rel="noopener noreferrer">
-                                        <Radio className="h-4 w-4" /> Spotify
-                                    </Link>
-                                </li>
-                            ) : null}
-                            {!artist.website_url && !artist.instagram_url && !artist.bandcamp_url && !artist.spotify_url ? (
-                                <li className="text-neutral-500 text-xs">No links added yet.</li>
-                            ) : null}
-                        </ul>
-                    </div>
-                </aside>
             </section>
+
+            {/* 🔥 PRODUCTS */}
+            <section id="products" className="max-w-6xl mx-auto px-4 py-10">
+                <h2 className="text-sm uppercase tracking-[0.3em] text-neutral-500 mb-4">
+                    Merch
+                </h2>
+
+                <ArtistProductsGrid products={products} />
+            </section>
+
+            <section className="px-4 py-10 text-center">
+                <p className="text-neutral-300">
+                    Every purchase directly supports {artist.display_name}.
+                </p>
+
+                <p className="text-neutral-500 text-sm mt-2">
+                    No middlemen. No bulk waste. Just fans backing artists.
+                </p>
+            </section>
+
+            {/* 🔥 TOUR */}
+            <TourSection dates={tourDates ?? []} />
+
+            <section className="max-w-4xl mx-auto px-4 py-10 text-center">
+                <h2 className="text-xl font-semibold mb-3">About</h2>
+
+                <p className="text-neutral-300 leading-relaxed">
+                    {artist.bio}
+                </p>
+            </section>
+
+            {/* 🔥 JOURNAL */}
+            {journals?.length ? (
+                <section className="max-w-6xl mx-auto px-4 pb-12 mt-4">
+                    <h2 className="text-sm uppercase tracking-[0.3em] text-neutral-500 mb-4">
+                        Journal
+                    </h2>
+
+                    <div className="grid md:grid-cols-3 gap-4">
+                        {journals.map((j) => {
+                            const artistObj = Array.isArray(j.artist) ? j.artist[0] : j.artist;
+                            const avatar = artistImage(artistObj?.hero_image_path);
+                            return (
+                                <Link
+                                    key={j.id}
+                                    href={`/journal/${j.slug}`}
+                                    className="border border-neutral-800 bg-neutral-900 rounded-2xl p-4 hover:bg-neutral-800 transition"
+                                >
+                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral-700 flex items-center justify-center text-xs font-bold">
+                                        {avatar ? (
+                                            <img
+                                                src={avatar}
+                                                alt={artistObj?.display_name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            artistObj?.display_name.charAt(0)
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-neutral-400">
+                                        {new Date(j.created_at).toLocaleDateString()}
+                                    </p>
+
+                                    <p className="mt-2 font-semibold">
+                                        {j.title}
+                                    </p>
+                                </Link>
+                            )
+                        }
+                        )}
+                    </div>
+                </section>
+            ) : null}
+
         </main>
     );
 }

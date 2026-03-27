@@ -1,6 +1,6 @@
 const brand = {
     name: "MERCH TENT",
-    tagline: "Band Merch for local & unsigned bands",
+    tagline: "Merch for local artists. No upfront cost. No risk. Built for bands. Backed by fans.",
     accent: "#ef4444", // tailwind red-500
 };
 

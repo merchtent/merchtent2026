@@ -109,12 +109,23 @@ export default function AllArtists() {
                                 {/* IMAGE */}
                                 <div className="relative h-40 w-full bg-neutral-950">
                                     {a.image ? (
-                                        <Image
-                                            src={a.image}
-                                            alt={a.name}
-                                            fill
-                                            className="object-cover"
-                                        />
+                                        <div className="relative h-40 w-full bg-neutral-950 overflow-hidden">
+                                            {a.image ? (
+                                                <Image
+                                                    src={a.image}
+                                                    alt={a.name}
+                                                    fill
+                                                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-hover:brightness-110"
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-neutral-800 to-neutral-900 text-2xl font-black">
+                                                    {initials(a.name)}
+                                                </div>
+                                            )}
+
+                                            {/* subtle overlay */}
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
+                                        </div>
                                     ) : (
                                         <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-neutral-800 to-neutral-900 text-2xl font-black">
                                             {initials(a.name)}

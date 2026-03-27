@@ -90,13 +90,18 @@ export default function FeaturedArtistsSection() {
                             <Link href={`/artists/${a.slug ?? a.id}`} className="block">
                                 <div className="relative h-48 md:h-56 w-full bg-neutral-950">
                                     {a.image ? (
-                                        <Image
-                                            src={a.image}
-                                            alt={a.display_name ?? "Artist"}
-                                            fill
-                                            className="object-cover"
-                                            sizes="(max-width:768px) 50vw, 25vw"
-                                        />
+                                        <div className="relative h-48 md:h-56 w-full bg-neutral-950 overflow-hidden">
+                                            <Image
+                                                src={a.image}
+                                                alt={a.display_name ?? "Artist"}
+                                                fill
+                                                className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-hover:brightness-110"
+                                                sizes="(max-width:768px) 50vw, 25vw"
+                                            />
+
+                                            {/* subtle overlay */}
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
+                                        </div>
                                     ) : (
                                         <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-neutral-800 to-neutral-900 text-3xl font-black">
                                             {initials(a.display_name)}

@@ -1,211 +1,275 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { ProductCard } from "@/components/shop/ProductCard";
 
-type SortOption = "new" | "plh" | "phl";
-type CardProduct = {
+type Product = {
     id: string;
     title: string;
     price: number;
     image: string;
     hover?: string;
-    slug?: string;
-    colors?: Array<{ hex: string; label?: string | null; front?: string | null; back?: string | null }>;
-    sizes?: string[];
-    created_at?: string | null;
-    price_cents?: number;
+    slug: string;
+    artist?: string | null;
+    artist_image?: string | null;
+    created_at?: string;
 };
 
-export default function CategoryClient({ initialProducts }: { initialProducts: CardProduct[] }) {
-    // UI state
-    const [sort, setSort] = useState<SortOption>("new");
-    const [min, setMin] = useState<number | undefined>(undefined);
-    const [max, setMax] = useState<number | undefined>(undefined);
-    // slider mirrors (so labels update while sliding)
-    const [minSlide, setMinSlide] = useState<number>(0);
-    const [maxSlide, setMaxSlide] = useState<number>(500);
+export default function CategoryClient({ initialProducts }: any) {
+    const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
+    const [maxPrice, setMaxPrice] = useState<number>(200);
+    const [sort, setSort] = useState("new");
 
-    // filter + sort (computed)
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 12;
+
+    useEffect(() => {
+        setPage(1);
+    }, [selectedArtist, maxPrice, sort]);
+
+    const artists = useMemo(() => {
+        const map = new Map();
+
+        initialProducts.forEach((p: Product) => {
+            if (p.artist && !map.has(p.artist)) {
+                map.set(p.artist, {
+                    name: p.artist,
+                    image: p.artist_image,
+                });
+            }
+        });
+
+        return Array.from(map.values());
+    }, [initialProducts]);
+
     const filtered = useMemo(() => {
-        let rows = initialProducts.slice();
+        let rows = [...initialProducts];
 
-        if (typeof min === "number") {
-            rows = rows.filter(p => p.price >= min);
-        }
-        if (typeof max === "number") {
-            rows = rows.filter(p => p.price <= max);
+        if (selectedArtist) {
+            rows = rows.filter((p) => p.artist === selectedArtist);
         }
 
-        if (sort === "plh") rows.sort((a, b) => a.price - b.price);
-        else if (sort === "phl") rows.sort((a, b) => b.price - a.price);
-        else rows.sort((a, b) => (new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()));
+        rows = rows.filter((p) => p.price <= maxPrice);
+
+        // 🔥 SORTING
+        if (sort === "plh") {
+            rows.sort((a, b) => a.price - b.price);
+        } else if (sort === "phl") {
+            rows.sort((a, b) => b.price - a.price);
+        } else {
+            rows.sort(
+                (a, b) =>
+                    new Date(b.created_at || "").getTime() -
+                    new Date(a.created_at || "").getTime()
+            );
+        }
 
         return rows;
-    }, [initialProducts, min, max, sort]);
+    }, [initialProducts, selectedArtist, maxPrice, sort]);
 
-    // helpers
-    const count = filtered.length;
-    const clearAll = () => {
-        setMin(undefined);
-        setMax(undefined);
-        setMinSlide(0);
-        setMaxSlide(500);
-        setSort("new");
-    };
+    const paginated = useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE;
+        return filtered.slice(start, start + PAGE_SIZE);
+    }, [filtered, page]);
+
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+
+    function clearFilters() {
+        setSelectedArtist(null);
+        setMaxPrice(200);
+    }
 
     return (
-        <section className="grid lg:grid-cols-[260px_1fr] gap-6">
-            {/* Sidebar filters (live) */}
-            <aside className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4 self-start lg:sticky lg:top-4">
-                {/* Price */}
-                <div className="space-y-3">
-                    <p className="text-xs uppercase tracking-wide text-neutral-400">Price (A$)</p>
+        <section className="grid lg:grid-cols-[240px_1fr] gap-6">
 
-                    <div className="space-y-2">
-                        <label className="flex items-center justify-between text-[11px] text-neutral-400">
-                            <span>Min</span>
-                            <span className="text-neutral-300">{typeof min === "number" ? min : "—"}</span>
-                        </label>
-                        <input
-                            type="range"
-                            min={0}
-                            max={500}
-                            step={1}
-                            value={minSlide}
-                            onChange={(e) => {
-                                const v = Number(e.target.value);
-                                setMinSlide(v);
-                                setMin(v === 0 ? undefined : v);
-                            }}
-                            className="w-full"
-                        />
-                    </div>
+            {/* SIDEBAR */}
+            <aside className="space-y-6">
 
-                    <div className="space-y-2">
-                        <label className="flex items-center justify-between text-[11px] text-neutral-400">
-                            <span>Max</span>
-                            <span className="text-neutral-300">{typeof max === "number" ? max : "—"}</span>
-                        </label>
-                        <input
-                            type="range"
-                            min={0}
-                            max={500}
-                            step={1}
-                            value={maxSlide}
-                            onChange={(e) => {
-                                const v = Number(e.target.value);
-                                setMaxSlide(v);
-                                setMax(v === 0 ? undefined : v);
-                            }}
-                            className="w-full"
-                        />
-                    </div>
+                <button
+                    onClick={clearFilters}
+                    className="text-xs underline text-neutral-400 hover:text-white"
+                >
+                    Clear filters
+                </button>
 
-                    {/* Numeric inputs (also live) */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <input
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            placeholder="Min"
-                            value={typeof min === "number" ? String(min) : ""}
-                            onChange={(e) => {
-                                const v = e.target.value === "" ? undefined : Math.max(0, Math.floor(Number(e.target.value) || 0));
-                                setMin(v);
-                                setMinSlide(typeof v === "number" ? v : 0);
-                            }}
-                            className="w-full rounded-lg border border-neutral-700 bg-neutral-950 text-neutral-200 px-2 py-2 text-sm placeholder:text-neutral-600"
-                        />
-                        <input
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            placeholder="Max"
-                            value={typeof max === "number" ? String(max) : ""}
-                            onChange={(e) => {
-                                const v = e.target.value === "" ? undefined : Math.max(0, Math.floor(Number(e.target.value) || 0));
-                                setMax(v);
-                                setMaxSlide(typeof v === "number" ? v : 500);
-                            }}
-                            className="w-full rounded-lg border border-neutral-700 bg-neutral-950 text-neutral-200 px-2 py-2 text-sm placeholder:text-neutral-600"
-                        />
-                    </div>
-                </div>
+                <div className="mb-4 flex items-center justify-between">
 
-                {/* Sort */}
-                <div className="mt-5">
-                    <p className="text-xs uppercase tracking-wide text-neutral-400 mb-2">Sort</p>
+                    <p className="text-xs text-neutral-400">
+                        {filtered.length} items
+                    </p>
+
                     <select
                         value={sort}
-                        onChange={(e) => setSort(e.target.value as SortOption)}
-                        className="w-full rounded-lg border border-neutral-700 bg-neutral-950 text-neutral-200 px-3 py-2 text-sm"
+                        onChange={(e) => setSort(e.target.value)}
+                        className="bg-neutral-900 border border-neutral-700 text-sm px-3 py-2 rounded-lg"
                     >
                         <option value="new">Newest</option>
                         <option value="plh">Price: Low → High</option>
                         <option value="phl">Price: High → Low</option>
                     </select>
+
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 pt-4">
-                    <button
-                        onClick={clearAll}
-                        className="rounded-xl px-3 py-2 border border-neutral-700 text-neutral-200 text-sm hover:bg-neutral-900"
-                    >
-                        Clear
-                    </button>
-                    <span className="text-xs text-neutral-500">{count} result{count === 1 ? "" : "s"}</span>
-                </div>
+                {/* ARTISTS */}
+                <div>
+                    <p className="text-xs uppercase text-neutral-400 mb-3">
+                        Artists
+                    </p>
 
-                {/* Chips (purely informative here) */}
-                <div className="pt-2 flex flex-wrap gap-2">
-                    {typeof min === "number" && (
-                        <span className="text-xs rounded-full border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1">
-                            Min ${min}
-                        </span>
-                    )}
-                    {typeof max === "number" && (
-                        <span className="text-xs rounded-full border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1">
-                            Max ${max}
-                        </span>
-                    )}
-                    {sort !== "new" && (
-                        <span className="text-xs rounded-full border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1">
-                            {sort === "plh" ? "Price ↑" : "Price ↓"}
-                        </span>
-                    )}
-                </div>
-            </aside>
+                    <div className="flex flex-col gap-2">
+                        {artists.map((a: any) => (
+                            <button
+                                key={a.name}
+                                onClick={() =>
+                                    setSelectedArtist((prev) =>
+                                        prev === a.name ? null : a.name
+                                    )
+                                }
+                                className={`flex items-center gap-3 p-2 rounded-xl border ${selectedArtist === a.name
+                                    ? "bg-red-600 border-red-500 text-white"
+                                    : "border-neutral-800 bg-neutral-900 hover:bg-neutral-800"
+                                    }`}
+                            >
+                                {/* ✅ AVATAR (always works) */}
+                                <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-700 flex items-center justify-center text-xs font-bold">
 
-            {/* Results grid */}
-            <div>
-                <div className="mb-3 text-sm text-neutral-400">
-                    {count} result{count === 1 ? "" : "s"}
-                    {(typeof min === "number" || typeof max === "number") && (
-                        <span className="ml-2 text-neutral-500">
-                            (price
-                            {typeof min === "number" ? ` ≥ $${min}` : ""}
-                            {typeof min === "number" && typeof max === "number" ? " &" : ""}
-                            {typeof max === "number" ? ` ≤ $${max}` : ""})
-                        </span>
-                    )}
-                </div>
+                                    {a.image ? (
+                                        <img
+                                            src={a.image}
+                                            alt={a.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        a.name.charAt(0)
+                                    )}
 
-                {!filtered.length ? (
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <p className="text-neutral-300">No products in this category yet.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-2">
-                        {filtered.map((p, i) => (
-                            <div key={p.id}>
-                                {/* Keep ProductCard exactly the same usage so size pills remain clickable */}
-                                <ProductCard p={p as any} theme="light" clipped={i % 2 === 0} sizeTone="dark" />
-                            </div>
+                                </div>
+
+                                <span className="text-sm truncate">
+                                    {a.name}
+                                </span>
+                            </button>
                         ))}
                     </div>
+                </div>
+
+                {/* PRICE SLIDER */}
+                <div>
+                    <p className="text-xs text-neutral-400 mb-2">
+                        Max Price: ${maxPrice}
+                    </p>
+
+                    <input
+                        type="range"
+                        min={0}
+                        max={200}
+                        step={5}
+                        value={maxPrice}
+                        onChange={(e) => setMaxPrice(Number(e.target.value))}
+                        className="w-full accent-red-500"
+                    />
+                </div>
+
+            </aside>
+
+            {/* MAIN */}
+            <div>
+
+                {filtered.length === 0 ? (
+                    <div className="p-6 text-center border border-neutral-800 bg-neutral-900 rounded-2xl">
+                        <p>No products found.</p>
+                        <Link href="/artists" className="underline mt-2 block">
+                            Browse artists →
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+
+                        {paginated.map((p: Product) => (
+                            <Link
+                                key={p.id}
+                                href={`/product/${p.slug}`}
+                                className="group rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 hover:-translate-y-1 transition"
+                            >
+                                {/* 🔥 IMAGE SWAP */}
+                                <div className="relative aspect-[3/4] overflow-hidden">
+
+                                    <Image
+                                        src={p.image}
+                                        alt={p.title}
+                                        fill
+                                        className="object-cover transition-opacity duration-300 group-hover:opacity-0"
+                                    />
+
+                                    {p.hover && (
+                                        <Image
+                                            src={p.hover}
+                                            alt={p.title}
+                                            fill
+                                            className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                                        />
+                                    )}
+
+                                </div>
+
+                                <div className="p-3">
+                                    <p className="text-sm font-semibold truncate">
+                                        {p.title}
+                                    </p>
+
+                                    <p className="text-sm font-bold mt-1">
+                                        ${p.price}
+                                    </p>
+                                </div>
+                            </Link>
+                        ))}
+
+                    </div>
                 )}
+
             </div>
+            {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-center gap-2">
+
+                    {/* PREV */}
+                    <button
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="px-3 py-2 text-sm border border-neutral-700 rounded disabled:opacity-30"
+                    >
+                        Prev
+                    </button>
+
+                    {/* PAGE NUMBERS */}
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                        const p = i + 1;
+
+                        return (
+                            <button
+                                key={p}
+                                onClick={() => setPage(p)}
+                                className={`px-3 py-2 text-sm rounded border ${p === page
+                                    ? "bg-red-600 border-red-500 text-white"
+                                    : "border-neutral-700 hover:bg-neutral-800"
+                                    }`}
+                            >
+                                {p}
+                            </button>
+                        );
+                    })}
+
+                    {/* NEXT */}
+                    <button
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="px-3 py-2 text-sm border border-neutral-700 rounded disabled:opacity-30"
+                    >
+                        Next
+                    </button>
+
+                </div>
+            )}
         </section>
     );
 }
