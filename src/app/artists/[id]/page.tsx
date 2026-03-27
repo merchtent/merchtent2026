@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import ArtistProductsGrid from "./ArtistProductsGrid";
 import TourSection from "@/components/TourSection";
+import ArtistReviews from "@/components/ArtistReviews";
 
 export const revalidate = 60;
 
@@ -248,6 +249,8 @@ export default async function ArtistPage({
                     No middlemen. No bulk waste. Just fans backing artists.
                 </p>
             </section>
+
+            <ArtistReviews artistId={artist.id} />
 
             {/* 🔥 TOUR */}
             <TourSection dates={tourDates ?? []} />

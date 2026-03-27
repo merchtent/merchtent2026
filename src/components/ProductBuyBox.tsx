@@ -1,8 +1,7 @@
-// components/ProductBuyBox.tsx
 "use client";
 
 import AddToCartButton from "@/components/AddToCartButton";
-import { Star, Truck, RefreshCw, ShieldCheck } from "lucide-react";
+import { Truck, RefreshCw, ShieldCheck } from "lucide-react";
 import * as React from "react";
 
 type ColorOption = {
@@ -18,18 +17,33 @@ type Props = {
     title: string;
     price_cents: number;
     currency: string;
-    image_path: string | null;
+    image_path?: string | null;
     priceLabel: string;
     split4Label: string;
     colors?: ColorOption[];
 
-    // controlled props:
+    // ⭐ NEW
+    avgRating?: number | null;
+    reviewCount?: number;
+
     selectedColorId?: string | null;
     onSelectColor?: (id: string | null) => void;
     selectedSize?: string | null;
     onSelectSize?: (size: string) => void;
     overrideImage?: string | null;
 };
+
+function Stars({ rating = 5 }: { rating?: number }) {
+    return (
+        <div className="flex items-center gap-0.5 text-amber-400">
+            {[1, 2, 3, 4, 5].map((i) => (
+                <span key={i} className={i <= rating ? "" : "opacity-20"}>
+                    ★
+                </span>
+            ))}
+        </div>
+    );
+}
 
 export default function ProductBuyBox({
     id,
@@ -40,15 +54,17 @@ export default function ProductBuyBox({
     priceLabel,
     split4Label,
     colors = [],
+    avgRating,
+    reviewCount = 0,
     selectedColorId,
     onSelectColor,
     selectedSize,
     onSelectSize,
     overrideImage,
 }: Props) {
-    // uncontrolled fallbacks
-    const [localSize, setLocalSize] = React.useState<string>("XS");
-    const [localColorId, setLocalColorId] = React.useState<string | null>(
+
+    const [localSize, setLocalSize] = React.useState("M");
+    const [localColorId, setLocalColorId] = React.useState(
         colors.length ? colors[0].id : null
     );
 
@@ -58,13 +74,11 @@ export default function ProductBuyBox({
     const selectedColor = colors.find((c) => c.id === colorId) || null;
 
     const handleSelectSize = (s: string) => {
-        if (onSelectSize) onSelectSize(s);
-        else setLocalSize(s);
+        onSelectSize ? onSelectSize(s) : setLocalSize(s);
     };
 
     const handleSelectColor = (id: string) => {
-        if (onSelectColor) onSelectColor(id);
-        else setLocalColorId(id);
+        onSelectColor ? onSelectColor(id) : setLocalColorId(id);
     };
 
     return (
@@ -72,74 +86,100 @@ export default function ProductBuyBox({
             className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
             style={{ clipPath: "polygon(1% 0,100% 0,99% 100%,0 100%)" }}
         >
-            {/* Price / title */}
+
+            {/* TITLE + PRICE */}
             <div className="flex items-start justify-between gap-4">
                 <h2 className="text-lg font-black leading-tight">{title}</h2>
+
                 <div className="text-right">
                     <div className="text-2xl font-black text-red-400 leading-none">
                         {priceLabel}
                     </div>
-                    {/* <div className="text-[11px] text-neutral-400">
-                        or 4 x <span className="tabular-nums">{split4Label}</span>
-                    </div> */}
                 </div>
             </div>
 
-            {/* Rating stub */}
-            <div className="mt-2 flex items-center gap-1 text-amber-400">
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <span className="ml-2 text-xs text-neutral-400">1,243 reviews</span>
+            {/* ⭐ REAL RATING */}
+            <div className="mt-2">
+                {avgRating ? (
+                    <div className="flex items-center gap-2">
+                        <Stars rating={Math.round(avgRating)} />
+                        <span className="text-xs text-neutral-400">
+                            {avgRating.toFixed(1)} ({reviewCount})
+                        </span>
+                    </div>
+                ) : (
+                    <p className="text-xs text-neutral-400">
+                        Be the first to review
+                    </p>
+                )}
             </div>
 
-            {/* Colours */}
-            {colors.length > 0 ? (
+            {/* 🔥 WHY BUY (POD positioning) */}
+            <div className="mt-4 space-y-2 text-[12px] text-neutral-300">
+                <p className="text-red-400 font-semibold">
+                    Made only when you order
+                </p>
+                <ul className="space-y-1 text-neutral-400">
+                    <li>• No mass production</li>
+                    <li>• No wasted stock</li>
+                    <li>• Directly supports the artist</li>
+                </ul>
+            </div>
+
+            {/* COLOURS */}
+            {colors.length > 0 && (
                 <div className="mt-4 space-y-2">
                     <p className="text-xs text-neutral-400">Colour</p>
+
                     <div className="flex flex-wrap gap-2">
                         {colors.map((c) => {
                             const active = c.id === colorId;
+
                             return (
                                 <button
                                     key={c.id}
-                                    type="button"
                                     onClick={() => handleSelectColor(c.id)}
-                                    className={`relative h-9 px-3 rounded-lg border text-sm flex items-center gap-2 ${active
-                                        ? "border-red-500 bg-neutral-900"
-                                        : "border-neutral-700 bg-neutral-950 hover:bg-neutral-900"
+                                    className={`h-9 px-3 rounded-lg border text-sm flex items-center gap-2 transition-all
+                                        ${active
+                                            ? "border-red-500 scale-105"
+                                            : "border-neutral-700 hover:scale-105"
                                         }`}
                                 >
                                     <span
-                                        className="h-4 w-4 rounded-full border border-black/20"
+                                        className="h-4 w-4 rounded-full border"
                                         style={{ backgroundColor: c.hex }}
                                     />
-                                    <span className="text-xs">{c.label || c.hex}</span>
+                                    <span className="text-xs">{c.label}</span>
                                 </button>
                             );
                         })}
                     </div>
-                </div>
-            ) : null}
 
-            {/* Size */}
+                    {selectedColor && (
+                        <p className="text-[11px] text-neutral-400">
+                            Selected: {selectedColor.label}
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* SIZE */}
             <div className="mt-4 space-y-2">
                 <p className="text-xs text-neutral-400">Size</p>
+
                 <div className="grid grid-cols-5 gap-2">
                     {["XS", "S", "M", "L", "XL", "2XL", "3XL"].map((s) => {
                         const active = size === s;
+
                         return (
                             <button
                                 key={s}
-                                type="button"
                                 onClick={() => handleSelectSize(s)}
-                                className={`h-10 rounded-lg border text-sm ${active
-                                    ? "border-red-500 bg-neutral-900"
-                                    : "border-neutral-700 bg-neutral-950 hover:bg-neutral-900"
+                                className={`h-10 rounded-lg border text-sm transition-all
+                                    ${active
+                                        ? "border-red-500 bg-neutral-900 scale-105"
+                                        : "border-neutral-700 hover:scale-105"
                                     }`}
-                                aria-pressed={active}
                             >
                                 {s}
                             </button>
@@ -149,22 +189,32 @@ export default function ProductBuyBox({
             </div>
 
             {/* ATC */}
-            <div className="mt-4">
+            <div className="mt-5">
                 <AddToCartButton
                     product_id={id}
                     title={title}
                     price_cents={price_cents}
                     currency={currency}
                     image_path={image_path}
-                    selectedColor={selectedColor ? selectedColor.hex : null}
-                    selectedColorLabel={selectedColor ? selectedColor.label : null}
+                    selectedColor={selectedColor?.hex ?? null}
+                    selectedColorLabel={selectedColor?.label ?? null}
                     selectedSize={size}
                     overrideImage={overrideImage ?? selectedColor?.front_image_url ?? null}
-                    className="relative h-11 px-6 font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 rounded-2xl w-full"
+                    className="relative h-11 px-6 font-black tracking-wide 
+                    bg-gradient-to-r from-red-600 to-red-500 
+                    hover:from-red-500 hover:to-red-400
+                    text-white shadow-lg shadow-red-900/40 
+                    border border-red-400 rounded-2xl w-full 
+                    transition-all duration-200 active:scale-[0.98]"
                 />
             </div>
 
-            {/* Trust row */}
+            {/* ⚡ URGENCY */}
+            <p className="text-[11px] text-neutral-500 mt-2">
+                This design may not be restocked
+            </p>
+
+            {/* TRUST */}
             <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] text-neutral-400">
                 <div className="flex items-center gap-1">
                     <Truck className="h-3.5 w-3.5" />
@@ -172,13 +222,19 @@ export default function ProductBuyBox({
                 </div>
                 <div className="flex items-center gap-1">
                     <RefreshCw className="h-3.5 w-3.5" />
-                    Eco Friendly Printing
+                    Eco print
                 </div>
                 <div className="flex items-center gap-1">
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    Secure checkout
+                    Secure
                 </div>
             </div>
+
+            {/* MICRO TRUST */}
+            <p className="text-[10px] text-neutral-500 mt-3 text-center">
+                Secure checkout • Printed locally • Tracked delivery
+            </p>
+
         </div>
     );
 }

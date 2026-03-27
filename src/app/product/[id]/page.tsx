@@ -41,18 +41,48 @@ export default async function ProductPage({
     // try by slug first
     let { data: product, error } = await supabase
         .from("products_with_first_image")
-        .select(
-            "id, slug, title, description, price_cents, currency, primary_image_path"
-        )
+        // .select(
+        //     "id, slug, title, description, price_cents, currency, primary_image_path"
+        // )
+        .select(`
+    id,
+    slug,
+    title,
+    description,
+    price_cents,
+    currency,
+    primary_image_path,
+    artist:artists (
+        id,
+        slug,
+        display_name,
+        hero_image_path
+    )
+`)
         .eq("slug", idOrSlug)
         .maybeSingle();
 
     if ((!product || error) && looksLikeUUID(idOrSlug)) {
         const byId = await supabase
             .from("products_with_first_image")
-            .select(
-                "id, slug, title, description, price_cents, currency, primary_image_path"
-            )
+            // .select(
+            //     "id, slug, title, description, price_cents, currency, primary_image_path"
+            // )
+            .select(`
+    id,
+    slug,
+    title,
+    description,
+    price_cents,
+    currency,
+    primary_image_path,
+    artist:artists (
+        id,
+        slug,
+        display_name,
+        hero_image_path
+    )
+`)
             .eq("id", idOrSlug)
             .maybeSingle();
         product = byId.data ?? null;
@@ -138,6 +168,16 @@ export default async function ProductPage({
     // ✅ render the interactive client component
     return (
         <ProductViewClient
+            // product={{
+            //     id: product.id,
+            //     title: product.title,
+            //     description: product.description,
+            //     price_cents: product.price_cents,
+            //     currency: product.currency,
+            //     primary_image_url: product.primary_image_path
+            //         ? publicImageUrl(product.primary_image_path)
+            //         : null,
+            // }}
             product={{
                 id: product.id,
                 title: product.title,
@@ -147,6 +187,9 @@ export default async function ProductPage({
                 primary_image_url: product.primary_image_path
                     ? publicImageUrl(product.primary_image_path)
                     : null,
+                artist: Array.isArray(product.artist)
+                    ? product.artist[0]
+                    : product.artist
             }}
             galleryUrls={galleryUrls}
             colors={colors}

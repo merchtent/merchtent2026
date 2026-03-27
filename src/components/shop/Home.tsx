@@ -21,6 +21,7 @@ import WhyThisIsBetter from "./sections/WhyThisIsBetter";
 import MiniCTAStrip from "./sections/MiniCTAStrip";
 import WhyTrustUs from "./sections/WhyTrustUs";
 import FeaturedArtist from "./sections/FeaturedArtist";
+import BundleBuilderForTwoTees from "./sections/MixtapeBundleForTwoTees";
 
 // ============================================================
 // BAND MERCH — "NOISE // NIGHT DRIVE" (maximum‑edgy edition)
@@ -46,6 +47,7 @@ export default function Home({
             <DropInConcept />
             <OurFavouriteMerch />
             <EditorsRailPromo />
+            <BundleBuilderForTwoTees />
             <BundleBuilder />
             <AllArtists />
             <WhyTrustUs />
