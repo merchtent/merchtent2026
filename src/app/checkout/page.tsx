@@ -25,9 +25,11 @@ export default async function CheckoutPage() {
                             <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
                                 Shipping &amp; Payment
                             </h1>
-                            <p className="text-xs text-neutral-600 mt-1">
-                                Secure checkout – encrypted – powered by Stripe
-                            </p>
+                            <div className="text-[12px] text-neutral-400 mt-2 space-y-1">
+                                <p>• Secure payment powered by Stripe</p>
+                                <p>• Printed locally in Australia</p>
+                                <p>• Tracked delivery on all orders</p>
+                            </div>
                         </div>
                         <Link
                             href="/cart"
@@ -38,6 +40,16 @@ export default async function CheckoutPage() {
                     </div>
                 </div>
             </section>
+
+            <div className="max-w-5xl mx-auto px-4 mt-6 mb-4">
+                <div className="flex items-center gap-2 text-[11px] text-neutral-400">
+                    <span className="text-white">Cart</span>
+                    <span>→</span>
+                    <span className="text-white">Details</span>
+                    <span>→</span>
+                    <span className="text-neutral-500">Payment</span>
+                </div>
+            </div>
 
             {/* Pass signed-in email if present; guests can type theirs */}
             <CheckoutShellClient userEmail={user?.email ?? ""} />

@@ -23,12 +23,12 @@ export default function ShopByCollection() {
                         image: hoodie_cat,
                         href: "/category/hoodies",
                     },
-                    // {
-                    //     title: "Tank Tops",
-                    //     sub: "Cut for the pit",
-                    //     image: tank_cat,
-                    //     href: "/category/tank-tops",
-                    // },
+                    {
+                        title: "Tank Tops",
+                        sub: "Cut for the pit",
+                        image: tank_cat,
+                        href: "/category/tanks",
+                    },
                 ].map((c) => (
                     <a
                         key={c.title}

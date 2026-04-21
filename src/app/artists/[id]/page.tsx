@@ -111,7 +111,7 @@ export default async function ArtistPage({
     const { data: tourDates } = await supabase
         .from("tour_dates")
         .select("id, artist, venue, city, event_date, ticket_url")
-        .eq("artist", artist.id)
+        .eq("artist", artist.display_name)
         .gte("event_date", today)
         .order("event_date", { ascending: true });
 

@@ -11,12 +11,6 @@ const SHIPPING_OPTIONS = [
     { id: "express", label: "Express (1-3 days)", amount_cents: 1700 },
 ] as const;
 
-type CheckoutFormClientProps = {
-    userEmail: string;
-    shippingMethod: "standard" | "express";
-    setShippingMethod: (id: "standard" | "express") => void;
-};
-
 const DRAFT_KEY = "checkout_draft_v1";
 
 type Draft = {
@@ -47,13 +41,23 @@ function saveDraft(d: Draft) {
     } catch { }
 }
 
+type CheckoutFormClientProps = {
+    userEmail: string;
+    shippingMethod: "standard" | "express";
+    setShippingMethod: (id: "standard" | "express") => void;
+
+    setIsSubmitting: (v: boolean) => void;
+    isSubmitting: boolean; // 👈 ADD THIS
+};
+
 export default function CheckoutFormClient({
     userEmail,
     shippingMethod,
     setShippingMethod,
+    setIsSubmitting,
+    isSubmitting,
 }: CheckoutFormClientProps) {
     const { items: cartItems, subtotal_cents } = useCart();
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
     // form state (controlled inputs)
@@ -145,7 +149,7 @@ export default function CheckoutFormClient({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-4">
                 <p className="text-xs uppercase tracking-wide text-neutral-400">
                     Email Address
@@ -159,6 +163,9 @@ export default function CheckoutFormClient({
                     required
                     className="w-full h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
                 />
+                <p className="text-[11px] text-neutral-500">
+                    No account needed — we’ll send your order confirmation via email
+                </p>
             </div>
 
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
@@ -246,7 +253,7 @@ export default function CheckoutFormClient({
                 </p>
                 <div className="space-y-2">
                     {SHIPPING_OPTIONS.map((opt) => (
-                        <label key={opt.id} className="flex items-center gap-3 text-sm">
+                        <label key={opt.id} className="flex items-center gap-3 text-sm border rounded-lg px-3 py-2 hover:border-red-500 transition">
                             <input
                                 type="radio"
                                 name="shipping"
@@ -263,6 +270,9 @@ export default function CheckoutFormClient({
                             </span>
                         </label>
                     ))}
+                    <p className="text-[11px] text-neutral-500">
+                        Printed when ordered. Shipping begins after production.
+                    </p>
                 </div>
             </div>
 
@@ -299,7 +309,7 @@ export default function CheckoutFormClient({
                         })}
                     </span>
                 </div>
-                <button
+                {/* <button
                     type="submit"
                     disabled={isSubmitting || cartItems.length === 0}
                     className="inline-flex items-center gap-2 h-11 rounded-xl bg-red-600 hover:bg-red-500 text-white px-6 text-sm font-semibold disabled:opacity-60"
@@ -311,7 +321,7 @@ export default function CheckoutFormClient({
                     ) : (
                         <>Continue to payment</>
                     )}
-                </button>
+                </button> */}
             </div>
         </form>
     );

@@ -1,6 +1,7 @@
-// app/api/products/editors/route.ts
+// app/api/products/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import "server-only";
 
 function publicImageUrl(path?: string | null) {
     if (!path) return null;
@@ -9,12 +10,21 @@ function publicImageUrl(path?: string | null) {
     )}`;
 }
 
-export async function GET() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export async function GET(request: Request) {
+
+    const { searchParams } = new URL(request.url);
+    const artistId = searchParams.get("artistId");
+    const artistSlug = searchParams.get("artist");
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
     if (!url || !anon) {
         return NextResponse.json(
-            { error: "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY" },
+            {
+                error:
+                    "Supabase env vars missing (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)",
+            },
             { status: 500 }
         );
     }
@@ -23,8 +33,7 @@ export async function GET() {
         auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Pull only published + editors_choice. Also pull colors like the main /products API.
-    const { data, error } = await supabase
+    let query = supabase
         .from("products")
         .select(
             `
@@ -34,17 +43,25 @@ export async function GET() {
         price_cents,
         currency,
         is_published,
-        editors_choice,
-        created_at,
         product_images:product_images ( path, sort_order ),
         product_colors:product_colors ( hex, label, sort_order, front_image_path, back_image_path ),
-        artist:artists ( display_name )
+        artist:artists ( id, slug, display_name )
       `
         )
         .eq("is_published", true)
-        .eq("editors_choice", true)
-        .order("created_at", { ascending: false })
-        .limit(16);
+        .order("created_at", { ascending: false });
+
+    // ✅ Filter by artistId (preferred)
+    if (artistId) {
+        query = query.eq("artist_id", artistId);
+    }
+
+    // ✅ OR filter by artist slug (requires join)
+    if (artistSlug) {
+        query = query.eq("artists.slug", artistSlug);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         return NextResponse.json(
@@ -55,7 +72,7 @@ export async function GET() {
 
     const products =
         (data ?? []).map((p: any) => {
-            // base images (fallbacks)
+            // base images (fallback)
             const imgs = Array.isArray(p.product_images)
                 ? [...p.product_images].sort(
                     (a, b) => (a?.sort_order ?? 999) - (b?.sort_order ?? 999)
@@ -66,7 +83,7 @@ export async function GET() {
                 "https://picsum.photos/seed/fallback1/900/1200";
             const hover = publicImageUrl(imgs[1]?.path) ?? primary;
 
-            // rich colours (same pattern as /api/products)
+            // richer colours
             const colorVariants = Array.isArray(p.product_colors)
                 ? [...p.product_colors]
                     .sort(
@@ -84,11 +101,11 @@ export async function GET() {
                     }))
                 : [];
 
-            // badge: show artist name if we have it, otherwise "Editor’s Pick"
+            // 👇 badge = artist name
             const artistName =
                 p.artist?.display_name ??
-                p.artist?.name ??
-                null;
+                p.artist?.name ?? // just in case
+                "Artist";
 
             return {
                 id: String(p.id),
@@ -97,12 +114,10 @@ export async function GET() {
                 image: primary,
                 hover,
                 slug: p.slug,
-                // if there’s an artist, surface that as badge, else the original label
-                badge: artistName ?? "Editor’s Pick",
+                badge: artistName,
                 colors: colorVariants,
                 kind: "tee" as const,
-                // we can keep the sizes baked in since the card expects it
-                sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
+                sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"], // 👈 add this if the product should be sizeable
             };
         }) ?? [];
 

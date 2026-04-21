@@ -69,19 +69,19 @@ export default async function ProductPage({
             //     "id, slug, title, description, price_cents, currency, primary_image_path"
             // )
             .select(`
-    id,
-    slug,
-    title,
-    description,
-    price_cents,
-    currency,
-    primary_image_path,
-    artist:artists (
-        id,
-        slug,
-        display_name,
-        hero_image_path
-    )
+            id,
+            slug,
+            title,
+            description,
+            price_cents,
+            currency,
+            primary_image_path,
+            artist:artists (
+                id,
+                slug,
+                display_name,
+                hero_image_path
+            )
 `)
             .eq("id", idOrSlug)
             .maybeSingle();
@@ -103,6 +103,9 @@ export default async function ProductPage({
             </main>
         );
     }
+
+    const artist =
+        Array.isArray(product.artist) ? product.artist[0] : product.artist;
 
     // gallery
     const { data: galleryRows } =
@@ -141,13 +144,18 @@ export default async function ProductPage({
                 : null,
         })) ?? [];
 
+    if (!artist?.id) {
+        console.warn("No artist id, skipping related products");
+    }
+
     // related
     const { data: related } = await supabase
         .from("products_with_first_image")
         .select("id, slug, title, price_cents, currency, primary_image_path")
+        .eq("is_published", true)
+        .eq("artist_id", artist?.id)
         .neq("id", product.id)
         .limit(8);
-
     const relatedFormatted =
         related?.map((p) => ({
             id: p.id,

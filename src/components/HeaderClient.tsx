@@ -32,8 +32,9 @@ const brand = {
 
 const nav = [
     { label: "Tees", href: "/category/tees" },
-    { label: "Hoodies", href: "/category/hoodies" }, // <- fixed leading slash
-    // { label: "Tank Tops", href: "/category/tanks" },
+    { label: "Hoodies", href: "/category/hoodies" },
+    { label: "Hats", href: "/category/hats" },
+    { label: "Tank Tops", href: "/category/tanks" },
     { label: "Artists", href: "/artists" },
 ];
 

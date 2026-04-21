@@ -62,9 +62,16 @@ export default function BackstagePolaroids() {
                         </p>
                     </div>
                 </div>
+                <div className="flex items-end justify-between mb-6">
+                    <div>
+                        <h3 className="text-lg md:text-lg font-black">
+                            Coming soon...
+                        </h3>
+                    </div>
+                </div>
 
                 {/* GRID */}
-                <div className="grid grid-cols-2 md:grid-cols-6 auto-rows-[120px] gap-3 md:gap-4">
+                {/* <div className="grid grid-cols-2 md:grid-cols-6 auto-rows-[120px] gap-3 md:gap-4">
 
                     {list.map((img, i) => {
                         const span =
@@ -82,7 +89,6 @@ export default function BackstagePolaroids() {
                             <div
                                 className={`relative rounded-xl overflow-hidden border border-neutral-800 group ${span} ${rot}`}
                             >
-                                {/* IMAGE */}
                                 <Image
                                     src={img.image}
                                     alt={img.caption || "Polaroid"}
@@ -90,10 +96,8 @@ export default function BackstagePolaroids() {
                                     className="object-cover group-hover:scale-105 transition duration-300"
                                 />
 
-                                {/* OVERLAY */}
                                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition" />
 
-                                {/* CAPTION */}
                                 <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
                                     <span className="bg-neutral-950/80 px-2 py-0.5 rounded">
                                         {img.caption || `#${i + 1}`}
@@ -108,7 +112,6 @@ export default function BackstagePolaroids() {
                             </div>
                         );
 
-                        // clickable if IG link exists
                         if (img.link) {
                             return (
                                 <a
@@ -124,9 +127,8 @@ export default function BackstagePolaroids() {
 
                         return <div key={img.id}>{content}</div>;
                     })}
-                </div>
+                </div> */}
 
-                {/* LOADING STATE */}
                 {loading && (
                     <div className="mt-4 text-xs text-neutral-500">
                         Loading polaroids...

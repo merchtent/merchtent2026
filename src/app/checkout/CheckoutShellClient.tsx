@@ -17,6 +17,9 @@ export default function CheckoutShellClient({ userEmail }: Props) {
         "standard"
     );
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+
     // hydrate shipping method from localStorage
     useEffect(() => {
         try {
@@ -40,8 +43,10 @@ export default function CheckoutShellClient({ userEmail }: Props) {
                 userEmail={userEmail}
                 shippingMethod={shippingMethod}
                 setShippingMethod={setShippingMethod}
+                setIsSubmitting={setIsSubmitting}
+                isSubmitting={isSubmitting}
             />
-            <CheckoutSummaryClient shippingMethod={shippingMethod} />
+            <CheckoutSummaryClient shippingMethod={shippingMethod} isSubmitting={isSubmitting} />
         </section>
     );
 }

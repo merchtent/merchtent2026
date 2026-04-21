@@ -2,6 +2,7 @@
 "use client";
 
 import { useCart } from "@/components/CartProvider";
+import Link from "next/link";
 
 const SHIPPING_OPTIONS = {
     standard: 1050,
@@ -22,8 +23,10 @@ function resolveCartImage(src?: string | null): string | null {
 
 export default function CheckoutSummaryClient({
     shippingMethod,
+    isSubmitting,
 }: {
     shippingMethod: "standard" | "express";
+    isSubmitting: boolean;
 }) {
     const { items, subtotal_cents, currency } = useCart();
 
@@ -31,10 +34,11 @@ export default function CheckoutSummaryClient({
     const totalCents = subtotal_cents + shippingCents;
 
     return (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-4">
+        <div className="sticky top-4 rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-4">
             <p className="text-xs uppercase tracking-wide text-neutral-400">
                 Order summary
             </p>
+
             <div className="space-y-3">
                 {items.length === 0 ? (
                     <p className="text-sm text-neutral-400">Your cart is empty.</p>
@@ -50,7 +54,7 @@ export default function CheckoutSummaryClient({
                                 className="flex items-center justify-between gap-3"
                             >
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <div className="h-12 w-12 rounded-lg border border-neutral-800 bg-neutral-950 overflow-hidden shrink-0">
+                                    <div className="h-16 w-16 rounded-lg border border-neutral-800 bg-neutral-950 overflow-hidden shrink-0">
                                         {displayImg ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img
@@ -89,6 +93,28 @@ export default function CheckoutSummaryClient({
                     })
                 )}
             </div>
+            <Link href="/cart" className="text-xs underline text-neutral-400">
+                Edit cart
+            </Link>
+            <p className="text-[11px] text-neutral-500 mt-2">
+                Orders are printed on demand – production begins immediately after payment
+            </p>
+            <button
+                type="submit"
+                form="checkout-form"
+                disabled={isSubmitting || items.length === 0}
+                className="mt-4 w-full h-12 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold disabled:opacity-60 inline-flex items-center justify-center gap-2"
+            >
+                {isSubmitting ? (
+                    <>
+                        <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Redirecting…
+                    </>
+                ) : (
+                    <>Continue to payment</>
+                )}
+            </button>
+
 
             {/* totals */}
             <div className="border-t border-neutral-800 pt-3 space-y-2 text-sm">

@@ -40,7 +40,7 @@ export default function FeaturedArtist() {
                     setArtist(a);
 
                     // 👉 fetch their products
-                    const pres = await fetch(`/api/products?artist=${a.slug}`);
+                    const pres = await fetch(`/api/products/artist?artistId=${a.id}`);
                     const pjson = await pres.json();
 
                     setProducts(Array.isArray(pjson.products) ? pjson.products.slice(0, 2) : []);
@@ -86,7 +86,7 @@ export default function FeaturedArtist() {
                             href={`/artists/${artist.slug}`}
                             className="bg-red-600 px-5 py-3 rounded-xl font-bold hover:bg-red-500"
                         >
-                            View artist
+                            Shop {artist.name}
                         </Link>
 
                         <Link

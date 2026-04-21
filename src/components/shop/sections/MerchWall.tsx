@@ -23,7 +23,7 @@ export default function MerchWall() {
                     let mounted = true;
                     (async () => {
                         try {
-                            const res = await fetch("/api/products", { cache: "no-store" });
+                            const res = await fetch("/api/products/random", { cache: "no-store" });
                             const json = await res.json();
                             if (mounted) setLive(Array.isArray(json.products) ? json.products : []);
                         } catch {
