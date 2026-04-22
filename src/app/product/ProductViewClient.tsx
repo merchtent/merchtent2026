@@ -53,6 +53,8 @@ export default function ProductViewClient({
         })();
     }, [product.id]);
 
+    const imageRef = React.useRef<HTMLDivElement | null>(null);
+
     function GlitchText({ lines }: { lines: string[] }) {
         return (
             <div className="relative font-black">
@@ -78,6 +80,19 @@ export default function ProductViewClient({
             </div>
         );
     }
+
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+    React.useEffect(() => {
+        if (!isMobile || !imageRef.current) return;
+
+        const y =
+            imageRef.current.getBoundingClientRect().top +
+            window.scrollY -
+            80; // offset
+
+        window.scrollTo({ top: y, behavior: "smooth" });
+    }, [selectedColorId]);
 
     return (
         <main className="bg-neutral-950 text-neutral-100">
@@ -149,30 +164,52 @@ export default function ProductViewClient({
 
                 <div className="grid lg:grid-cols-[1.2fr_1fr] gap-8">
 
-                    {/* IMAGE */}
-                    <div className="relative w-full aspect-square rounded-2xl border border-neutral-800 overflow-hidden">
+                    {/* IMAGE + THUMBNAILS WRAPPER */}
+                    <div className="flex flex-col">
 
-                        {/* FRONT */}
-                        {activeImage && (
-                            <Image
-                                src={activeImage}
-                                alt={product.title}
-                                fill
-                                className="object-cover transition-opacity duration-300"
-                            />
-                        )}
+                        <div className="relative w-full aspect-square rounded-2xl border border-neutral-800 overflow-hidden group scroll-mt-100" ref={imageRef}>
 
-                        {/* BACK */}
-                        {backImage && activeImage === frontImage && (
-                            <Image
-                                src={backImage}
-                                alt="alt"
-                                fill
-                                className="object-cover opacity-0 hover:opacity-100 transition-opacity duration-300"
-                            />
-                        )}
+                            {/* BASE IMAGE (active) */}
+                            {activeImage && (
+                                <Image
+                                    src={activeImage}
+                                    alt={product.title}
+                                    fill
+                                    className="object-cover"
+                                />
+                            )}
 
+                            {/* HOVER SWAP LAYER */}
+                            {frontImage && backImage && (
+                                <Image
+                                    src={activeImage === frontImage ? backImage : frontImage}
+                                    alt="hover swap"
+                                    fill
+                                    className="object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                />
+                            )}
+
+                        </div>
+
+                        {/* THUMBNAILS */}
+                        <div className="flex gap-3 mt-3">
+                            {[frontImage, backImage].filter(Boolean).map((img, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setActiveImage(img)}
+                                    className={`relative w-16 h-16 rounded-lg overflow-hidden border 
+                    ${activeImage === img ? "border-red-500" : "border-neutral-700"}
+                `}
+                                >
+                                    <Image src={img} alt={`view-${i}`} fill className="object-cover" />
+                                </button>
+                            ))}
+                        </div>
                     </div>
+
+
+
+
 
                     {/* BUY */}
                     <div className="space-y-4">
@@ -254,9 +291,10 @@ export default function ProductViewClient({
             </section>
 
             {/* MOBILE BAR */}
-            <div className="fixed bottom-0 inset-x-0 md:hidden bg-neutral-950 border-t border-neutral-800 p-3 flex justify-between">
-                <div>
-                    <p className="text-xs">{product.title}</p>
+            <div className="fixed bottom-0 inset-x-0 md:hidden bg-neutral-950 border-t border-neutral-800 p-3 flex items-center gap-3">
+                {/* LEFT */}
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs truncate">{product.title}</p>
                     <p className="text-red-400 font-bold">{priceLabel}</p>
                 </div>
 
@@ -265,10 +303,11 @@ export default function ProductViewClient({
                     title={product.title}
                     price_cents={product.price_cents}
                     currency={product.currency}
-                    selectedSize={selectedSize}
-                    selectedColor={selectedColor?.hex}
+                    selectedColor={selectedColor?.hex ?? null}
                     selectedColorLabel={selectedColor?.label ?? null}
-                    className="bg-red-600 px-4 rounded-xl"
+                    selectedSize={selectedSize}
+                    overrideImage={frontImage ?? selectedColor?.front_image_url ?? null}
+                    className="bg-red-600 px-5 rounded-xl whitespace-nowrap flex-shrink-0"
                 />
             </div>
 

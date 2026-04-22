@@ -5,6 +5,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { toSlug } from "@/lib/slug";
+import { ca } from "zod/locales";
 
 export async function createProductAction(formData: FormData) {
     const supabase = getServerSupabase();
@@ -24,6 +25,7 @@ export async function createProductAction(formData: FormData) {
     const description = String(formData.get("description") || "").trim();
     const baseSlug = toSlug(title) || `product-${crypto.randomUUID().slice(0, 8)}`;
     const price = Number(formData.get("price") || "0");
+    const category = String(formData.get("category") || "tees");
     const publish = formData.get("publish") !== null;
     if (!title || price <= 0) throw new Error("Invalid input");
 
@@ -33,6 +35,7 @@ export async function createProductAction(formData: FormData) {
         .insert({
             artist_id: artist.id,
             title,
+            category: category,
             slug: baseSlug,
             description,
             price_cents: Math.round(price * 100),

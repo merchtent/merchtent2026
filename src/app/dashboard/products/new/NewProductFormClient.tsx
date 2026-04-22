@@ -154,6 +154,27 @@ export default function NewProductFormClient() {
                 </p>
             </div>
 
+            <div>
+                <label className="block text-xs uppercase tracking-wide text-neutral-400 mb-2">
+                    Category
+                </label>
+                <select
+                    id="category"
+                    name="category"
+                    disabled={isSubmitting}
+                    defaultValue={"tees"}
+                    className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-700 px-3 text-sm text-neutral-100"
+                >
+                    <option value="tees">Tees</option>
+                    <option value="hoodies">Hoodies</option>
+                    <option value="tanks">Tanks</option>
+                    <option value="posters">Posters</option>
+                    <option value="vinyl">Vinyl</option>
+                    <option value="accessories">Accessories</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
             {/* Price + Publish */}
             <div className="grid md:grid-cols-2 gap-4">
                 <div>

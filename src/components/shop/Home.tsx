@@ -22,6 +22,8 @@ import MiniCTAStrip from "./sections/MiniCTAStrip";
 import WhyTrustUs from "./sections/WhyTrustUs";
 import FeaturedArtist from "./sections/FeaturedArtist";
 import BundleBuilderForTwoTees from "./sections/MixtapeBundleForTwoTees";
+import React from "react";
+import MobileMerchWall from "./sections/MobileMerchWall";
 
 // ============================================================
 // BAND MERCH — "NOISE // NIGHT DRIVE" (maximum‑edgy edition)
@@ -30,23 +32,39 @@ import BundleBuilderForTwoTees from "./sections/MixtapeBundleForTwoTees";
 // Tech: shadcn/ui, framer-motion, lucide-react, Tailwind, Next/Image.
 // ============================================================
 
+function useIsMobile(breakpoint = 768) {
+    const [isMobile, setIsMobile] = React.useState(false);
+
+    React.useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < breakpoint);
+        check();
+
+        window.addEventListener("resize", check);
+        return () => window.removeEventListener("resize", check);
+    }, [breakpoint]);
+
+    return isMobile;
+}
+
 export default function Home({
     tourDates,
 }: {
     tourDates: TourDate[];
 }) {
 
+    const isMobile = useIsMobile();
+
     return (
         <>
             <Hero />
             <FeaturedArtistsSection />
             <AngledPromoRail />
-            <MerchWall />
+            {isMobile ? <MobileMerchWall /> : <MerchWall />}
             <FeaturedArtist />
             <ShopByCollection />
             <DropInConcept />
             <OurFavouriteMerch />
-            <EditorsRailPromo />
+            {/* <EditorsRailPromo /> */}
             <BundleBuilderForTwoTees />
             <BundleBuilder />
             <AllArtists />
