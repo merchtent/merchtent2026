@@ -59,36 +59,36 @@ export default function SignUpPage() {
         }
     }
 
-    return (
-        <main className="max-w-2xl mx-auto px-4 py-10">
-            {/* Header / Welcome */}
-            <section className="mb-6">
-                <p className="uppercase tracking-[0.25em] text-xs text-red-500">Join</p>
-                <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                    Create your artist account
-                </h1>
-                <p className="mt-2 text-sm text-neutral-300">
-                    It’s free to join.
-                </p>
-            </section>
+    // return (
+    //     <main className="max-w-2xl mx-auto px-4 py-10">
+    //         {/* Header / Welcome */}
+    //         <section className="mb-6">
+    //             <p className="uppercase tracking-[0.25em] text-xs text-red-500">Join</p>
+    //             <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
+    //                 Create your artist account
+    //             </h1>
+    //             <p className="mt-2 text-sm text-neutral-300">
+    //                 It’s free to join.
+    //             </p>
+    //         </section>
 
-            {/* Early Access Notice */}
-            <section className="rounded-2xl border border-yellow-600/40 bg-yellow-500/10 p-4 mb-6">
-                <p className="text-xs uppercase tracking-widest text-yellow-400">
-                    Early access
-                </p>
+    //         {/* Early Access Notice */}
+    //         <section className="rounded-2xl border border-yellow-600/40 bg-yellow-500/10 p-4 mb-6">
+    //             <p className="text-xs uppercase tracking-widest text-yellow-400">
+    //                 Early access
+    //             </p>
 
-                <h2 className="text-sm font-semibold text-yellow-200 mt-1">
-                    We’re not fully open just yet
-                </h2>
+    //             <h2 className="text-sm font-semibold text-yellow-200 mt-1">
+    //                 We’re not fully open just yet
+    //             </h2>
 
-                <p className="text-sm text-neutral-300 mt-2">
-                    We’re currently onboarding a small group of artists while we refine the platform.
-                    Shoot us an email at support@merchtent.com.au — and we'll chat merch!
-                </p>
-            </section>
-        </main>
-    );
+    //             <p className="text-sm text-neutral-300 mt-2">
+    //                 We’re currently onboarding a small group of artists while we refine the platform.
+    //                 Shoot us an email at support@merchtent.com.au — and we'll chat merch!
+    //             </p>
+    //         </section>
+    //     </main>
+    // );
 
     return (
         <main className="max-w-2xl mx-auto px-4 py-10">

@@ -138,8 +138,8 @@ export default function ArtistProductsGrid({ products }: { products: ArtistGridP
                                 key={p}
                                 onClick={() => setPage(p)}
                                 className={`px-3 py-2 text-sm rounded border ${p === page
-                                        ? "bg-red-600 border-red-500 text-white"
-                                        : "border-neutral-700 hover:bg-neutral-800"
+                                    ? "bg-red-600 border-red-500 text-white"
+                                    : "border-neutral-700 hover:bg-neutral-800"
                                     }`}
                             >
                                 {p}
