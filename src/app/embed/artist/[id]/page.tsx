@@ -62,7 +62,7 @@ export default async function ArtistEmbedPage({
 
             const primary =
                 productImage(imgs[0]?.path) ??
-                "https://picsum.photos/seed/fallback/900/1200";
+                "https://picsum.photos/seed/fallback/800/1200";
 
             return {
                 id: String(p.id),
