@@ -38,49 +38,6 @@ function BootlegStamp() {
     );
 }
 
-function ColorSwatches({
-    colors,
-    activeIndex,
-    onSelect,
-}: {
-    colors: ProductColorVariant[];
-    activeIndex: number;
-    onSelect: (idx: number) => void;
-}) {
-    const visible = colors.slice(0, 5);
-    const remaining = colors.length - visible.length;
-
-    return (
-        <div className="mt-3 flex items-center gap-1.5 h-6">
-            {visible.map((c, idx) => (
-                <button
-                    key={idx}
-                    type="button"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onSelect(idx);
-                    }}
-                    className={`h-5 w-5 rounded-full border transition-all ${activeIndex === idx
-                        ? "ring-2 ring-red-500 scale-110"
-                        : "border-neutral-700 hover:scale-105"
-                        }`}
-                    style={{
-                        backgroundColor: c.hex,
-                    }}
-                    title={c.label ?? undefined}
-                />
-            ))}
-
-            {remaining > 0 && (
-                <span className="ml-1 text-xs text-neutral-400 font-medium">
-                    +{remaining}
-                </span>
-            )}
-        </div>
-    );
-}
-
 /* PDP-style colour pill */
 function ColorBox({
     hex,
@@ -109,7 +66,7 @@ function ColorBox({
     );
 }
 
-export function ProductCard({
+export function ProductCardEmbed({
     p,
     theme = "dark",
     clipped = false,
@@ -201,7 +158,7 @@ export function ProductCard({
                     fill
                     sizes="(max-width:768px) 50vw, (max-width:1200px) 33vw, 25vw"
                     className={[
-                        "relative z-0 object-cover transition-all duration-700 group-hover:scale-105", ,
+                        "relative z-0 object-cover transition-opacity duration-300",
                         // Desktop hover flips to back
                         "md:opacity-100 md:group-hover:opacity-0",
                         // Mobile rotation via state
@@ -216,7 +173,7 @@ export function ProductCard({
                     fill
                     sizes="(max-width:768px) 50vw, (max-width:1200px) 33vw, 25vw"
                     className={[
-                        "relative z-0 object-cover transition-all duration-700 group-hover:scale-105", ,
+                        "relative z-0 object-cover transition-opacity duration-300",
                         "md:opacity-0 md:group-hover:opacity-100",
                         isTouch ? (showBack ? "opacity-100" : "opacity-0") : "",
                     ].join(" ")}
@@ -250,7 +207,7 @@ export function ProductCard({
                         <Button
                             type="button"
                             className="flex-1 h-12 rounded-lg text-white text-xs font-semibold relative rounded-xl px-5 py-3 text-sm font-black tracking-wide text-white shadow-lg border disabled:opacity-50"
-                            style={{ clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)", cursor: "pointer" }}
+                            style={{ clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)" }}
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -276,7 +233,7 @@ export function ProductCard({
                 </div>
 
                 {/* PDP-style colours */}
-                {/* {hasColors && (
+                {hasColors && (
                     <div className="mt-2 flex flex-wrap gap-2">
                         {p.colors!.map((c, idx) => (
                             <ColorBox
@@ -292,27 +249,7 @@ export function ProductCard({
                             />
                         ))}
                     </div>
-                )} */}
-
-                {/* {hasColors && (
-                    <ColorSwatches
-                        colors={p.colors!}
-                        activeIndex={activeColorIdx}
-                        onSelect={setActiveColorIdx}
-                    />
-                )} */}
-
-                <div className="mt-3 flex items-center justify-between min-h-[24px]">
-                    <ColorSwatches
-                        colors={p.colors!}
-                        activeIndex={activeColorIdx}
-                        onSelect={setActiveColorIdx}
-                    />
-
-                    <span className="text-xs text-neutral-400 truncate ml-2">
-                        {activeColor?.label}
-                    </span>
-                </div>
+                )}
 
                 {/* sizes */}
                 {defaultSizes.length > 0 && (

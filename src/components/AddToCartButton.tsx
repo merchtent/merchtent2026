@@ -48,6 +48,7 @@ export default function AddToCartButton({
             className="relative rounded-xl px-5 py-3 text-sm font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-50"
             style={{
                 clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)",
+                cursor: "pointer"
             }}
             onClick={() => {
                 add(

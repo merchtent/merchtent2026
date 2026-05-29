@@ -47,7 +47,49 @@ export default function Hero() {
     }, [artists]);
 
     const artist = artists[index];
-    if (!artist) return null;
+
+    if (!artist) {
+        return (
+            <section className="relative border-b border-neutral-800 animate-pulse">
+                <div className="grid md:grid-cols-2 min-h-[65vh]">
+
+                    {/* Image Skeleton */}
+                    <div className="relative order-1 md:order-2 bg-neutral-800">
+                        <div className="absolute inset-0 bg-neutral-800" />
+
+                        <div className="absolute top-6 right-6 h-16 w-16 rounded-full bg-neutral-700" />
+                    </div>
+
+                    {/* Text Skeleton */}
+                    <div className="order-2 md:order-1 flex items-center justify-end p-8 md:p-14">
+                        <div className="max-w-xl w-full">
+
+                            <div className="h-3 w-40 bg-neutral-800 rounded" />
+
+                            <div className="mt-6 space-y-4">
+                                <div className="h-12 w-full bg-neutral-800 rounded" />
+                                <div className="h-12 w-4/5 bg-neutral-800 rounded" />
+                                <div className="h-12 w-3/5 bg-neutral-800 rounded" />
+                            </div>
+
+                            <div className="mt-6 h-4 w-full bg-neutral-800 rounded" />
+                            <div className="mt-2 h-4 w-3/4 bg-neutral-800 rounded" />
+
+                            <div className="mt-8 flex gap-3">
+                                <div className="h-10 w-36 bg-neutral-800 rounded-md" />
+                                <div className="h-10 w-36 bg-neutral-800 rounded-md" />
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div className="relative h-6 overflow-hidden">
+                    <div className="absolute inset-0 -skew-y-3 bg-neutral-900 border-b border-neutral-800" />
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="relative border-b border-neutral-800">
@@ -102,13 +144,19 @@ export default function Hero() {
                                 transition={{ duration: 0.4 }}
                             >
 
-                                <p className="uppercase tracking-[0.3em] text-xs text-red-400">
-                                    FEATURED DROP — {artist.name}
+                                <h1 className="mt-3 leading-[0.9] text-5xl md:text-7xl font-black">
+                                    <GlitchText
+                                        lines={artist.name.toUpperCase().split(" ")}
+                                    />
+                                </h1>
+
+                                <p className="mt-4 uppercase tracking-[0.3em] text-xs text-red-400">
+                                    FEATURED DROP
                                 </p>
 
-                                <h1 className="mt-3 leading-[0.9] text-5xl md:text-7xl font-black">
-                                    <GlitchText lines={["MERCH", "FOR", "THE", "SCENE"]} />
-                                </h1>
+                                <h2 className="mt-3 text-xl md:text-2xl font-bold text-neutral-200">
+                                    MERCH FOR THE SCENE
+                                </h2>
 
                                 <p className="mt-4 text-neutral-300">
                                     Merch for local artists. No upfront cost. No risk.

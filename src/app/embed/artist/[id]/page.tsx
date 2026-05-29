@@ -70,7 +70,7 @@ export default async function ArtistEmbedPage({
                 price: (p.price_cents ?? 0) / 100,
                 image: primary,
                 slug: p.slug,
-                sizes: ["S", "M", "L", "XL"],
+                sizes: ["XS", "S", "M", "L", "XL", "XXL", "3XL"],
                 created_at: p.created_at,
             };
         }) ?? [];

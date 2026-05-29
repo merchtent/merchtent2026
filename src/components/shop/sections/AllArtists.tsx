@@ -24,6 +24,7 @@ function initials(name?: string | null) {
 export default function AllArtists() {
     const [artists, setArtists] = useState<Artist[] | null>(null);
     const [err, setErr] = useState<string | null>(null);
+    const [selectedLetter, setSelectedLetter] = useState<string>("ALL");
 
     useEffect(() => {
         let alive = true;
@@ -46,115 +47,168 @@ export default function AllArtists() {
         return () => { alive = false; };
     }, []);
 
-    return (
-        <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
+    const letters = [
+        "ALL",
+        ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
+    ];
 
-            {/* HEADER */}
-            <div className="flex items-end justify-between mb-4">
-                <div>
-                    <h2 className="text-xl md:text-2xl font-semibold">All artists</h2>
-                    <p className="text-sm text-neutral-400">
-                        Discover every artist on the platform
-                    </p>
+    const filteredArtists =
+        selectedLetter === "ALL"
+            ? artists ?? []
+            : (artists ?? []).filter(
+                a =>
+                    a.name
+                        ?.trim()
+                        .toUpperCase()
+                        .startsWith(selectedLetter)
+            );
+
+    return (
+        <section className="mx-auto px-4 md:px-6 lg:px-8 py-6 border-y border-neutral-800 mt-12">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 ">
+                {/* HEADER */}
+                <div className="flex items-end justify-between mb-4">
+                    <div>
+                        <h2 className="text-xl md:text-2xl font-semibold">All artists</h2>
+                        <p className="text-sm text-neutral-400">
+                            Discover every artist on the platform
+                        </p>
+                    </div>
+
+                    <Link href="/artists" className="text-sm underline">
+                        View all
+                    </Link>
                 </div>
 
-                <Link href="/artists" className="text-sm underline">
-                    View all
-                </Link>
+                {/* LETTER FILTER */}
+                <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
+                    {letters.map(letter => (
+                        <button
+                            key={letter}
+                            onClick={() => setSelectedLetter(letter)}
+                            className={`
+                shrink-0
+                px-3
+                py-1.5
+                text-xs
+                font-bold
+                rounded-lg
+                border
+                transition-all
+                ${selectedLetter === letter
+                                    ? "bg-red-600 border-red-500 text-white"
+                                    : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700"
+                                }
+            `}
+                        >
+                            {letter}
+                        </button>
+                    ))}
+                </div>
+
+                {/* LOADING */}
+                {artists === null && !err && (
+                    <div className="flex gap-4 overflow-x-auto">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div
+                                key={i}
+                                className="min-w-[180px] rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 animate-pulse"
+                            >
+                                <div className="h-40 bg-neutral-800" />
+                                <div className="p-3">
+                                    <div className="h-4 w-2/3 bg-neutral-800 rounded" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* ERROR */}
+                {err && (
+                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+                        <p className="text-neutral-300">Couldn’t load artists.</p>
+                    </div>
+                )}
+
+                {/* CONTENT */}
+                {artists && artists.length > 0 && (
+                    <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+
+                        {artists &&
+                            filteredArtists.length === 0 && (
+                                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-8 text-center">
+                                    <p className="text-neutral-400">
+                                        No artists found for "{selectedLetter}"
+                                    </p>
+                                </div>
+                            )}
+
+                        {filteredArtists.map((a, i) => (
+                            <div
+                                key={a.id}
+                                className="min-w-[180px] snap-start"
+                            >
+                                <Link
+                                    href={`/artists/${a.slug}`}
+                                    className="block group relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition-colors"
+                                    style={{
+                                        clipPath:
+                                            i % 4 === 0
+                                                ? "polygon(1% 0,100% 0,98% 100%,0 100%)"
+                                                : undefined,
+                                    }}
+                                >
+                                    {/* IMAGE */}
+                                    <div className="relative h-40 w-full bg-neutral-950">
+                                        {a.image ? (
+                                            <div className="relative h-40 w-full bg-neutral-950 overflow-hidden">
+                                                {a.image ? (
+                                                    <Image
+                                                        src={a.image}
+                                                        alt={a.name}
+                                                        fill
+                                                        className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-hover:brightness-110"
+                                                    />
+                                                ) : (
+                                                    <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-neutral-800 to-neutral-900 text-2xl font-black">
+                                                        {initials(a.name)}
+                                                    </div>
+                                                )}
+
+                                                {/* subtle overlay */}
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
+                                            </div>
+                                        ) : (
+                                            <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-neutral-800 to-neutral-900 text-2xl font-black">
+                                                {initials(a.name)}
+                                            </div>
+                                        )}
+
+                                        {/* OPTIONAL BADGE */}
+                                        <div className="absolute top-2 left-2 text-[10px] bg-red-600 text-white px-2 py-0.5 font-bold rounded rotate-[-3deg]">
+                                            Artist
+                                        </div>
+                                    </div>
+
+                                    {/* FOOTER */}
+                                    <div className="p-3">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm font-semibold truncate">
+                                                {a.name}
+                                            </p>
+                                            <span className="text-xs text-neutral-400 group-hover:text-neutral-200 transition-colors">
+                                                View →
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            </div>
+                        ))}
+
+                    </div>
+                )}
             </div>
 
-            {/* LOADING */}
-            {artists === null && !err && (
-                <div className="flex gap-4 overflow-x-auto">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div
-                            key={i}
-                            className="min-w-[180px] rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 animate-pulse"
-                        >
-                            <div className="h-40 bg-neutral-800" />
-                            <div className="p-3">
-                                <div className="h-4 w-2/3 bg-neutral-800 rounded" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* ERROR */}
-            {err && (
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
-                    <p className="text-neutral-300">Couldn’t load artists.</p>
-                </div>
-            )}
-
-            {/* CONTENT */}
-            {artists && artists.length > 0 && (
-                <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-
-                    {artists.map((a, i) => (
-                        <div
-                            key={a.id}
-                            className="min-w-[180px] snap-start"
-                        >
-                            <Link
-                                href={`/artists/${a.slug}`}
-                                className="block group relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition-colors"
-                                style={{
-                                    clipPath:
-                                        i % 4 === 0
-                                            ? "polygon(1% 0,100% 0,98% 100%,0 100%)"
-                                            : undefined,
-                                }}
-                            >
-                                {/* IMAGE */}
-                                <div className="relative h-40 w-full bg-neutral-950">
-                                    {a.image ? (
-                                        <div className="relative h-40 w-full bg-neutral-950 overflow-hidden">
-                                            {a.image ? (
-                                                <Image
-                                                    src={a.image}
-                                                    alt={a.name}
-                                                    fill
-                                                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-hover:brightness-110"
-                                                />
-                                            ) : (
-                                                <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-neutral-800 to-neutral-900 text-2xl font-black">
-                                                    {initials(a.name)}
-                                                </div>
-                                            )}
-
-                                            {/* subtle overlay */}
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
-                                        </div>
-                                    ) : (
-                                        <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-neutral-800 to-neutral-900 text-2xl font-black">
-                                            {initials(a.name)}
-                                        </div>
-                                    )}
-
-                                    {/* OPTIONAL BADGE */}
-                                    <div className="absolute top-2 left-2 text-[10px] bg-red-600 text-white px-2 py-0.5 font-bold rounded rotate-[-3deg]">
-                                        Artist
-                                    </div>
-                                </div>
-
-                                {/* FOOTER */}
-                                <div className="p-3">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-sm font-semibold truncate">
-                                            {a.name}
-                                        </p>
-                                        <span className="text-xs text-neutral-400 group-hover:text-neutral-200 transition-colors">
-                                            View →
-                                        </span>
-                                    </div>
-                                </div>
-                            </Link>
-                        </div>
-                    ))}
-
-                </div>
-            )}
         </section>
     );
 }

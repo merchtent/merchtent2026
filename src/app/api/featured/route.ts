@@ -13,16 +13,21 @@ export async function GET() {
     );
 
     // 👉 get up to 3 featured artists (fallback to latest if none flagged)
-    let { data: artists } = await supabase
+    let { data: artists, error } = await supabase
         .from("artists")
         .select("id, display_name, slug, hero_image_path")
-        .eq("is_featured", true)
+        .not("hero_image_path", "is", null)
+        .eq("featured", true)
         .limit(3);
 
     if (!artists || artists.length === 0) {
+
+        console.log("RUNNING FALLBACK");
+
         const fallback = await supabase
             .from("artists")
             .select("id, display_name, slug, hero_image_path")
+            .not("hero_image_path", "is", null)
             .order("created_at", { ascending: false })
             .limit(3);
 

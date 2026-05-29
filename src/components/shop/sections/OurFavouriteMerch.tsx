@@ -11,14 +11,24 @@ type Product = {
     price: number;
     image: string;
     slug: string;
+    hover?: string;
 };
 
 export default function OurFavouriteMerch() {
     return (
         <section className="relative py-10 md:py-14">
 
-            <div className="-skew-y-3 bg-neutral-100 text-neutral-900 border-y border-neutral-200">
-
+            <div className="-skew-y-3 bg-neutral-100 text-neutral-900 border-y border-neutral-200 relative overflow-hidden">
+                {/* texture overlay */}
+                <div className="absolute inset-0 pointer-events-none bg-[repeating-linear-gradient(-45deg,transparent,transparent_18px,rgba(0,0,0,0.025)_18px,rgba(0,0,0,0.025)_36px)]" />
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div className="absolute -right-10 top-10 text-[140px] md:text-[220px] font-black text-black/[0.03] leading-none select-none">
+                        FAVS
+                    </div>
+                </div>
+                <div className="absolute -right-10 top-50 text-[140px] md:text-[220px] font-black text-black/[0.03] leading-none select-none">
+                    PICKS
+                </div>
                 <div className="skew-y-3 max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14 space-y-8">
 
                     {/* HEADER */}
@@ -99,16 +109,51 @@ export default function OurFavouriteMerch() {
                                         }}
                                     >
                                         {/* IMAGE */}
-                                        <div className="relative aspect-[3/4] bg-neutral-200">
+                                        {/* <div className="relative aspect-[3/4] bg-neutral-200">
                                             <Image
                                                 src={p.image}
                                                 alt={p.title}
                                                 fill
                                                 className="object-cover group-hover:scale-105 transition"
                                             />
+                                           
+                                            <div className="absolute top-2 left-2 text-[10px] bg-red-600 text-white px-2 py-0.5 font-bold rounded rotate-[-3deg]">
+                                                PICK
+                                            </div>
+                                        </div> */}
+
+                                        <div className="relative aspect-[3/4] bg-neutral-200 overflow-hidden">
+
+                                            {/* FRONT */}
+                                            <Image
+                                                src={p.image}
+                                                alt={p.title}
+                                                fill
+                                                className="
+            object-cover
+            transition-opacity
+            duration-300
+            opacity-100
+            group-hover:opacity-0
+        "
+                                            />
+
+                                            {/* BACK */}
+                                            <Image
+                                                src={p.hover || p.image}
+                                                alt={`${p.title} alternate`}
+                                                fill
+                                                className="
+            object-cover
+            transition-opacity
+            duration-300
+            opacity-0
+            group-hover:opacity-100
+        "
+                                            />
 
                                             {/* BADGE */}
-                                            <div className="absolute top-2 left-2 text-[10px] bg-red-600 text-white px-2 py-0.5 font-bold rounded rotate-[-3deg]">
+                                            <div className="absolute top-2 left-2 text-[10px] bg-red-600 text-white px-2 py-0.5 font-bold rounded rotate-[-3deg] z-10">
                                                 PICK
                                             </div>
                                         </div>
