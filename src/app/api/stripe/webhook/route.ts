@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
                     postal_code: session.metadata?.postal_code ?? null,
                     country: session.metadata?.country ?? null,
                     phone: session.metadata?.phone ?? null,
+                    status: "paid",
                 })
                 .select("id")
                 .single();

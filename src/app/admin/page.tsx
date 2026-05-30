@@ -63,7 +63,7 @@ export default async function AdminDashboard() {
     return (
         <main className="bg-neutral-950 text-neutral-100 min-h-screen">
 
-            <div className="max-w-6xl mx-auto px-6 py-8">
+            <div className="mx-auto px-6 py-8">
 
                 {/* HEADER */}
                 <div className="flex items-center justify-between mb-6">
