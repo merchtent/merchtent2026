@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 function safeNextPath(value: string | null) {
     if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -18,19 +19,27 @@ export default function AuthCallbackPage() {
     useEffect(() => {
         const run = async () => {
             try {
-                // A) PKCE: ?code=... → let server write cookies
+                // A) PKCE: ?code=... → exchange in browser, then let server write cookies.
                 const code = search.get("code");
                 if (code) {
-                    const type = search.get("type");
-                    const nextPath = safeNextPath(search.get("next"));
-                    const next = new URL("/auth/callback/complete", window.location.origin);
-                    next.searchParams.set("code", code);
-                    next.searchParams.set("next", nextPath);
-                    if (type === "artist" || type === "fan") {
-                        next.searchParams.set("type", type);
+                    const supabase = getBrowserSupabase();
+                    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+                    if (error) throw new Error("Could not finish setting up your session.");
+
+                    const session = data.session ?? (await supabase.auth.getSession()).data.session;
+                    if (!session?.access_token || !session.refresh_token) {
+                        throw new Error("Could not finish setting up your session.");
                     }
-                    window.location.replace(next.toString());
-                    return;
+
+                    const response = await fetch("/auth/set-session", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            access_token: session.access_token,
+                            refresh_token: session.refresh_token,
+                        }),
+                    });
+                    if (!response.ok) throw new Error("Could not finish setting up your session.");
                 }
 
                 // B) Hash tokens: #access_token=...&refresh_token=... → post to server to write cookies
@@ -71,7 +80,7 @@ export default function AuthCallbackPage() {
                     localStorage.removeItem("pending_artist_name");
                 }
 
-                router.replace(safeNextPath(search.get("next")));
+                router.replace(nextPathWithAccountType(search.get("next"), search.get("type")));
             } catch (e: unknown) {
                 setMsg(e instanceof Error ? `Sign-in failed: ${e.message}` : "Sign-in failed.");
             }
@@ -80,4 +89,14 @@ export default function AuthCallbackPage() {
     }, [router, search]);
 
     return <main className="p-6">{msg}</main>;
+}
+
+function nextPathWithAccountType(next: string | null, type: string | null) {
+    const path = safeNextPath(next);
+    if (type !== "artist" && type !== "fan") return path;
+    if (!path.startsWith("/account/setup")) return path;
+
+    const url = new URL(path, "https://merchtent.local");
+    url.searchParams.set("type", type);
+    return `${url.pathname}${url.search}`;
 }
