@@ -51,12 +51,14 @@ export default function AuthCallbackPage() {
                 // Now cookies are set server-side — onboard safely
                 const pending = localStorage.getItem("pending_display_name");
                 const pendingType = localStorage.getItem("pending_account_type");
+                const pendingArtist = localStorage.getItem("pending_artist_name");
                 if (pending || pendingType) {
                     const onboard = await fetch("/auth/onboard", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             display_name: pending,
+                            artist_name: pendingArtist,
                             account_type: pendingType === "artist" ? "artist" : "fan",
                         }),
                     });
@@ -66,6 +68,7 @@ export default function AuthCallbackPage() {
                     }
                     localStorage.removeItem("pending_display_name");
                     localStorage.removeItem("pending_account_type");
+                    localStorage.removeItem("pending_artist_name");
                 }
 
                 router.replace(safeNextPath(search.get("next")));

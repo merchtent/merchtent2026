@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { completeAccountSetup } from "./actions";
 
 type AccountType = "fan" | "artist";
@@ -15,7 +15,31 @@ export default function AccountSetupForm({
     const requestedType = searchParams.get("type");
     const initialType: AccountType = requestedType === "artist" ? "artist" : "fan";
     const [accountType, setAccountType] = useState<AccountType>(initialType);
+    const [displayName, setDisplayName] = useState(initialEmail?.split("@")[0] ?? "");
+    const [artistName, setArtistName] = useState("");
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            const pendingType = localStorage.getItem("pending_account_type");
+            const pendingDisplayName = localStorage.getItem("pending_display_name");
+            const pendingArtistName = localStorage.getItem("pending_artist_name");
+
+            if (pendingType === "artist" || pendingType === "fan") {
+                setAccountType(pendingType);
+            }
+
+            if (pendingDisplayName) {
+                setDisplayName(pendingDisplayName);
+            }
+
+            if (pendingArtistName) {
+                setArtistName(pendingArtistName);
+            }
+        }, 0);
+
+        return () => window.clearTimeout(timeout);
+    }, []);
 
     const helper = useMemo(
         () =>
@@ -77,7 +101,8 @@ export default function AccountSetupForm({
                 </span>
                 <input
                     name="display_name"
-                    defaultValue={initialEmail?.split("@")[0] ?? ""}
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
                     className="h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 text-sm text-neutral-100"
                     placeholder="Your name"
                 />
@@ -90,6 +115,8 @@ export default function AccountSetupForm({
                     </span>
                     <input
                         name="artist_name"
+                        value={artistName}
+                        onChange={(event) => setArtistName(event.target.value)}
                         minLength={2}
                         maxLength={60}
                         required

@@ -1312,7 +1312,7 @@ test("Auth mutation endpoints reject cross-origin browser posts", () => {
   assert.match(artistGuard, /Could not verify artist profile\./);
   assert.match(artistGuard, /\.from\("artists"\)/);
   assert.match(artistGuard, /\.eq\("user_id", user\.id\)/);
-  assert.match(signIn, /publicEnv\.siteUrl\(\)/);
+  assert.match(signIn, /window\.location\.origin/);
   assert.match(signIn, /signInWithPassword/);
   assert.match(signIn, /resetPasswordForEmail/);
   assert.match(signIn, /SIGN_IN_ERROR/);

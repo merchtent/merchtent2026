@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 const onboardSchema = z.object({
     display_name: z.string().max(80).nullish(),
+    artist_name: z.string().max(60).nullish(),
     account_type: z.enum(["fan", "artist"]).default("fan"),
 });
 
@@ -23,8 +24,9 @@ export async function POST(req: Request) {
 
     const accountType = parsed.data.account_type;
     const name = (parsed.data.display_name ?? "").trim().slice(0, 60);
-    if (accountType === "artist" && name.length < 2) {
-        return noStoreJson({ error: "Invalid display name" }, { status: 400 });
+    const artistName = (parsed.data.artist_name ?? name).trim().slice(0, 60);
+    if (accountType === "artist" && artistName.length < 2) {
+        return noStoreJson({ error: "Invalid artist name" }, { status: 400 });
     }
 
     const supabase = getWritableServerSupabase();
@@ -33,8 +35,8 @@ export async function POST(req: Request) {
 
     const { data, error } = await supabase.rpc("complete_account_onboarding", {
         p_account_type: accountType,
-        p_display_name: name || user.email || null,
-        p_artist_name: accountType === "artist" ? name : null,
+        p_display_name: name || artistName || user.email || null,
+        p_artist_name: accountType === "artist" ? artistName : null,
     });
 
     if (error) {

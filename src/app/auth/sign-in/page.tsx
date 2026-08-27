@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles, Ticket } from "lucide-react";
-import { publicEnv } from "@/lib/env";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const SIGN_IN_ERROR = "Could not sign in. Check your email and password.";
@@ -79,11 +78,13 @@ export default function SignInPage() {
 
         try {
             setResetting(true);
+            const redirectOrigin = window.location.origin;
             const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-                redirectTo: `${publicEnv.siteUrl()}/auth/callback?next=/dashboard/account`,
+                redirectTo: `${redirectOrigin}/auth/callback?next=/dashboard/account`,
             });
 
             if (error) {
+                console.error("password reset request failed", error.message);
                 setErr(RESET_ERROR);
                 return;
             }
