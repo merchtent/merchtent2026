@@ -94,7 +94,7 @@ export default function ShippingAndReturnsPage() {
                             24–48 hours to activate.
                         </p>
                         <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>Didn’t get an email? Check spam or your <Link href="/orders" className="underline">Orders</Link> page.</li>
+                            <li>Didn’t get an email? Check spam or your <Link href="/dashboard/orders" className="underline">Orders</Link> page.</li>
                             <li>Tracking shows delivered but no package? Check with neighbours/building manager first.</li>
                         </ul>
                     </div>
@@ -225,7 +225,7 @@ export default function ShippingAndReturnsPage() {
                         <Link href="/contact" className="rounded-xl border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800">
                             Contact Us
                         </Link>
-                        <Link href="/orders" className="rounded-xl bg-red-600 text-white px-4 py-2 text-sm hover:bg-red-500">
+                        <Link href="/dashboard/orders" className="rounded-xl bg-red-600 text-white px-4 py-2 text-sm hover:bg-red-500">
                             View My Orders
                         </Link>
                     </div>

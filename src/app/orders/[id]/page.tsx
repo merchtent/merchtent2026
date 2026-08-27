@@ -155,7 +155,7 @@ export default async function OrderDetailPage({
                         {error ? "Could not load this order." : "Order not found."}
                     </div>
                     <div className="mt-4">
-                        <Link href="/orders" className="inline-flex items-center underline">
+                        <Link href="/dashboard/orders" className="inline-flex items-center underline">
                             <ChevronLeft className="h-4 w-4 mr-1" />
                             Back to orders
                         </Link>
@@ -210,7 +210,7 @@ export default async function OrderDetailPage({
             {/* header rail */}
             <section className="max-w-5xl mx-auto px-4 pt-6 mt-2">
                 <div className="flex items-center justify-between text-sm text-neutral-300">
-                    <Link href="/orders" className="inline-flex items-center hover:text-white">
+                    <Link href="/dashboard/orders" className="inline-flex items-center hover:text-white">
                         <ChevronLeft className="h-4 w-4 mr-1" /> Back to orders
                     </Link>
                     <div className="flex items-center gap-3">

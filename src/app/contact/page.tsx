@@ -84,7 +84,7 @@ export default async function ContactPage({
                                 <Link href="/" className="underline">
                                     Back to shop
                                 </Link>
-                                <Link href="/orders" className="underline">
+                                <Link href="/dashboard/orders" className="underline">
                                     View your orders
                                 </Link>
                             </div>

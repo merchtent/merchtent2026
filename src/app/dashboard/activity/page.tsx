@@ -264,7 +264,7 @@ async function loadFanFeed(userId: string): Promise<FeedItem[]> {
             title: "Order updated",
             body: `${order.order_number ?? order.id.slice(0, 8)} · ${formatMoney(order.total_cents ?? 0)} · ${order.status ?? "paid"}`,
             createdAt: order.created_at,
-            href: `/orders/${order.id}`,
+            href: `/dashboard/orders/${order.id}`,
             tone: order.status === "shipped" ? "good" : "neutral",
             icon: <Package className="h-5 w-5" />,
         });

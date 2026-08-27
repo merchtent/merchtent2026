@@ -348,7 +348,7 @@ export default async function OrdersPage() {
                                         </div>
                                         <div className="grid border-t border-white/10 md:border-l md:border-t-0">
                                             <Link
-                                                href={`/orders/${o.id}`}
+                                                href={`/dashboard/orders/${o.id}`}
                                                 className="grid place-items-center bg-red-600 p-5 text-sm font-black uppercase tracking-wide text-white hover:bg-red-500 md:p-6"
                                                 aria-label={`View order ${shortId}`}
                                             >

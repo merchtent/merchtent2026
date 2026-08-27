@@ -464,7 +464,7 @@ function FanDashboard({
                                     Recent purchases.
                                 </h2>
                             </div>
-                            <Link href="/orders" className="text-sm font-black text-red-400 hover:text-red-300">
+                            <Link href="/dashboard/orders" className="text-sm font-black text-red-400 hover:text-red-300">
                             View all
                         </Link>
                         </div>
@@ -479,7 +479,7 @@ function FanDashboard({
                                 {orders.map((order) => (
                                     <Link
                                         key={order.id}
-                                        href={`/orders/${order.id}`}
+                                        href={`/dashboard/orders/${order.id}`}
                                         className="grid gap-3 border-b border-neutral-800 bg-neutral-950 p-4 last:border-b-0 md:grid-cols-[1fr_auto]"
                                     >
                                         <div>

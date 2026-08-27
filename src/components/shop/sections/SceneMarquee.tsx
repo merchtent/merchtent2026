@@ -28,7 +28,7 @@ type MarqueeItem = {
 const fallbackItems: MarqueeItem[] = [
     { label: "Unsigned drops live now", href: "/new", tone: "drop" },
     { label: "Artists design it here", href: "/start", tone: "artist" },
-    { label: "Fans earn merch credits", href: "/orders", tone: "scene" },
+    { label: "Fans earn merch credits", href: "/dashboard/credits", tone: "scene" },
     { label: "Printed after it sells", href: "/sustainability", tone: "scene" },
     { label: "No dead stock", href: "/sustainability", tone: "scene" },
     { label: "Back the band early", href: "/artists", tone: "artist" },

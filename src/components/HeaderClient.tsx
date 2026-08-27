@@ -34,7 +34,7 @@ const nav = [
 
 const authNav = [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "Orders", href: "/orders" },
+    { label: "Orders", href: "/dashboard/orders" },
 ];
 
 const unAuthNav = [

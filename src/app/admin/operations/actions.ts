@@ -107,6 +107,7 @@ export async function adjustMerchCredits(input: {
     revalidatePath("/admin");
     revalidatePath("/dashboard");
     revalidatePath("/orders");
+    revalidatePath("/dashboard/orders");
 
     return {
         ok: true,

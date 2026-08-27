@@ -32,10 +32,10 @@ const artistNav = [
 
 const fanNav = [
     { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Orders", href: "/orders", icon: Receipt },
-    { label: "Credits", href: "/dashboard#merch-credits", icon: BadgePercent },
+    { label: "Orders", href: "/dashboard/orders", icon: Receipt },
+    { label: "Credits", href: "/dashboard/credits", icon: BadgePercent },
     { label: "Activity", href: "/dashboard/activity", icon: Activity },
-    { label: "Saved", href: "/dashboard#saved-scene", icon: Package },
+    { label: "Saved", href: "/dashboard/saved", icon: Package },
     { label: "Account", href: "/dashboard/account", icon: Settings },
 ];
 
