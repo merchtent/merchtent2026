@@ -21,7 +21,8 @@ Use this checklist before promoting a release.
 - [ ] `NEXT_PUBLIC_SITE_URL` points to the public production hostname, not localhost or a private network address.
 - [ ] `OPERATIONAL_HEALTH_SECRET` is configured with a high-entropy value of at least 32 characters.
 - [ ] Stripe secret key and webhook secret are configured.
-- [ ] Postmark sender, token, and admin recipient are configured.
+- [ ] Postmark sender, token, support email, and admin recipient are configured. `POSTMARK_FROM` and `POSTMARK_SUPPORT_EMAIL` are `support@merchtent.com.au`.
+- [ ] Supabase Auth SMTP is configured through Postmark from `support@merchtent.com.au` using `npm run auth:smtp:postmark`, so signup confirmation, password reset, and email-change confirmation do not use Supabase's built-in email sender.
 - [ ] SMS provider credentials are configured.
 - [ ] Printify token and shop id are configured.
 - [ ] Printify default blueprint id, print provider id, and variant ids are configured for on-demand fulfillment.

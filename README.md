@@ -32,8 +32,9 @@ SUPABASE_SERVICE_ROLE_KEY=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 POSTMARK_SERVER_TOKEN=
-POSTMARK_FROM=
+POSTMARK_FROM=support@merchtent.com.au
 POSTMARK_ADMIN_TO=
+POSTMARK_SUPPORT_EMAIL=support@merchtent.com.au
 POSTMARK_TEST_SECRET=
 MOBILEMESSAGE_USERNAME=
 MOBILEMESSAGE_PASSWORD=
@@ -59,6 +60,22 @@ npm run build
 ```
 
 `npm run verify` runs typecheck, lint, and production invariant tests. `npm run release:check` runs verify, production dependency audit, production environment validation, and the Next.js production build. `npm run env:check:prod` validates required production configuration before deployment.
+
+## Email
+
+App-owned transactional emails, such as order confirmations and admin order alerts, are sent with Postmark from `support@merchtent.com.au`.
+
+Supabase Auth emails are still triggered by Supabase for signup confirmation, password reset, and email-change confirmation. Configure Supabase Auth to send those emails through Postmark SMTP before production:
+
+```bash
+SUPABASE_ACCESS_TOKEN=
+SUPABASE_PROJECT_REF=
+POSTMARK_SERVER_TOKEN=
+POSTMARK_FROM=support@merchtent.com.au
+npm run auth:smtp:postmark
+```
+
+The script configures Supabase Auth SMTP with `smtp.postmarkapp.com:587`, sender name `Merch Tent`, and `support@merchtent.com.au` as the from address. Postmark uses the Server API Token as both SMTP username and password unless `SUPABASE_AUTH_SMTP_USER` and `SUPABASE_AUTH_SMTP_PASS` are supplied.
 
 ## Database
 

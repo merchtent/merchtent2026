@@ -53,7 +53,8 @@ export const serverEnv = {
         optionalEnvWithDefault("POSTMARK_ADMIN_TEMPLATE_ALIAS", "order-admin-notify"),
     postmarkTestSecret: () => optionalEnv("POSTMARK_TEST_SECRET"),
     postmarkTestCustomerEmail: () => optionalEnv("POSTMARK_TEST_CUSTOMER_EMAIL"),
-    postmarkSupportEmail: () => optionalEnv("POSTMARK_SUPPORT_EMAIL"),
+    postmarkSupportEmail: () =>
+        optionalEnvWithDefault("POSTMARK_SUPPORT_EMAIL", "support@merchtent.com.au"),
     storeName: () => optionalEnvWithDefault("STORE_NAME", "Merch Tent"),
     companyAddress: () => optionalEnv("COMPANY_ADDRESS"),
     manageOrdersUrl: () => optionalEnv("MANAGE_ORDERS_URL"),

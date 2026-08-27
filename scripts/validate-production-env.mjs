@@ -22,6 +22,7 @@ const printifyDefaults = [
 ];
 
 const optionalUrl = ["MANAGE_ORDERS_URL"];
+const expectedSupportEmail = "support@merchtent.com.au";
 const failures = [];
 
 for (const rule of required) {
@@ -43,6 +44,15 @@ for (const rule of printifyDefaults) {
 for (const key of optionalUrl) {
   const value = read(key);
   if (value) validateValue(key, value, "url");
+}
+
+const postmarkFrom = read("POSTMARK_FROM").toLowerCase();
+const postmarkSupportEmail = read("POSTMARK_SUPPORT_EMAIL").toLowerCase();
+if (postmarkFrom && postmarkFrom !== expectedSupportEmail) {
+  failures.push(`POSTMARK_FROM must be ${expectedSupportEmail}`);
+}
+if (postmarkSupportEmail && postmarkSupportEmail !== expectedSupportEmail) {
+  failures.push(`POSTMARK_SUPPORT_EMAIL must be ${expectedSupportEmail}`);
 }
 
 if (failures.length > 0) {

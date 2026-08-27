@@ -34,8 +34,9 @@ jobs:
           STRIPE_SECRET_KEY: sk_test_ci_1234567890abcdef
           STRIPE_WEBHOOK_SECRET: whsec_ci_1234567890abcdef
           POSTMARK_SERVER_TOKEN: ci-postmark-token-1234567890
-          POSTMARK_FROM: no-reply@merchtent.example
+          POSTMARK_FROM: support@merchtent.com.au
           POSTMARK_ADMIN_TO: ops@merchtent.example
+          POSTMARK_SUPPORT_EMAIL: support@merchtent.com.au
           MOBILEMESSAGE_USERNAME: ci-mobilemessage-user
           MOBILEMESSAGE_PASSWORD: ci-mobilemessage-password
           PRINTIFY_API_TOKEN: ci-printify-token-1234567890

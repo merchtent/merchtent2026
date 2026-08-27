@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "smoke:prod": "node scripts/production-smoke.mjs",
     "env:check:prod": "node scripts/validate-production-env.mjs",
+    "auth:smtp:postmark": "node scripts/configure-supabase-auth-smtp.mjs",
     "audit:prod": "npm audit --omit=dev",
     "db:lint:linked": "npx supabase db lint --linked --level warning --fail-on error",
     "release:check": "npm run verify && npm run audit:prod && npm run env:check:prod && npm run build",
