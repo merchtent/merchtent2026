@@ -98,7 +98,7 @@ export default function AccountSettingsClient({
                 return;
             }
 
-            setPasswordMessage("Password setup email sent.");
+            setPasswordMessage("Password setup email sent. Open the link to sign in temporarily and return here.");
         });
     };
 
@@ -185,7 +185,7 @@ export default function AccountSettingsClient({
                     icon={<KeyRound className="h-5 w-5" />}
                     kicker="Password"
                     title="Set or change password."
-                    body="Use a strong password for direct email/password sign-in."
+                    body="Use a strong password for direct email/password sign-in. If you email yourself a setup link, opening it signs you in temporarily and brings you back here."
                 />
                 <label htmlFor="password" className="mt-6 block text-xs font-black uppercase text-neutral-400">
                     New password

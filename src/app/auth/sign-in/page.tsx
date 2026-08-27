@@ -16,6 +16,12 @@ const accessNotes = [
     "Reset link available if needed",
 ];
 
+const resetSteps = [
+    "We email a secure setup link from support@merchtent.com.au.",
+    "Opening the link signs you in temporarily.",
+    "You land on Account settings to choose a new password.",
+];
+
 const accountPaths = [
     {
         title: "Artist dashboard",
@@ -89,7 +95,7 @@ export default function SignInPage() {
                 return;
             }
 
-            setMessage("Password setup email sent. Open it, then choose a new password.");
+            setMessage("Password setup email sent. Open the link to sign in temporarily, then choose a new password in Account settings.");
         } catch {
             setErr("Could not send password setup email. Please try again.");
         } finally {
@@ -223,6 +229,22 @@ export default function SignInPage() {
 
                                 {err ? <p className="text-sm font-bold text-red-400">{err}</p> : null}
                                 {message ? <p className="text-sm font-bold text-green-300">{message}</p> : null}
+
+                                <div className="border border-neutral-800 bg-neutral-950 p-4">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-red-400">
+                                        What reset does
+                                    </p>
+                                    <div className="mt-4 grid gap-3">
+                                        {resetSteps.map((step, index) => (
+                                            <div key={step} className="flex gap-3 text-sm leading-5 text-neutral-300">
+                                                <span className="grid h-6 w-6 shrink-0 place-items-center bg-red-600 text-[10px] font-black text-white">
+                                                    {index + 1}
+                                                </span>
+                                                <span>{step}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </form>
                         </section>
 
