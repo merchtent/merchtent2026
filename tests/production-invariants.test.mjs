@@ -1316,7 +1316,7 @@ test("Auth mutation endpoints reject cross-origin browser posts", () => {
   assert.match(signIn, /signInWithPassword/);
   assert.match(signIn, /resetPasswordForEmail/);
   assert.match(signIn, /SIGN_IN_ERROR/);
-  assert.match(signIn, /RESET_ERROR/);
+  assert.match(signIn, /passwordResetErrorMessage/);
   assert.match(signIn, /Could not sign in\. Check your email and password\./);
   assert.match(signIn, /Could not send password setup email\. Please try again\./);
   assert.doesNotMatch(signIn, /setErr\(error\.message\)/);

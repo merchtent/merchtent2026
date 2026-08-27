@@ -5,10 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles, Ticket } from "lucide-react";
+import { passwordResetErrorMessage } from "@/lib/auth/supabase-client-errors";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const SIGN_IN_ERROR = "Could not sign in. Check your email and password.";
-const RESET_ERROR = "Could not send password setup email. Please try again.";
 
 const accessNotes = [
     "Existing approved accounts only",
@@ -85,13 +85,13 @@ export default function SignInPage() {
 
             if (error) {
                 console.error("password reset request failed", error.message);
-                setErr(RESET_ERROR);
+                setErr(passwordResetErrorMessage(error));
                 return;
             }
 
             setMessage("Password setup email sent. Open it, then choose a new password.");
         } catch {
-            setErr(RESET_ERROR);
+            setErr("Could not send password setup email. Please try again.");
         } finally {
             setResetting(false);
         }

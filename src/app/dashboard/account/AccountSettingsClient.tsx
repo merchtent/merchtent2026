@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, KeyRound, LogOut, Mail, ShieldAlert, UserRound } from "lucide-react";
+import { passwordResetErrorMessage } from "@/lib/auth/supabase-client-errors";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { requestAccountClosure, updateDisplayName, type AccountActionState } from "./actions";
 
@@ -93,7 +94,7 @@ export default function AccountSettingsClient({
             });
 
             if (error) {
-                setPasswordError(error.message || "Could not send password email.");
+                setPasswordError(passwordResetErrorMessage(error));
                 return;
             }
 
