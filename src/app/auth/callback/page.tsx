@@ -19,27 +19,14 @@ export default function AuthCallbackPage() {
     useEffect(() => {
         const run = async () => {
             try {
+                const supabase = getBrowserSupabase();
                 // A) PKCE: ?code=... → exchange in browser, then let server write cookies.
                 const code = search.get("code");
                 if (code) {
-                    const supabase = getBrowserSupabase();
-                    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-                    if (error) throw new Error("Could not finish setting up your session.");
-
-                    const session = data.session ?? (await supabase.auth.getSession()).data.session;
-                    if (!session?.access_token || !session.refresh_token) {
-                        throw new Error("Could not finish setting up your session.");
+                    const { error } = await supabase.auth.exchangeCodeForSession(code);
+                    if (error) {
+                        console.error("auth callback code exchange failed", error.message);
                     }
-
-                    const response = await fetch("/auth/set-session", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            access_token: session.access_token,
-                            refresh_token: session.refresh_token,
-                        }),
-                    });
-                    if (!response.ok) throw new Error("Could not finish setting up your session.");
                 }
 
                 // B) Hash tokens: #access_token=...&refresh_token=... → post to server to write cookies
@@ -53,8 +40,18 @@ export default function AuthCallbackPage() {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ access_token, refresh_token }),
                         });
-                        if (!r.ok) throw new Error("Could not finish setting up your session.");
+                        if (!r.ok) {
+                            console.error("auth callback hash token cookie sync failed", await r.text());
+                            throw new Error("Could not finish setting up your session.");
+                        }
                     }
+                }
+
+                const session = await waitForBrowserSession(supabase);
+                if (session?.access_token && session.refresh_token) {
+                    await syncSessionCookie(session);
+                } else if (code || window.location.hash) {
+                    throw new Error("Could not finish setting up your session. Please request a fresh password email and open it in the same browser.");
                 }
 
                 // Now cookies are set server-side — onboard safely
@@ -89,6 +86,37 @@ export default function AuthCallbackPage() {
     }, [router, search]);
 
     return <main className="p-6">{msg}</main>;
+}
+
+async function waitForBrowserSession(supabase: ReturnType<typeof getBrowserSupabase>) {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+            console.error("auth callback browser session lookup failed", error.message);
+        }
+        if (data.session?.access_token && data.session.refresh_token) {
+            return data.session;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+
+    return null;
+}
+
+async function syncSessionCookie(session: { access_token: string; refresh_token: string }) {
+    const response = await fetch("/auth/set-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+        }),
+    });
+
+    if (!response.ok) {
+        console.error("auth callback session cookie sync failed", await response.text());
+        throw new Error("Could not finish setting up your session.");
+    }
 }
 
 function nextPathWithAccountType(next: string | null, type: string | null) {
