@@ -2,6 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { BadgePercent, Megaphone } from "lucide-react";
+import Link from "next/link";
+
+const tickerItems = [
+    "NEW DROPS",
+    "LOCAL ARTISTS",
+    "LIMITED RUNS",
+    "PRINTED ON DEMAND",
+];
 
 export default function AngledPromoRail() {
     return (
@@ -21,19 +29,7 @@ export default function AngledPromoRail() {
 
                 <div className="skew-y-3 relative">
 
-                    {/* ticker */}
-                    <div className="overflow-hidden border-b border-neutral-300">
-                        <div className="flex whitespace-nowrap py-2 text-[11px] font-black tracking-[0.35em] animate-[marquee_30s_linear_infinite]">
-                            <span className="mr-16">NEW DROPS</span>
-                            <span className="mr-16">LOCAL ARTISTS</span>
-                            <span className="mr-16">LIMITED RUNS</span>
-                            <span className="mr-16">PRINTED ON DEMAND</span>
-                            <span className="mr-16">NEW DROPS</span>
-                            <span className="mr-16">LOCAL ARTISTS</span>
-                            <span className="mr-16">LIMITED RUNS</span>
-                            <span className="mr-16">PRINTED ON DEMAND</span>
-                        </div>
-                    </div>
+                    <PromoTicker />
 
                     <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16 grid md:grid-cols-3 gap-8 items-center">
 
@@ -55,7 +51,7 @@ export default function AngledPromoRail() {
                             <p className="mt-5 text-neutral-700 text-base md:text-lg max-w-2xl">
                                 Fresh merch from local artists.
                                 Limited runs, premium prints,
-                                and exclusive designs you won't find anywhere else.
+                                and exclusive designs you won&apos;t find anywhere else.
                             </p>
                         </div>
 
@@ -66,10 +62,10 @@ export default function AngledPromoRail() {
                                 asChild
                                 className="font-bold hover:scale-105 transition-transform"
                             >
-                                <a href="/category/tees">
+                                <Link href="/category/tees">
                                     <BadgePercent className="h-4 w-4 mr-2" />
                                     Shop Tees
-                                </a>
+                                </Link>
                             </Button>
 
                             <Button
@@ -77,10 +73,10 @@ export default function AngledPromoRail() {
                                 asChild
                                 className="hover:scale-105 transition-transform"
                             >
-                                <a href="/new">
+                                <Link href="/new">
                                     <Megaphone className="h-4 w-4 mr-2" />
                                     New This Week
-                                </a>
+                                </Link>
                             </Button>
 
                         </div>
@@ -116,5 +112,19 @@ export default function AngledPromoRail() {
                 }
             `}</style>
         </section>
+    );
+}
+
+function PromoTicker() {
+    return (
+        <div className="overflow-hidden border-b border-neutral-300 bg-neutral-100">
+            <div className="flex whitespace-nowrap py-2 text-[11px] font-black tracking-[0.35em] animate-[marquee_34s_linear_infinite]">
+                {[...tickerItems, ...tickerItems, ...tickerItems].map((item, index) => (
+                    <span key={`${item}-${index}`} className="mr-16">
+                        {item}
+                    </span>
+                ))}
+            </div>
+        </div>
     );
 }

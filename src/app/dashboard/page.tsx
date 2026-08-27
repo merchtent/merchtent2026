@@ -1,9 +1,40 @@
 // app/dashboard/page.tsx
 import { getServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
-import { BadgePercent, Megaphone, Shirt, Package, DollarSign, ShoppingCart, Plus, Ticket, ChevronRight, Image } from "lucide-react";
+import { ArrowRight, BadgePercent, ClipboardCheck, DollarSign, Gift, Image as ImageIcon, Megaphone, Package, PenTool, Plus, Receipt, Settings, Shirt, ShoppingCart, Sparkles, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { logger } from "@/lib/logger";
+
+type FanOrder = {
+    id: string;
+    created_at: string;
+    status: string | null;
+    total_cents: number | null;
+    currency: string | null;
+};
+
+type MerchCreditBalance = {
+    points_balance: number | null;
+    lifetime_points: number | null;
+};
+
+type MerchCreditLedgerRow = {
+    id: string;
+    points: number | null;
+    reason: string | null;
+    description: string | null;
+    created_at: string;
+};
+
+type MerchCreditReservationRow = {
+    id: string;
+    points: number | null;
+    discount_cents: number | null;
+    currency: string | null;
+    status: string | null;
+    expires_at: string | null;
+    created_at: string;
+};
 
 export default async function DashboardPage() {
     const supabase = getServerSupabase();
@@ -13,18 +44,46 @@ export default async function DashboardPage() {
 
     if (!user) {
         return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <div className="max-w-3xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <h1 className="text-xl md:text-2xl font-black">Please sign in</h1>
-                        <p className="mt-2 text-neutral-400">
-                            You need to be signed in to access the artist dashboard.
-                        </p>
-                        <div className="mt-4">
-                            <Link href="/auth/sign-in" className="underline">
-                                Go to sign in
-                            </Link>
-                        </div>
+            <main className="min-h-screen bg-black text-white">
+                <section className="border-b border-neutral-800 p-5 md:p-8">
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Backstage access</p>
+                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Please sign in.</h1>
+                    <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                        You need to be signed in to access the dashboard.
+                    </p>
+                </section>
+                <div className="p-5 md:p-8">
+                    <div className="border border-neutral-800 bg-neutral-950 p-6">
+                        <Link href="/auth/sign-in" className="inline-flex bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500">
+                            Go to sign in
+                        </Link>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("account_type, display_name, onboarding_completed")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (!profile?.account_type || !profile.onboarding_completed) {
+        return (
+            <main className="min-h-screen bg-black text-white">
+                <section className="border-b border-neutral-800 p-5 md:p-8">
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Account setup</p>
+                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Finish setup.</h1>
+                    <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                        Choose whether you want to use Merch Tent as a fan or artist.
+                    </p>
+                </section>
+                <div className="p-5 md:p-8">
+                    <div className="border border-neutral-800 bg-neutral-950 p-6">
+                        <Button asChild>
+                            <Link href="/account/setup">Continue setup</Link>
+                        </Button>
                     </div>
                 </div>
             </main>
@@ -38,15 +97,54 @@ export default async function DashboardPage() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-    if (!artist) {
+    if (profile.account_type === "fan" || !artist) {
+        const [
+            { data: orders },
+            { data: balance, error: balanceError },
+            { data: creditLedger },
+            { data: creditReservations },
+        ] = await Promise.all([
+            supabase
+                .from("orders")
+                .select("id, created_at, status, total_cents, currency")
+                .eq("user_id", user.id)
+                .order("created_at", { ascending: false })
+                .limit(5),
+            supabase
+                .from("merch_credit_balances")
+                .select("points_balance, lifetime_points")
+                .eq("user_id", user.id)
+                .maybeSingle(),
+            supabase
+                .from("merch_credit_ledger")
+                .select("id, points, reason, description, created_at")
+                .eq("user_id", user.id)
+                .order("created_at", { ascending: false })
+                .limit(6),
+            supabase
+                .from("merch_credit_reservations")
+                .select("id, points, discount_cents, currency, status, expires_at, created_at")
+                .eq("user_id", user.id)
+                .order("created_at", { ascending: false })
+                .limit(4),
+        ]);
+
+        if (balanceError) {
+            logger.error("Fan dashboard failed to load merch credit balance", {
+                user_id: user.id,
+                error: balanceError.message,
+            });
+        }
+
         return (
-            <main className="p-6 max-w-3xl mx-auto">
-                <h1 className="text-2xl font-bold mb-4">Welcome</h1>
-                <p>You’re signed in, but you haven’t created your artist profile yet.</p>
-                <p>
-                    Go to <Link href="/auth/sign-up" className="underline">Sign up</Link> to set your artist name.
-                </p>
-            </main>
+            <FanDashboard
+                displayName={profile.display_name ?? user.email ?? "Fan"}
+                orders={(orders ?? []) as FanOrder[]}
+                balance={balance as MerchCreditBalance | null}
+                balanceUnavailable={Boolean(balanceError)}
+                creditLedger={(creditLedger ?? []) as MerchCreditLedgerRow[]}
+                creditReservations={(creditReservations ?? []) as MerchCreditReservationRow[]}
+            />
         );
     }
 
@@ -126,249 +224,146 @@ export default async function DashboardPage() {
             return sum + (row.qty ?? 0) * cut;
         }, 0) ?? 0;
 
-    if (!artist) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                {/* angled strip */}
-                <div className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                WELCOME // ARTIST SETUP
-                            </h1>
-                            <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">
-                                LIMITED ACCESS
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8">
-                        <h2 className="text-xl md:text-2xl font-black">Create your artist profile</h2>
-                        <p className="mt-2 text-neutral-400">
-                            You’re signed in, but you haven’t created your artist profile yet.
-                        </p>
-                        <p className="mt-1 text-neutral-400">
-                            Set your display name to unlock the dashboard.
-                        </p>
-                        <div className="mt-6 flex gap-3">
-                            <Button asChild>
-                                <Link href="/auth/sign-up">Start setup</Link>
-                            </Button>
-                            <Button asChild variant="secondary">
-                                <Link href="/">Back to site</Link>
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* sticker strip */}
-                    <div className="mt-8 flex flex-wrap gap-2">
-                        {["HAND-NUMBERED", "DIY FOREVER", "WORLD TOUR", "SCREENPRINTED"].map(
-                            (s, i) => (
-                                <span
-                                    key={s}
-                                    className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border ${i % 2
-                                        ? "bg-white text-neutral-900 border-neutral-200 rotate-2"
-                                        : "bg-neutral-900 text-white border-neutral-800 -rotate-2"
-                                        }`}
-                                >
-                                    {s}
-                                </span>
-                            )
-                        )}
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    // Artist exists → main dashboard
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* angled “dashboard” banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">
-                                Artist Dashboard
-                            </p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                {artist.display_name} // CONTROL ROOM
-                            </h1>
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 bg-black">
+                <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
+                            Artist backstage
+                        </p>
+                        <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            {artist.display_name} control room.
+                        </h1>
+                        <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-400 md:text-base">
+                            Launch products, watch sales, manage payout readiness, and keep the boring operational
+                            pieces close enough that nothing gets missed.
+                        </p>
+                        <div className="mt-7 flex flex-wrap gap-3">
+                            <Link
+                                href="/dashboard/products/designer"
+                                className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                            >
+                                Open designer
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                            <Link
+                                href="/dashboard/sales"
+                                className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black hover:border-red-500"
+                            >
+                                Review sales
+                            </Link>
                         </div>
-                        <span className="text-xs bg-red-600 text-white px-2 py-1 rounded rotate-[2deg]">
-                            LIVE
-                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 border-b border-neutral-800 lg:border-b-0 lg:grid-cols-1">
+                        <StatCard
+                            label="Live products"
+                            value={String(liveCount)}
+                            sub={liveCount === 0 ? "Add your first drop" : `${liveCount} live ${liveCount === 1 ? "item" : "items"}`}
+                            icon={<Package className="h-5 w-5" />}
+                        />
+                        <StatCard
+                            label="Sales this week"
+                            value={fmtMoney(profit7dCents, "AUD")}
+                            sub={units7d === 0 ? "No sales yet" : `${units7d} ${units7d === 1 ? "unit" : "units"}`}
+                            icon={<BadgePercent className="h-5 w-5" />}
+                        />
+                        <StatCard
+                            label="Payout ready"
+                            value={fmtMoney(unpaidCents, "AUD")}
+                            sub={unpaidItems === 0 ? "Connect sales first" : `${unpaidItems} unpaid ${unpaidItems === 1 ? "item" : "items"}`}
+                            icon={<DollarSign className="h-5 w-5" />}
+                        />
                     </div>
                 </div>
             </section>
 
-            {/* quick actions */}
-            <section className="max-w-5xl mx-auto px-4 py-8">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <section className="border-b border-neutral-800">
+                <div className="grid md:grid-cols-2 xl:grid-cols-4">
                     <ActionCard
-                        href="/dashboard/products/new"
-                        title="Add product"
-                        icon={<Plus className="h-4 w-4" />}
-                        pill="FRESH DROP"
+                        href="/dashboard/products/designer"
+                        title="Design product"
+                        body="Use the product designer to create mockups and save production-ready design data."
+                        icon={<PenTool className="h-6 w-6" />}
+                        pill="Best next move"
                     />
                     <ActionCard
                         href="/dashboard/products"
-                        title="My products"
-                        icon={<Shirt className="h-4 w-4" />}
-                        pill="ALL PRODUCTS"
+                        title="Product floor"
+                        body="Review live, draft, and manual products before fans see the next drop."
+                        icon={<Shirt className="h-6 w-6" />}
+                        pill="Inventory"
                     />
                     <ActionCard
                         href="/dashboard/sales"
-                        title="My sales"
-                        icon={<ShoppingCart className="h-4 w-4" />}
-                        pill="ALL SALES"
+                        title="Orders and sales"
+                        body="Track what sold, what fans paid, and what needs operational attention."
+                        icon={<ShoppingCart className="h-6 w-6" />}
+                        pill="Revenue"
                     />
                     <ActionCard
                         href="/dashboard/cash-out"
-                        title="Cash Out"
-                        icon={<DollarSign className="h-4 w-4" />}
-                        pill="GET YOUR DOLLAR BUCKS"
+                        title="Payouts"
+                        body="Connect Stripe, review unpaid sales, and request artist cash-outs."
+                        icon={<DollarSign className="h-6 w-6" />}
+                        pill="Money"
                     />
                     <ActionCard
-                        href="/dashboard/images"
-                        title="Images"
-                        icon={<Image className="h-4 w-4" />}
-                        pill="YOUR GRAPHICS"
-                    />
-                    <ActionCard
-                        href="/dashboard/artist"
-                        title="Artist profile"
-                        icon={<BadgePercent className="h-4 w-4" />}
-                        pill="HERO IMAGE"
+                        href="/dashboard/account"
+                        title="Account controls"
+                        body="Change email, set a password, reset sessions, or request account closure."
+                        icon={<Settings className="h-6 w-6" />}
+                        pill="Security"
                     />
                 </div>
             </section>
 
-            {/* stats + links */}
-            <section className="max-w-5xl mx-auto px-4 pb-10 space-y-6">
-                <div className="grid md:grid-cols-3 gap-4">
-                    {/* <StatCard
-                        label="Live products"
-                        value="—"
-                        sub="Add your first drop"
-                        icon={<Package className="h-4 w-4" />}
-                    />
-                    <StatCard
-                        label="Sales (7d)"
-                        value="—"
-                        sub="No sales yet"
-                        icon={<BadgePercent className="h-4 w-4" />}
-                    />
-                    <StatCard
-                        label="Payout ready"
-                        value="—"
-                        sub="Connect sales first"
-                        icon={<DollarSign className="h-4 w-4" />}
-                    /> */}
-                    <StatCard
-                        label="Live products"
-                        value={String(liveCount)}
-                        sub={liveCount === 0 ? "Add your first drop" : `${liveCount} live ${liveCount === 1 ? "item" : "items"}`}
-                        icon={<Package className="h-4 w-4" />}
-                    />
-                    <StatCard
-                        label="Sales (7d)"
-                        value={fmtMoney(profit7dCents, "AUD")}
-                        sub={units7d === 0 ? "No sales yet" : `${units7d} ${units7d === 1 ? "unit" : "units"}`}
-                        icon={<BadgePercent className="h-4 w-4" />}
-                    />
-                    <StatCard
-                        label="Payout ready"
-                        value={fmtMoney(unpaidCents, "AUD")}
-                        sub={unpaidItems === 0 ? "Connect sales first" : `${unpaidItems} unpaid ${unpaidItems === 1 ? "item" : "items"}`}
-                        icon={<DollarSign className="h-4 w-4" />}
-                    />
-                </div>
-
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 md:p-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg md:text-xl font-black">Next steps</h2>
-                        <span className="text-[11px] bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded-full">
-                            Checklist
-                        </span>
+            <section className="border-b border-neutral-800 bg-neutral-950">
+                <div className="grid lg:grid-cols-[0.75fr_1.25fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            Next best actions
+                        </p>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-5xl">
+                            Keep the drop moving.
+                        </h2>
+                        <p className="mt-4 text-sm leading-6 text-neutral-400">
+                            This is the short list for avoiding surprises: product, orders, payout, profile.
+                        </p>
                     </div>
-                    <ul className="mt-4 grid md:grid-cols-2 gap-2 text-sm">
-                        <li className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
-                            <span className="text-neutral-300">Create your next product</span>
-                            <Link
-                                href="/dashboard/products/new"
-                                className="inline-flex items-center text-neutral-200 hover:text-white"
-                            >
-                                Start <ChevronRight className="h-4 w-4 ml-1" />
-                            </Link>
-                        </li>
-                        <li className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
-                            <span className="text-neutral-300">Review sales</span>
-                            <Link
-                                href="/dashboard/sales"
-                                className="inline-flex items-center text-neutral-200 hover:text-white"
-                            >
-                                View <ChevronRight className="h-4 w-4 ml-1" />
-                            </Link>
-                        </li>
-                        <li className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
-                            <span className="text-neutral-300">Request a payout</span>
-                            <Link
-                                href="/dashboard/cash-out"
-                                className="inline-flex items-center text-neutral-200 hover:text-white"
-                            >
-                                Go <ChevronRight className="h-4 w-4 ml-1" />
-                            </Link>
-                        </li>
-                        <li className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
-                            <span className="text-neutral-300">See payout history</span>
-                            <Link
-                                href="/dashboard/cash-outs"
-                                className="inline-flex items-center text-neutral-200 hover:text-white"
-                            >
-                                Open <ChevronRight className="h-4 w-4 ml-1" />
-                            </Link>
-                        </li>
-                    </ul>
+                    <div className="grid md:grid-cols-2">
+                        <ChecklistItem href="/dashboard/products/designer" title="Create the next product" body="Open the designer and launch from saved design data." icon={<Sparkles className="h-5 w-5" />} />
+                        <ChecklistItem href="/dashboard/products/new" title="Add a manual product" body="Keep the original creator for stock or imported merch." icon={<Plus className="h-5 w-5" />} />
+                        <ChecklistItem href="/dashboard/cash-outs" title="Review payout history" body="Audit what has already been requested or transferred." icon={<Receipt className="h-5 w-5" />} />
+                        <ChecklistItem href="/dashboard/artist" title="Tune artist profile" body="Update image, name, and storefront presentation." icon={<UserRound className="h-5 w-5" />} />
+                        <ChecklistItem href="/dashboard/images" title="Manage artwork" body="Check product image outputs and mockup assets." icon={<ImageIcon className="h-5 w-5" />} />
+                        <ChecklistItem href="/dashboard/sales" title="Check fulfilment pressure" body="Review recent orders before they become support tickets." icon={<ClipboardCheck className="h-5 w-5" />} />
+                        <ChecklistItem href="/dashboard/account" title="Secure account access" body="Manage email, password, sessions, and closure requests." icon={<Settings className="h-5 w-5" />} />
+                    </div>
                 </div>
             </section>
 
-            {/* tiny promo rail */}
-            <section className="relative py-0">
-                <div className="-skew-y-1 bg-neutral-100 text-neutral-900 border-y border-neutral-200">
-                    <div className="skew-y-1 max-w-5xl mx-auto px-4 py-6 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+            <section className="border-b border-neutral-800 bg-red-600 text-white">
+                <div className="grid lg:grid-cols-[1fr_auto]">
+                    <div className="border-b border-black/20 p-5 md:p-7 lg:border-b-0 lg:border-r">
+                        <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-black">
                             <Megaphone className="h-4 w-4" />
-                            <p className="text-sm font-medium">
-                                Tip: Great designs sell tees — use high-quality graphics for your products!
-                            </p>
-                        </div>
-                        <Button asChild size="sm">
-                            <Link href="/dashboard/products/new">Add product</Link>
-                        </Button>
+                            Backstage note
+                        </p>
+                        <h2 className="mt-3 max-w-4xl text-3xl font-black uppercase leading-none md:text-5xl">
+                            Great drops need clean artwork and boring follow-through.
+                        </h2>
                     </div>
-                </div>
-            </section>
-
-            {/* sticker strip */}
-            <section className="max-w-5xl mx-auto px-4 py-6">
-                <div className="flex flex-wrap gap-2">
-                    {["MERCH TENT", "LOCAL", "FANS", "GIGS"].map(
-                        (s, i) => (
-                            <span
-                                key={s}
-                                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border ${i % 2
-                                    ? "bg-white text-neutral-900 border-neutral-200 rotate-1"
-                                    : "bg-neutral-900 text-white border-neutral-800 -rotate-1"
-                                    }`}
-                            >
-                                {s}
-                            </span>
-                        )
-                    )}
+                    <div className="flex items-center p-5 md:p-7">
+                        <Link
+                            href="/dashboard/products/designer"
+                            className="inline-flex items-center gap-2 bg-black px-5 py-3 text-sm font-black text-white hover:bg-neutral-900"
+                        >
+                            Start a product
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </div>
                 </div>
             </section>
         </main>
@@ -377,36 +372,370 @@ export default async function DashboardPage() {
 
 /* ---------- UI Bits ---------- */
 
+function FanDashboard({
+    displayName,
+    orders,
+    balance,
+    balanceUnavailable,
+    creditLedger,
+    creditReservations,
+}: {
+    displayName: string;
+    orders: FanOrder[];
+    balance: MerchCreditBalance | null;
+    balanceUnavailable: boolean;
+    creditLedger: MerchCreditLedgerRow[];
+    creditReservations: MerchCreditReservationRow[];
+}) {
+    const points = balance?.points_balance ?? 0;
+    const lifetimePoints = balance?.lifetime_points ?? 0;
+    const freeTeeProgress = Math.min(points, 20);
+    const creditValue = balanceUnavailable ? "Unavailable" : `${points} pts`;
+    const creditSub = balanceUnavailable
+        ? "Credit balance could not be loaded right now"
+        : `${freeTeeProgress}/20 toward a free tee`;
+
+    const fmtMoney = (cents: number, currency = "AUD") =>
+        new Intl.NumberFormat("en-AU", { style: "currency", currency }).format((cents || 0) / 100);
+
+    return (
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 bg-black">
+                <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
+                            Fan backstage
+                        </p>
+                        <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            {displayName} merch HQ.
+                        </h1>
+                        <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-400 md:text-base">
+                            Track orders, watch credits build, and keep close to the artists you backed early.
+                        </p>
+                        <div className="mt-7 flex flex-wrap gap-3">
+                            <Link
+                                href="/new"
+                                className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                            >
+                                Shop new drops
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                            <Link
+                                href="/artists"
+                                className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black hover:border-red-500"
+                            >
+                                Browse artists
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 border-b border-neutral-800 lg:border-b-0 lg:grid-cols-1">
+                        <StatCard
+                            label="Merch credits"
+                            value={creditValue}
+                            sub={creditSub}
+                            icon={<Gift className="h-5 w-5" />}
+                        />
+                        <StatCard
+                            label="Lifetime points"
+                            value={`${lifetimePoints} pts`}
+                            sub="Earn 3 points per tee"
+                            icon={<BadgePercent className="h-5 w-5" />}
+                        />
+                        <StatCard
+                            label="Recent orders"
+                            value={String(orders.length)}
+                            sub={orders.length ? "Purchases on file" : "No orders yet"}
+                            icon={<Receipt className="h-5 w-5" />}
+                        />
+                    </div>
+                </div>
+            </section>
+
+            <section className="border-b border-neutral-800">
+                <div className="grid lg:grid-cols-[1.25fr_0.75fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                                    Order history
+                                </p>
+                                <h2 className="mt-2 text-4xl font-black uppercase leading-none">
+                                    Recent purchases.
+                                </h2>
+                            </div>
+                            <Link href="/orders" className="text-sm font-black text-red-400 hover:text-red-300">
+                            View all
+                        </Link>
+                        </div>
+                        {!orders.length ? (
+                            <div className="mt-6 border border-neutral-800 bg-neutral-950 p-6">
+                                <p className="text-sm text-neutral-400">
+                                    No orders yet. Find a new favourite artist and start earning credits.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="mt-6 border border-neutral-800">
+                                {orders.map((order) => (
+                                    <Link
+                                        key={order.id}
+                                        href={`/orders/${order.id}`}
+                                        className="grid gap-3 border-b border-neutral-800 bg-neutral-950 p-4 last:border-b-0 md:grid-cols-[1fr_auto]"
+                                    >
+                                        <div>
+                                            <p className="font-black">Order {order.id.slice(0, 8)}</p>
+                                            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-neutral-500">
+                                                {new Date(order.created_at).toLocaleDateString("en-AU")}
+                                            </p>
+                                        </div>
+                                        <div className="text-left md:text-right">
+                                            <p className="font-black">
+                                                {fmtMoney(order.total_cents ?? 0, order.currency ?? "AUD")}
+                                            </p>
+                                            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-red-400">
+                                                {order.status ?? "paid"}
+                                            </p>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-neutral-950 p-5 md:p-8">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            Merch credits
+                        </p>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none">
+                            Back bands. Earn tees.
+                        </h2>
+                        <div className="mt-6 h-3 overflow-hidden bg-neutral-800">
+                            <div
+                                className="h-full bg-red-600"
+                                style={{ width: `${balanceUnavailable ? 0 : (freeTeeProgress / 20) * 100}%` }}
+                            />
+                        </div>
+                        <p className="mt-4 text-sm leading-6 text-neutral-400">
+                            {balanceUnavailable
+                                ? "Your orders are available, but the credit balance could not be loaded right now."
+                                : "Earn 3 points for every tee purchased. Every 20 points can be reserved at checkout for a free tee discount."}
+                        </p>
+                        <Button asChild className="mt-5 w-full bg-red-600 hover:bg-red-500">
+                            <Link href="/artists">Browse artists</Link>
+                        </Button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="merch-credits" className="border-b border-neutral-800 bg-black">
+                <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            Credit ledger
+                        </p>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none">
+                            Every point accounted for.
+                        </h2>
+                        <div className="mt-6 border border-neutral-800 bg-neutral-950">
+                            {creditLedger.length ? (
+                                creditLedger.map((entry) => (
+                                    <div key={entry.id} className="grid gap-3 border-b border-neutral-800 p-4 last:border-b-0 md:grid-cols-[auto_1fr_auto] md:items-center">
+                                        <p className={`text-2xl font-black ${Number(entry.points ?? 0) >= 0 ? "text-green-300" : "text-red-300"}`}>
+                                            {Number(entry.points ?? 0) >= 0 ? "+" : ""}{entry.points ?? 0}
+                                        </p>
+                                        <div>
+                                            <p className="font-black uppercase">{entry.reason?.replaceAll("_", " ") ?? "Credit movement"}</p>
+                                            <p className="mt-1 text-sm text-neutral-400">{entry.description ?? "Merch credit account update"}</p>
+                                        </div>
+                                        <p className="text-xs uppercase text-neutral-500">
+                                            {new Date(entry.created_at).toLocaleDateString("en-AU")}
+                                        </p>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="p-5 text-sm text-neutral-400">No credit ledger entries yet.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-neutral-950 p-5 md:p-8">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            Reward reservations
+                        </p>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none">
+                            Redemption history.
+                        </h2>
+                        <div className="mt-6 space-y-3">
+                            {creditReservations.length ? (
+                                creditReservations.map((reservation) => (
+                                    <div key={reservation.id} className="border border-neutral-800 bg-black p-4">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <p className="font-black uppercase">
+                                                    {reservation.points ?? 0} points reserved
+                                                </p>
+                                                <p className="mt-1 text-xs uppercase text-neutral-500">
+                                                    {reservation.status ?? "pending"}
+                                                </p>
+                                            </div>
+                                            <p className="font-black text-red-400">
+                                                {fmtMoney(reservation.discount_cents ?? 0, reservation.currency ?? "AUD")}
+                                            </p>
+                                        </div>
+                                        {reservation.expires_at ? (
+                                            <p className="mt-3 text-xs text-neutral-500">
+                                                Expires {new Date(reservation.expires_at).toLocaleString("en-AU")}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="border border-neutral-800 bg-black p-5 text-sm text-neutral-400">
+                                    No reward reservations yet.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="saved-scene" className="border-b border-neutral-800 bg-neutral-950">
+                <div className="grid md:grid-cols-2 xl:grid-cols-4">
+                    <FanAccountCard
+                        title="Saved artists"
+                        body="Wishlist and saved-scene tracking belongs here once favourite buttons are wired across artist and product pages."
+                        action="Browse artists"
+                        href="/artists"
+                    />
+                    <FanAccountCard
+                        title="Wishlist"
+                        body="A fan should be able to hold drops for later, especially before payday or show night."
+                        action="Shop new drops"
+                        href="/new"
+                    />
+                    <FanAccountCard
+                        title="Addresses"
+                        body="Saved shipping addresses should be added before repeat customer volume grows."
+                        action="Use checkout"
+                        href="/checkout"
+                    />
+                    <FanAccountCard
+                        title="Help and preferences"
+                        body="Returns, notification choices, and support should be reachable from the fan account."
+                        action="Contact support"
+                        href="/contact"
+                    />
+                </div>
+            </section>
+
+            <section className="border-b border-neutral-800 bg-neutral-950 p-5 md:p-8">
+                <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            Account controls
+                        </p>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none">
+                            Keep your login clean.
+                        </h2>
+                        <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-400">
+                            Change email, set a password, reset active sessions, or request account closure.
+                        </p>
+                    </div>
+                    <Link
+                        href="/dashboard/account"
+                        className="inline-flex items-center justify-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black text-white hover:border-red-500"
+                    >
+                        Open account settings
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+            </section>
+        </main>
+    );
+}
+
+function FanAccountCard({
+    title,
+    body,
+    action,
+    href,
+}: {
+    title: string;
+    body: string;
+    action: string;
+    href: string;
+}) {
+    return (
+        <div className="border-b border-r border-neutral-800 p-5 md:p-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">{title}</p>
+            <p className="mt-4 min-h-[4.5rem] text-sm leading-6 text-neutral-400">{body}</p>
+            <Link href={href} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-white hover:text-red-300">
+                {action}
+                <ArrowRight className="h-4 w-4" />
+            </Link>
+        </div>
+    );
+}
+
 function ActionCard({
     href,
     title,
+    body,
     icon,
     pill,
 }: {
     href: string;
     title: string;
+    body: string;
     icon: React.ReactNode;
     pill?: string;
 }) {
     return (
         <Link
             href={href}
-            className="group block rounded-2xl border border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition-colors"
-            style={{ clipPath: "polygon(0% 0,100% 0,100% 100%,0 100%)" }}
+            className="group block min-h-[270px] border-b border-r border-neutral-800 bg-neutral-950 p-5 transition hover:bg-neutral-900 md:p-6"
         >
-            <Card className="bg-transparent border-none">
-                <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm text-neutral-300">{title}</span>
-                        <span className="text-neutral-200">{icon}</span>
+            <div className="flex h-full flex-col justify-between">
+                <div>
+                    <div className="flex items-center justify-between gap-4">
+                        {pill && (
+                            <span className="bg-red-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white">
+                                {pill}
+                            </span>
+                        )}
+                        <span className="text-red-400">{icon}</span>
                     </div>
-                    {pill && (
-                        <div className="mt-3 -rotate-2 inline-block text-[10px] font-black tracking-wide bg-red-600 text-white px-2 py-1 rounded">
-                            {pill}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                    <h3 className="mt-8 text-3xl font-black uppercase leading-none">{title}</h3>
+                    <p className="mt-4 text-sm leading-6 text-neutral-400">{body}</p>
+                </div>
+                <span className="mt-8 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-red-400">
+                    Open
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                </span>
+            </div>
+        </Link>
+    );
+}
+
+function ChecklistItem({
+    href,
+    title,
+    body,
+    icon,
+}: {
+    href: string;
+    title: string;
+    body: string;
+    icon: React.ReactNode;
+}) {
+    return (
+        <Link href={href} className="group border-b border-r border-neutral-800 bg-black p-5 transition hover:bg-neutral-950">
+            <div className="flex items-start justify-between gap-4">
+                <div className="text-red-400">{icon}</div>
+                <ArrowRight className="h-4 w-4 text-neutral-600 transition group-hover:translate-x-1 group-hover:text-red-400" />
+            </div>
+            <h3 className="mt-7 text-xl font-black uppercase leading-none">{title}</h3>
+            <p className="mt-3 text-sm leading-6 text-neutral-400">{body}</p>
         </Link>
     );
 }
@@ -423,13 +752,13 @@ function StatCard({
     icon?: React.ReactNode;
 }) {
     return (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 md:p-6">
-            <div className="flex items-center justify-between">
-                <p className="text-sm text-neutral-400">{label}</p>
-                {icon && <div className="text-neutral-300">{icon}</div>}
+        <div className="border-b border-r border-neutral-800 bg-neutral-950 p-4 md:p-6">
+            <div className="flex items-center justify-between gap-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</p>
+                {icon && <div className="text-red-400">{icon}</div>}
             </div>
-            <p className="mt-2 text-2xl font-black">{value}</p>
-            {sub && <p className="mt-1 text-xs text-neutral-500">{sub}</p>}
+            <p className="mt-5 text-2xl font-black md:text-4xl">{value}</p>
+            {sub && <p className="mt-2 text-xs leading-5 text-neutral-500">{sub}</p>}
         </div>
     );
 }

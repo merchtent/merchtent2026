@@ -52,13 +52,8 @@ function ensureSkuLike(item: Omit<CartItem, "qty">): string | null {
 }
 
 export default function CartProvider({ children }: { children: React.ReactNode }) {
-    const [state, setState] = useState<CartState>({ items: [] });
+    const [state, setState] = useState<CartState>(() => loadCart());
     const [isOpen, setOpen] = useState(false);
-
-    // init from localStorage
-    useEffect(() => {
-        setState(loadCart());
-    }, []);
 
     // persist to localStorage
     useEffect(() => {

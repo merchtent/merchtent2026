@@ -1,20 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Image from "next/image";
 import Stars from "./Stars";
+import { publicImageUrl, publicStorageUrl } from "@/lib/storage";
 
-type Review = any;
+type JoinedArtist = {
+    display_name?: string | null;
+    hero_image_path?: string | null;
+};
 
-function artistImage(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${path}`;
-}
+type JoinedProduct = {
+    title?: string | null;
+    product_images?: Array<{ path?: string | null }> | null;
+};
 
-function productImage(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
-}
+type Review = {
+    id: string;
+    name?: string | null;
+    rating?: number | null;
+    text?: string | null;
+    artist?: JoinedArtist | JoinedArtist[] | null;
+    product?: JoinedProduct | JoinedProduct[] | null;
+};
 
 export default function ProductReviews({ productId }: { productId: string }) {
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -79,17 +87,15 @@ export default function ProductReviews({ productId }: { productId: string }) {
             {!loading && (
                 <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto pb-2">
 
-                    {reviews.map((r: any, i) => {
+                    {reviews.map((r, i) => {
                         const artistObj = Array.isArray(r.artist) ? r.artist[0] : r.artist;
                         const productObj = Array.isArray(r.product) ? r.product[0] : r.product;
 
-                        const artistAvatar = artistImage(artistObj?.hero_image_path);
+                        const artistAvatar = publicStorageUrl("artist-images", artistObj?.hero_image_path);
 
                         const productImagePath = productObj?.product_images?.[0]?.path;
 
-                        const productAvatar = productImagePath
-                            ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${productImagePath}`
-                            : null;
+                        const productAvatar = publicImageUrl(productImagePath);
 
                         return (
                             <div
@@ -106,8 +112,11 @@ export default function ProductReviews({ productId }: { productId: string }) {
                                 {/* 🔥 PARALLAX PRODUCT IMAGE */}
                                 <div className="absolute inset-0 overflow-hidden rounded-2xl opacity-20 pointer-events-none">
                                     {productAvatar && (
-                                        <img
+                                        <Image
                                             src={productAvatar}
+                                            alt=""
+                                            fill
+                                            sizes="(min-width: 768px) 33vw, 260px"
                                             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-1"
                                         />
                                     )}
@@ -122,8 +131,11 @@ export default function ProductReviews({ productId }: { productId: string }) {
                                         {/* ARTIST */}
                                         <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral-700">
                                             {artistAvatar && (
-                                                <img
+                                                <Image
                                                     src={artistAvatar}
+                                                    alt={artistObj?.display_name ?? ""}
+                                                    width={40}
+                                                    height={40}
                                                     className="w-full h-full object-cover"
                                                 />
                                             )}
@@ -132,8 +144,11 @@ export default function ProductReviews({ productId }: { productId: string }) {
                                         {/* PRODUCT */}
                                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-800">
                                             {productAvatar && (
-                                                <img
+                                                <Image
                                                     src={productAvatar}
+                                                    alt={productObj?.title ?? ""}
+                                                    width={40}
+                                                    height={40}
                                                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                 />
                                             )}

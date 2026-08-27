@@ -1,8 +1,18 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Plus, ExternalLink, Star } from "lucide-react";
 
 import { getServerSupabase } from "@/lib/supabase/server";
+import { publicStorageUrl } from "@/lib/storage";
 import ArtistToggleButtons from "@/components/admin/ArtistToggleButtons";
+
+type ArtistOrderItem = {
+    title?: string | null;
+    unit_price_cents?: number | null;
+    qty?: number | null;
+    artist_cut_cents?: number | null;
+    cashed_out?: boolean | null;
+};
 
 export default async function ArtistsPage() {
     const supabase = getServerSupabase();
@@ -43,28 +53,6 @@ export default async function ArtistsPage() {
             </div>
         );
     }
-
-    const togglePublic = async (id: string) => {
-        await fetch(
-            `/api/admin/artists/${id}/toggle-public`,
-            {
-                method: "POST",
-            }
-        );
-
-        window.location.reload();
-    };
-
-    const toggleFeatured = async (id: string) => {
-        await fetch(
-            `/api/admin/artists/${id}/toggle-featured`,
-            {
-                method: "POST",
-            }
-        );
-
-        window.location.reload();
-    };
 
     return (
         <div className="space-y-8 px-6 py-6">
@@ -156,9 +144,7 @@ export default async function ArtistsPage() {
 
                     const image =
                         artist.hero_image_path
-                            ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${encodeURIComponent(
-                                artist.hero_image_path
-                            )}`
+                            ? publicStorageUrl("artist-images", artist.hero_image_path)
                             : null;
 
                     const productCount =
@@ -169,7 +155,7 @@ export default async function ArtistsPage() {
 
                     const revenue =
                         artist.order_items?.reduce(
-                            (sum: number, item: any) =>
+                            (sum: number, item: ArtistOrderItem) =>
                                 item.title?.toLowerCase().includes("shipping")
                                     ? sum
                                     : sum + ((item.unit_price_cents ?? 0) * (item.qty ?? 0)),
@@ -178,17 +164,17 @@ export default async function ArtistsPage() {
 
                     const artistEarnings =
                         artist.order_items?.reduce(
-                            (sum: number, item: any) =>
-                                sum + (item.artist_cut_cents * item.qty),
+                            (sum: number, item: ArtistOrderItem) =>
+                                sum + ((item.artist_cut_cents ?? 0) * (item.qty ?? 0)),
                             0
                         ) ?? 0;
 
                     const unpaidPayouts =
                         artist.order_items?.reduce(
-                            (sum: number, item: any) =>
+                            (sum: number, item: ArtistOrderItem) =>
                                 sum +
                                 (!item.cashed_out
-                                    ? item.artist_cut_cents * item.qty
+                                    ? (item.artist_cut_cents ?? 0) * (item.qty ?? 0)
                                     : 0),
                             0
                         ) ?? 0;
@@ -210,12 +196,12 @@ export default async function ArtistsPage() {
                             <div className="relative aspect-[16/8] bg-neutral-800">
 
                                 {image ? (
-                                    <img
+                                    <Image
                                         src={image}
                                         alt={artist.display_name}
+                                        fill
+                                        sizes="(max-width:768px) 100vw, (max-width:1280px) 50vw, 33vw"
                                         className="
-                                            w-full
-                                            h-full
                                             object-cover
                                         "
                                     />
@@ -370,8 +356,9 @@ export default async function ArtistsPage() {
                                     </Link>
 
                                     <Link
-                                        href={`/${artist.slug}`}
+                                        href={`/artists/${artist.slug}`}
                                         target="_blank"
+                                        rel="noopener noreferrer"
                                         className="
                                             inline-flex
                                             items-center

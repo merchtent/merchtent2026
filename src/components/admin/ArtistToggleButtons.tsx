@@ -82,8 +82,8 @@ export default function ArtistToggleButtons({
                         ? "cursor-not-allowed opacity-50"
                         : "cursor-pointer"
                     }
-        ${isPublic
-                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
+        ${featured
+                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
                         : "bg-neutral-800 text-neutral-400 border border-neutral-700"
                     }
     `}

@@ -1,20 +1,36 @@
-import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import Image from "next/image";
 import ArtistProductsGrid from "./ArtistProductsGrid";
 import TourSection from "@/components/TourSection";
 import ArtistReviews from "@/components/ArtistReviews";
+import { publicImageUrl, publicStorageUrl } from "@/lib/storage";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
 
 export const revalidate = 60;
 
-function artistImage(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${path}`;
-}
+type ProductImageRow = {
+    path: string | null;
+    sort_order: number | null;
+};
 
-function productImage(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
-}
+type ProductColorRow = {
+    hex: string | null;
+    label: string | null;
+    sort_order: number | null;
+    front_image_path: string | null;
+    back_image_path: string | null;
+};
+
+type ProductRow = {
+    id: string;
+    title: string | null;
+    price_cents: number | null;
+    slug: string | null;
+    created_at: string | null;
+    product_images: ProductImageRow[] | null;
+    product_colors: ProductColorRow[] | null;
+};
 
 export default async function ArtistPage({
     params,
@@ -23,11 +39,7 @@ export default async function ArtistPage({
 }) {
     const { id } = await params;
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } }
-    );
+    const supabase = getPublicServerSupabase();
 
     // 🔥 GET ARTIST
     const { data: artist } = await supabase
@@ -44,10 +56,10 @@ export default async function ArtistPage({
         );
     }
 
-    const heroUrl = artistImage(artist.hero_image_path);
+    const heroUrl = publicStorageUrl("artist-images", artist.hero_image_path);
 
     // 🔥 GET PRODUCTS
-    const { data: productData } = await supabase
+    const { data: productData } = await publicCatalogProductQuery(supabase
         .from("products")
         .select(`
             id,
@@ -58,52 +70,47 @@ export default async function ArtistPage({
             product_images ( path, sort_order ),
             product_colors ( hex, label, sort_order, front_image_path, back_image_path )
         `)
+    )
         .eq("artist_id", artist.id)
-        .eq("is_published", true)
         .order("created_at", { ascending: false });
 
     const products =
-        (productData ?? []).map((p: any) => {
+        ((productData ?? []) as ProductRow[]).map((p) => {
             const imgs = (p.product_images ?? []).sort(
-                (a: any, b: any) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
+                (a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
             );
 
             const primary =
-                productImage(imgs[0]?.path) ??
-                "https://picsum.photos/seed/fallback/900/1200";
+                publicImageUrl(imgs[0]?.path) ??
+                "/merch-placeholder.svg";
 
             const hover =
-                productImage(imgs[1]?.path) ??
+                publicImageUrl(imgs[1]?.path) ??
                 primary;
 
-            const colors = (p.product_colors ?? []).map((c: any) => ({
-                hex: c.hex,
-                label: c.label,
+            const colors = (p.product_colors ?? []).map((c) => ({
+                hex: c.hex ?? "#111111",
+                label: c.label ?? "Default",
                 front: c.front_image_path
-                    ? productImage(c.front_image_path)
+                    ? publicImageUrl(c.front_image_path)
                     : primary,
                 back: c.back_image_path
-                    ? productImage(c.back_image_path)
+                    ? publicImageUrl(c.back_image_path)
                     : hover,
             }));
 
             return {
                 id: String(p.id),
-                title: p.title,
+                title: p.title ?? "Untitled product",
                 price: (p.price_cents ?? 0) / 100,
                 image: primary,
                 hover,
-                slug: p.slug,
+                slug: p.slug ?? p.id,
                 colors,
                 sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-                created_at: p.created_at,
+                created_at: p.created_at ?? undefined,
             };
         }) ?? [];
-
-    function artistImage(path?: string | null) {
-        if (!path) return null;
-        return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${path}`;
-    }
 
     // 🔥 TOUR DATES
     const today = new Date().toISOString();
@@ -139,9 +146,12 @@ export default async function ArtistPage({
             <section className="relative h-[60vh] min-h-[420px] w-full overflow-hidden">
 
                 {heroUrl && (
-                    <img
+                    <Image
                         src={heroUrl}
                         alt={artist.display_name}
+                        fill
+                        sizes="100vw"
+                        priority
                         className="absolute inset-0 w-full h-full object-cover"
                     />
                 )}
@@ -194,11 +204,15 @@ export default async function ArtistPage({
 
                     {/* IMAGE */}
                     <div className="relative h-36 md:h-full">
-                        <img
-                            src={products[0]?.image}
-                            alt={products[0]?.title}
-                            className="w-full h-full object-cover"
-                        />
+                        {products[0]?.image ? (
+                            <Image
+                                src={products[0].image}
+                                alt={products[0].title}
+                                fill
+                                sizes="(min-width: 768px) 180px, 100vw"
+                                className="object-cover"
+                            />
+                        ) : null}
                     </div>
 
                     {/* CONTENT */}
@@ -273,7 +287,7 @@ export default async function ArtistPage({
                     <div className="grid md:grid-cols-3 gap-4">
                         {journals.map((j) => {
                             const artistObj = Array.isArray(j.artist) ? j.artist[0] : j.artist;
-                            const avatar = artistImage(artistObj?.hero_image_path);
+                            const avatar = publicStorageUrl("artist-images", artistObj?.hero_image_path);
                             return (
                                 <Link
                                     key={j.id}
@@ -282,9 +296,11 @@ export default async function ArtistPage({
                                 >
                                     <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral-700 flex items-center justify-center text-xs font-bold">
                                         {avatar ? (
-                                            <img
+                                            <Image
                                                 src={avatar}
                                                 alt={artistObj?.display_name}
+                                                width={40}
+                                                height={40}
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (

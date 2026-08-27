@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,34 +82,6 @@ function ColorSwatches({
     );
 }
 
-/* PDP-style colour pill */
-function ColorBox({
-    hex,
-    label,
-    active,
-    onClick,
-}: {
-    hex: string;
-    label?: string | null;
-    active?: boolean;
-    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs transition
-        ${active ? "border-red-500 bg-red-500/10" : "border-neutral-800"}`}
-        >
-            <span
-                className="h-4 w-4 rounded-full border border-neutral-900/40"
-                style={{ backgroundColor: hex }}
-            />
-            <span className="truncate max-w-[90px]">{label ?? hex ?? "Colour"}</span>
-        </button>
-    );
-}
-
 export function ProductCard({
     p,
     theme = "dark",
@@ -120,6 +93,7 @@ export function ProductCard({
     clipped?: boolean;
     sizeTone?: "light" | "dark";
 }) {
+    const router = useRouter();
     const cardClass =
         theme === "light"
             ? "overflow-hidden bg-white text-neutral-900 border-neutral-200"
@@ -150,7 +124,8 @@ export function ProductCard({
     }, []);
 
     const hasColors = Array.isArray(p.colors) && p.colors.length > 0;
-    const activeColor = hasColors ? p.colors![activeColorIdx] : null;
+    const colors = hasColors ? p.colors! : [];
+    const activeColor = colors[activeColorIdx] ?? null;
 
     const frontSrc = activeColor?.front || p.image;
     const backSrc = activeColor?.back || p.hover || frontSrc;
@@ -159,17 +134,16 @@ export function ProductCard({
     const selectedColorLabel = activeColor?.label ?? activeColor?.hex ?? null;
 
     // 🔁 Mobile: rotate front/back every 1.6s (only if they differ)
+    const canRotateImages = isTouch && Boolean(frontSrc && backSrc && frontSrc !== backSrc);
+    const displayBackImage = canRotateImages && showBack;
+
     useEffect(() => {
-        if (!isTouch) return;
-        if (!frontSrc || !backSrc || frontSrc === backSrc) {
-            setShowBack(false);
-            return;
-        }
+        if (!canRotateImages) return;
         const id = window.setInterval(() => {
             setShowBack((s) => !s);
         }, 1600);
         return () => window.clearInterval(id);
-    }, [isTouch, frontSrc, backSrc]);
+    }, [canRotateImages]);
 
     // title sizing (keep)
     const titleLen = p.title.length;
@@ -201,11 +175,11 @@ export function ProductCard({
                     fill
                     sizes="(max-width:768px) 50vw, (max-width:1200px) 33vw, 25vw"
                     className={[
-                        "relative z-0 object-cover transition-all duration-700 group-hover:scale-105", ,
+                        "relative z-0 object-cover transition-all duration-700 group-hover:scale-105",
                         // Desktop hover flips to back
                         "md:opacity-100 md:group-hover:opacity-0",
                         // Mobile rotation via state
-                        isTouch ? (showBack ? "opacity-0" : "opacity-100") : "",
+                        isTouch ? (displayBackImage ? "opacity-0" : "opacity-100") : "",
                     ].join(" ")}
                 />
 
@@ -216,9 +190,9 @@ export function ProductCard({
                     fill
                     sizes="(max-width:768px) 50vw, (max-width:1200px) 33vw, 25vw"
                     className={[
-                        "relative z-0 object-cover transition-all duration-700 group-hover:scale-105", ,
+                        "relative z-0 object-cover transition-all duration-700 group-hover:scale-105",
                         "md:opacity-0 md:group-hover:opacity-100",
-                        isTouch ? (showBack ? "opacity-100" : "opacity-0") : "",
+                        isTouch ? (displayBackImage ? "opacity-100" : "opacity-0") : "",
                     ].join(" ")}
                 />
 
@@ -254,7 +228,7 @@ export function ProductCard({
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                window.location.href = `/product/${p.slug ?? p.id}`;
+                                router.push(`/product/${p.slug ?? p.id}`);
                             }}
                         >
                             View Merch
@@ -303,11 +277,15 @@ export function ProductCard({
                 )} */}
 
                 <div className="mt-3 flex items-center justify-between min-h-[24px]">
-                    <ColorSwatches
-                        colors={p.colors!}
-                        activeIndex={activeColorIdx}
-                        onSelect={setActiveColorIdx}
-                    />
+                    {hasColors ? (
+                        <ColorSwatches
+                            colors={colors}
+                            activeIndex={activeColorIdx}
+                            onSelect={setActiveColorIdx}
+                        />
+                    ) : (
+                        <span />
+                    )}
 
                     <span className="text-xs text-neutral-400 truncate ml-2">
                         {activeColor?.label}
@@ -364,7 +342,7 @@ export function ProductCard({
                         className="flex-1 inline-flex items-center justify-center h-12 rounded-lg text-white font-semibold relative px-4 font-black tracking-wide shadow-lg border disabled:opacity-50"
                         style={{ clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)" }}
                         onClick={() => {
-                            window.location.href = `/product/${p.slug ?? p.id}`;
+                            router.push(`/product/${p.slug ?? p.id}`);
                         }}
                     >
                         View Merch

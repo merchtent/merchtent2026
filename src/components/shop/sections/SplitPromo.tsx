@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 function timeAgo(date: string) {
     const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
 
-    const intervals: any = {
+    const intervals: Record<string, number> = {
         year: 31536000,
         month: 2592000,
         day: 86400,

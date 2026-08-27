@@ -2,7 +2,6 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
     Package,
     Receipt,
@@ -11,8 +10,25 @@ import {
     Clock,
     ChevronRight,
 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export const revalidate = 0; // always fetch fresh orders
+
+type OrderItem = {
+    product_id: string | null;
+    title: string | null;
+    qty: number | null;
+    unit_price_cents: number | null;
+};
+
+type OrderRow = {
+    id: string;
+    created_at: string | null;
+    status: string | null;
+    currency: string | null;
+    subtotal_cents: number | null;
+    order_items: OrderItem[] | null;
+};
 
 function fmtMoney(cents: number, currency: string) {
     try {
@@ -105,9 +121,28 @@ export default async function OrdersPage() {
         .select(
             "id, created_at, status, currency, subtotal_cents, order_items ( product_id, title, qty, unit_price_cents )"
         )
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
+    const { data: creditBalance, error: creditBalanceError } = await supabase
+        .from("merch_credit_balances")
+        .select("points_balance, lifetime_points")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (creditBalanceError) {
+        logger.error("Customer orders page failed to load merch credit balance", {
+            user_id: user.id,
+            error: creditBalanceError.message,
+        });
+    }
+
     if (error) {
+        logger.error("Customer orders page failed to load orders", {
+            user_id: user.id,
+            error: error.message,
+        });
+
         return (
             <main className="min-h-screen bg-neutral-950 text-neutral-100">
                 <section className="relative py-0">
@@ -122,7 +157,7 @@ export default async function OrdersPage() {
                 <div className="max-w-5xl mx-auto px-4 py-10">
                     <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-red-400 flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
-                        Error loading orders: {error.message}
+                        Could not load your orders right now.
                     </div>
                 </div>
             </main>
@@ -130,11 +165,11 @@ export default async function OrdersPage() {
     }
 
     const totalOrders = orders?.length ?? 0;
+    const orderRows = (orders ?? []) as OrderRow[];
     const totalItems =
-        orders?.reduce((acc, o: any) => acc + ((o.order_items?.length ?? 0) as number), 0) ??
-        0;
+        orderRows.reduce((acc, o) => acc + (o.order_items?.length ?? 0), 0) ?? 0;
     const totalGrossCents =
-        orders?.reduce((acc, o: any) => acc + (o.subtotal_cents ?? 0), 0) ?? 0;
+        orderRows.reduce((acc, o) => acc + (o.subtotal_cents ?? 0), 0) ?? 0;
 
     return (
         <main className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -161,7 +196,7 @@ export default async function OrdersPage() {
 
             {/* summary cards */}
             <section className="max-w-5xl mx-auto px-4 py-8">
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid gap-4 md:grid-cols-4">
                     <SummaryCard
                         label="Orders"
                         value={String(totalOrders)}
@@ -178,12 +213,22 @@ export default async function OrdersPage() {
                         icon={<Truck className="h-4 w-4" />}
                         accent
                     />
+                    <SummaryCard
+                        label="Merch credits"
+                        value={creditBalanceError ? "Unavailable" : `${creditBalance?.points_balance ?? 0} pts`}
+                        icon={<Receipt className="h-4 w-4" />}
+                        sub={
+                            creditBalanceError
+                                ? "Credit balance could not be loaded right now"
+                                : `${Math.min(creditBalance?.points_balance ?? 0, 20)}/20 toward a free tee`
+                        }
+                    />
                 </div>
             </section>
 
             {/* list / empty state */}
             <section className="max-w-5xl mx-auto px-4 pb-12">
-                {!orders || orders.length === 0 ? (
+                {orderRows.length === 0 ? (
                     <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
                         <p className="text-neutral-300">
                             You don’t have any orders yet.{" "}
@@ -195,9 +240,9 @@ export default async function OrdersPage() {
                     </div>
                 ) : (
                     <ul className="space-y-4">
-                        {orders.map((o: any) => {
-                            const shortId = (o.id as string).slice(0, 8) + "…";
-                            const items: any[] = Array.isArray(o.order_items)
+                        {orderRows.map((o) => {
+                            const shortId = o.id.slice(0, 8) + "…";
+                            const items: OrderItem[] = Array.isArray(o.order_items)
                                 ? o.order_items
                                 : [];
                             return (
@@ -219,7 +264,7 @@ export default async function OrdersPage() {
                                         </div>
                                         <div className="text-right">
                                             <div className="font-semibold">
-                                                {fmtMoney(o.subtotal_cents, o.currency)}
+                                                {fmtMoney(o.subtotal_cents ?? 0, o.currency ?? "AUD")}
                                             </div>
                                             <div className="mt-1">
                                                 <StatusPill status={o.status} />
@@ -266,8 +311,8 @@ export default async function OrdersPage() {
                                                                 <td className="py-2 px-2">{it.qty}</td>
                                                                 <td className="py-2 px-4 text-right">
                                                                     {fmtMoney(
-                                                                        it.unit_price_cents,
-                                                                        o.currency as string
+                                                                        it.unit_price_cents ?? 0,
+                                                                        o.currency ?? "AUD"
                                                                     )}
                                                                 </td>
                                                             </tr>
@@ -311,11 +356,13 @@ function SummaryCard({
     value,
     icon,
     accent,
+    sub,
 }: {
     label: string;
     value: string;
     icon?: React.ReactNode;
     accent?: boolean;
+    sub?: string;
 }) {
     return (
         <Card
@@ -333,6 +380,7 @@ function SummaryCard({
                 >
                     {value}
                 </p>
+                {sub ? <p className="mt-1 text-xs text-neutral-500">{sub}</p> : null}
             </CardContent>
         </Card>
     );

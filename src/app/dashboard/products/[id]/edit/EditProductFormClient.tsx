@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { updateProductAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Rocket, Trash2, Plus, Loader2 } from "lucide-react";
@@ -87,6 +88,7 @@ export default function EditProductFormClient({
 
     const [removed, setRemoved] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const price = (initialProduct.price_cents ?? 0) / 100;
 
@@ -117,6 +119,7 @@ export default function EditProductFormClient({
         e.preventDefault();
         if (isSubmitting) return;
         setIsSubmitting(true);
+        setSubmitError(null);
 
         try {
             const formData = new FormData(e.currentTarget);
@@ -132,8 +135,8 @@ export default function EditProductFormClient({
 
             await updateProductAction(formData);
             // optional: toast
-        } catch (err) {
-            console.error(err);
+        } catch (err: unknown) {
+            setSubmitError(err instanceof Error ? err.message : "Could not update product");
         } finally {
             setIsSubmitting(false);
         }
@@ -145,6 +148,12 @@ export default function EditProductFormClient({
             encType="multipart/form-data"
             className="space-y-6"
         >
+            {submitError ? (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {submitError}
+                </p>
+            ) : null}
+
             {/* title */}
             <div>
                 <label className="block text-xs uppercase tracking-wide text-neutral-400 mb-2">
@@ -242,10 +251,12 @@ export default function EditProductFormClient({
                     {frontPreview ? (
                         <div className="mt-2">
                             <p className="text-[10px] text-neutral-500 mb-1">Current / new</p>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <Image
                                 src={frontPreview}
                                 alt="front preview"
+                                width={80}
+                                height={80}
+                                unoptimized
                                 className="h-20 w-20 rounded-lg object-cover border border-neutral-700 bg-neutral-900"
                             />
                         </div>
@@ -276,10 +287,12 @@ export default function EditProductFormClient({
                     {backPreview ? (
                         <div className="mt-2">
                             <p className="text-[10px] text-neutral-500 mb-1">Current / new</p>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <Image
                                 src={backPreview}
                                 alt="back preview"
+                                width={80}
+                                height={80}
+                                unoptimized
                                 className="h-20 w-20 rounded-lg object-cover border border-neutral-700 bg-neutral-900"
                             />
                         </div>
@@ -390,10 +403,12 @@ export default function EditProductFormClient({
                                 ) : null}
 
                                 {(c.frontPreview || c.existingFront) && (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
+                                    <Image
                                         src={c.frontPreview || (c.existingFront as string)}
                                         alt="front colour preview"
+                                        width={56}
+                                        height={56}
+                                        unoptimized={Boolean(c.frontPreview)}
                                         className="mt-2 h-14 w-14 rounded object-cover border border-neutral-800"
                                     />
                                 )}
@@ -439,10 +454,12 @@ export default function EditProductFormClient({
                                 ) : null}
 
                                 {(c.backPreview || c.existingBack) && (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
+                                    <Image
                                         src={c.backPreview || (c.existingBack as string)}
                                         alt="back colour preview"
+                                        width={56}
+                                        height={56}
+                                        unoptimized={Boolean(c.backPreview)}
                                         className="mt-2 h-14 w-14 rounded object-cover border border-neutral-800"
                                     />
                                 )}

@@ -4,6 +4,8 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { updateArtistProfile } from "./actions";
+import { getErrorMessage } from "@/lib/errors";
+import { publicStorageUrl } from "@/lib/storage";
 
 type Props = {
     artistId: string;
@@ -44,13 +46,6 @@ export default function EditArtistHeroForm({
     const [isPending, startTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
 
-    function buildPublicUrl(path: string) {
-        if (!path) return null;
-        return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${encodeURIComponent(
-            path
-        )}`;
-    }
-
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setError(null);
@@ -71,7 +66,7 @@ export default function EditArtistHeroForm({
                 setError(res.error);
             } else {
                 setSuccess("Artist profile updated.");
-                setPreviewUrl(heroPath ? buildPublicUrl(heroPath) : null);
+                setPreviewUrl(publicStorageUrl("artist-images", heroPath));
             }
         });
     }
@@ -102,8 +97,8 @@ export default function EditArtistHeroForm({
             setHeroPath(data.path);
             setPreviewUrl(data.publicUrl);
             setSuccess("Uploaded image. Don’t forget to Save.");
-        } catch (err: any) {
-            setError(err.message ?? "Upload failed");
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, "Upload failed"));
         } finally {
             setIsUploading(false);
         }

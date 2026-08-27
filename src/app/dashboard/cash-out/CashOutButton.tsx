@@ -1,30 +1,40 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCashOut } from "./server-actions";
 
 export default function CashOutButton({ disabled }: { disabled: boolean }) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
+    const [error, setError] = useState<string | null>(null);
 
     async function handleCashOut() {
         startTransition(async () => {
-            const result = await createCashOut();
-            if (result?.ok) {
-                // ✅ Force page data refresh so new totals load
-                router.refresh();
+            setError(null);
+            try {
+                const result = await createCashOut();
+                if (result?.ok) {
+                    router.refresh();
+                } else if (result?.message) {
+                    setError(result.message);
+                }
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "Cash out failed.");
             }
         });
     }
 
     return (
-        <button
-            onClick={handleCashOut}
-            disabled={disabled || isPending}
-            className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-50"
-        >
-            {isPending ? "Processing..." : "Request Cash Out"}
-        </button>
+        <div className="space-y-2">
+            <button
+                onClick={handleCashOut}
+                disabled={disabled || isPending}
+                className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-50"
+            >
+                {isPending ? "Processing..." : "Request Cash Out"}
+            </button>
+            {error ? <p className="text-sm text-red-300">{error}</p> : null}
+        </div>
     );
 }

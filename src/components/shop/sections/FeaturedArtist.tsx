@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+import { publicStorageUrlOrSource } from "@/lib/storage";
 
 type Product = {
     id: string;
@@ -20,15 +20,7 @@ type Artist = {
     image: string;
 };
 
-function artistImage(path?: string | null) {
-    if (!path) return null;
-
-    // ✅ If already a full URL, return as-is
-    if (path.startsWith("http")) return path;
-
-    // ✅ Otherwise build Supabase URL
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${path}`;
-}
+const featuredArtistName = "Lionel Loves Vinyl";
 
 export default function FeaturedArtist() {
     const [artist, setArtist] = useState<Artist | null>(null);
@@ -37,135 +29,116 @@ export default function FeaturedArtist() {
     useEffect(() => {
         let mounted = true;
 
-        (async () => {
+        async function load() {
             try {
-                // 👉 You can later swap this to /api/artists/featured
                 const res = await fetch("/api/artists", { cache: "no-store" });
                 const json = await res.json();
+                const artists = Array.isArray(json.artists) ? (json.artists as Artist[]) : [];
+                const selectedArtist = artists.find((item) => item.name === featuredArtistName) ?? artists[0];
 
-                const a = json.artists?.[0];
+                if (!selectedArtist || !mounted) return;
 
-                if (!a) return;
+                setArtist(selectedArtist);
+
+                const productRes = await fetch(`/api/products/artist?artistId=${selectedArtist.id}`, { cache: "no-store" });
+                const productJson = await productRes.json();
 
                 if (mounted) {
-                    setArtist(a);
-
-                    // 👉 fetch their products
-                    const pres = await fetch(`/api/products/artist?artistId=${a.id}`);
-                    const pjson = await pres.json();
-
-                    setProducts(Array.isArray(pjson.products) ? pjson.products.slice(0, 2) : []);
+                    setProducts(Array.isArray(productJson.products) ? productJson.products.slice(0, 2) : []);
                 }
-
             } catch {
-                // silent fail
+                if (mounted) setProducts([]);
             }
-        })();
+        }
 
-        return () => { mounted = false; };
+        load();
+
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     if (!artist) return null;
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } }
-    );
-
-    const heroImage = artistImage(artist.image);
-    console.log('HERO:', heroImage);
+    const heroImage = publicStorageUrlOrSource("artist-images", artist.image);
 
     return (
-        <section className="relative py-12 md:py-16 border-y border-neutral-800 bg-neutral-950 text-white overflow-hidden">
-
-            {/* 🔥 BACKGROUND IMAGE */}
+        <section className="relative overflow-hidden border-y border-neutral-800 bg-neutral-950 py-12 text-white md:py-16">
             {heroImage && (
-                <img
+                <Image
                     src={heroImage}
                     alt={artist.name}
-                    className="absolute inset-0 w-full h-full object-cover opacity-40 scale-105"
+                    fill
+                    sizes="100vw"
+                    priority
+                    className="absolute inset-0 h-full w-full scale-105 object-cover opacity-40"
                 />
             )}
 
-            {/* 🔥 OVERLAYS */}
-            {/* 🔥 OVERLAYS (balanced) */}
-            {/* <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" /> */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-neutral-950" />
-
-            {/* 🔥 GRAIN (optional but nice) */}
             <div
                 className="absolute inset-0 opacity-[0.04]"
                 style={{
-                    backgroundImage:
-                        "linear-gradient(90deg,rgba(255,255,255,0.1) 1px,transparent 1px)"
+                    backgroundImage: "linear-gradient(90deg,rgba(255,255,255,0.1) 1px,transparent 1px)",
                 }}
             />
 
-            {/* 🔥 CONTENT */}
-            <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 lg:px-8 grid md:grid-cols-2 gap-8 items-center">
-
-                {/* LEFT — ARTIST STORY */}
+            <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-8 px-4 md:grid-cols-2 md:px-6 lg:px-8">
                 <div>
                     <p className="text-xs uppercase tracking-widest text-neutral-400">
-                        This week’s featured artist
+                        This week&apos;s featured artist
                     </p>
 
-                    <h2 className="text-3xl md:text-4xl font-black mt-2">
+                    <h2 className="mt-2 text-3xl font-black md:text-4xl">
                         {artist.name}
                     </h2>
 
-                    <p className="mt-4 text-neutral-300 max-w-md">
-                        A standout from the local scene — bringing energy, sound,
-                        and identity into everything they put out.
+                    <p className="mt-4 max-w-md text-neutral-300">
+                        A standout from the local scene - bringing energy, sound, and identity into everything they put out.
                     </p>
 
-                    <p className="mt-3 text-neutral-400 max-w-md text-sm">
-                        Their latest drop reflects exactly what they’re about —
-                        simple, loud, and built to be worn.
+                    <p className="mt-3 max-w-md text-sm text-neutral-400">
+                        Their latest drop reflects exactly what they&apos;re about - simple, loud, and built to be worn.
                     </p>
 
                     <div className="mt-6 flex gap-3">
                         <Link
                             href={`/artists/${artist.slug}`}
-                            className="bg-red-600 px-5 py-3 rounded-xl font-bold hover:bg-red-500"
+                            className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-500"
                         >
                             Shop {artist.name}
                         </Link>
                     </div>
                 </div>
 
-                {/* RIGHT — PRODUCTS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {products.map((p, i) => (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {products.map((product, index) => (
                         <Link
-                            key={p.id}
-                            href={`/product/${p.slug}`}
-                            className={`group rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 hover:-translate-y-1 transition ${i === 0 ? "md:[clip-path:polygon(1%_0,100%_0,98%_100%,0_100%)]" : ""
-                                }`}
+                            key={product.id}
+                            href={`/product/${product.slug}`}
+                            className={`group overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900 transition hover:-translate-y-1 ${index === 0 ? "md:[clip-path:polygon(1%_0,100%_0,98%_100%,0_100%)]" : ""}`}
                         >
                             <div className="relative aspect-[3/4]">
                                 <Image
-                                    src={p.image}
-                                    alt={p.title}
+                                    src={product.image}
+                                    alt={product.title}
                                     fill
-                                    className="object-cover group-hover:scale-105 transition"
+                                    className="object-cover transition group-hover:scale-105"
                                 />
                             </div>
 
                             <div className="p-3">
-                                <p className="text-sm font-semibold truncate">
-                                    {p.title}
+                                <p className="truncate text-sm font-semibold">
+                                    {product.title}
                                 </p>
 
-                                <p className="text-sm font-bold mt-1">
-                                    ${p.price}
+                                <p className="mt-1 text-sm font-bold">
+                                    ${product.price}
                                 </p>
                             </div>
                         </Link>
                     ))}
                 </div>
-
             </div>
         </section>
     );

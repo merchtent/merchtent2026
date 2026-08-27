@@ -1,5 +1,7 @@
 // lib/postmark.ts
 import { ServerClient } from "postmark";
+import { serverEnv } from "@/lib/env.server";
+import { logger } from "@/lib/logger";
 
 /**
  * One order line for the email.
@@ -54,32 +56,37 @@ export type OrderEmailPayload = {
 
 // ---- Postmark client wiring ----
 
-const POSTMARK_SERVER_TOKEN = process.env.POSTMARK_SERVER_TOKEN || "";
-const POSTMARK_FROM = process.env.POSTMARK_FROM || "";
-const POSTMARK_CUSTOMER_TEMPLATE_ALIAS =
-    process.env.POSTMARK_CUSTOMER_TEMPLATE_ALIAS || "order-confirmation";
-const POSTMARK_ADMIN_TEMPLATE_ALIAS =
-    process.env.POSTMARK_ADMIN_TEMPLATE_ALIAS || "order-admin-notify";
-const POSTMARK_ADMIN_TO = process.env.POSTMARK_ADMIN_TO || "";
+const POSTMARK_SERVER_TOKEN = serverEnv.optionalPostmarkServerToken();
+const POSTMARK_FROM = serverEnv.optionalPostmarkFrom();
+const POSTMARK_CUSTOMER_TEMPLATE_ALIAS = serverEnv.postmarkCustomerTemplateAlias();
+const POSTMARK_ADMIN_TEMPLATE_ALIAS = serverEnv.postmarkAdminTemplateAlias();
+const POSTMARK_ADMIN_TO = serverEnv.optionalPostmarkAdminTo();
 
 // optional convenience envs
-const STORE_NAME = process.env.STORE_NAME || "Merch Tent";
-const COMPANY_ADDRESS = process.env.COMPANY_ADDRESS || null;
-const MANAGE_ORDERS_URL = process.env.MANAGE_ORDERS_URL || null;
-const POSTMARK_SUPPORT_EMAIL =
-    process.env.POSTMARK_SUPPORT_EMAIL || POSTMARK_FROM || null;
+const STORE_NAME = serverEnv.storeName();
+const COMPANY_ADDRESS = serverEnv.companyAddress();
+const MANAGE_ORDERS_URL = serverEnv.manageOrdersUrl();
+const POSTMARK_SUPPORT_EMAIL = serverEnv.postmarkSupportEmail() || POSTMARK_FROM;
 
 // single shared client (or null if not configured)
 const client = POSTMARK_SERVER_TOKEN
     ? new ServerClient(POSTMARK_SERVER_TOKEN)
     : null;
 
+type OrderEmailChannel = "customer" | "admin";
+
+type OrderEmailSendTask = {
+    channel: OrderEmailChannel;
+    required: boolean;
+    send: Promise<unknown>;
+};
+
 if (!POSTMARK_SERVER_TOKEN) {
-    console.warn("⚠️ POSTMARK_SERVER_TOKEN not set – emails will be skipped.");
+    logger.warn("POSTMARK_SERVER_TOKEN not set; order emails will be skipped.");
 }
 
 if (!POSTMARK_FROM) {
-    console.warn("⚠️ POSTMARK_FROM not set – emails will be skipped.");
+    logger.warn("POSTMARK_FROM not set; order emails will be skipped.");
 }
 
 /**
@@ -201,7 +208,10 @@ export async function sendOrderEmails(args: {
     const { customerEmail, payload } = args;
 
     if (!client || !POSTMARK_FROM) {
-        console.log("POSTMARK_FROM or SERVER_TOKEN not set – skipping all order emails.");
+        logger.warn("Postmark client not configured; skipping order emails.", {
+            has_from: Boolean(POSTMARK_FROM),
+            has_server_token: Boolean(POSTMARK_SERVER_TOKEN),
+        });
         return;
     }
 
@@ -215,25 +225,31 @@ export async function sendOrderEmails(args: {
         items: payload.items ?? [],
     };
 
-    // 👀 debug: you can uncomment this temporarily
-    // console.log("🔎 Final TemplateModel sent to Postmark:", JSON.stringify(model, null, 2));
-
-    const sends: Promise<unknown>[] = [];
+    const sends: OrderEmailSendTask[] = [];
 
     if (customerEmail && POSTMARK_CUSTOMER_TEMPLATE_ALIAS) {
-        sends.push(
-            client.sendEmailWithTemplate({
+        sends.push({
+            channel: "customer",
+            required: true,
+            send: client.sendEmailWithTemplate({
                 From: POSTMARK_FROM,
                 To: customerEmail,
                 TemplateAlias: POSTMARK_CUSTOMER_TEMPLATE_ALIAS,
                 TemplateModel: model, // <<— NO extra nesting, no renaming
-            })
-        );
+            }),
+        });
+    } else if (customerEmail) {
+        logger.error("Postmark customer template alias is not configured.", {
+            has_customer_email: true,
+        });
+        throw new Error("Postmark customer email is not configured.");
     }
 
     if (POSTMARK_ADMIN_TO && POSTMARK_ADMIN_TEMPLATE_ALIAS) {
-        sends.push(
-            client.sendEmailWithTemplate({
+        sends.push({
+            channel: "admin",
+            required: false,
+            send: client.sendEmailWithTemplate({
                 From: POSTMARK_FROM,
                 To: POSTMARK_ADMIN_TO,
                 TemplateAlias: POSTMARK_ADMIN_TEMPLATE_ALIAS,
@@ -242,14 +258,43 @@ export async function sendOrderEmails(args: {
                     // you can add admin-specific fields here if you like
                     admin: true,
                 },
-            })
-        );
+            }),
+        });
     }
 
     if (!sends.length) {
-        console.log("No valid Postmark aliases or recipients configured – nothing to send.");
+        logger.warn("No valid Postmark aliases or recipients configured; skipping order emails.", {
+            has_customer_email: Boolean(customerEmail),
+            has_customer_template: Boolean(POSTMARK_CUSTOMER_TEMPLATE_ALIAS),
+            has_admin_to: Boolean(POSTMARK_ADMIN_TO),
+            has_admin_template: Boolean(POSTMARK_ADMIN_TEMPLATE_ALIAS),
+        });
         return;
     }
 
-    await Promise.all(sends);
+    const results = await Promise.allSettled(sends.map((task) => task.send));
+    const failures = results
+        .map((result, index) => ({ result, task: sends[index] }))
+        .filter(
+            (entry): entry is {
+                result: PromiseRejectedResult;
+                task: OrderEmailSendTask;
+            } => entry.result.status === "rejected"
+        );
+
+    for (const failure of failures) {
+        const severity = failure.task.required ? "error" : "warn";
+        logger[severity]("Postmark order email send failed.", {
+            channel: failure.task.channel,
+            required: failure.task.required,
+            error:
+                failure.result.reason instanceof Error
+                    ? failure.result.reason.message
+                    : String(failure.result.reason),
+        });
+    }
+
+    if (failures.some((failure) => failure.task.required)) {
+        throw new Error("Postmark customer order email failed.");
+    }
 }

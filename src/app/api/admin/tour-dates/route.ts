@@ -1,59 +1,37 @@
 // app/api/admin/tour-dates/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { noStoreJson } from "@/lib/api/no-store";
+import { logAdminContentEvent } from "@/lib/admin/content-audit";
+import { requireAdmin } from "@/lib/auth/admin";
+import { getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { normaliseExternalUrl } from "@/lib/urls";
+
+const tourDateSchema = z.object({
+    artist: z.string().trim().min(1).max(160),
+    venue: z.string().trim().min(1).max(200),
+    city: z.string().trim().min(1).max(160),
+    event_date: z.string().trim().min(1).max(80),
+    ticket_url: z.string().trim().min(1).max(500),
+});
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = getServerSupabase();
+        const auth = await requireAdmin(request);
+        if (!auth.ok) return auth.response;
 
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
+        const parsed = tourDateSchema.safeParse(await request.json().catch(() => ({})));
 
-        if (!user) {
-            return NextResponse.json(
+        if (!parsed.success) {
+            return noStoreJson(
                 {
                     success: false,
-                    message: "Unauthorised",
-                },
-                {
-                    status: 401,
-                }
-            );
-        }
-
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", user.id)
-            .single();
-
-        if (!profile || profile.role !== "admin") {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Forbidden",
-                },
-                {
-                    status: 403,
-                }
-            );
-        }
-
-        const body = await request.json();
-
-        const artist = String(body.artist || "").trim();
-        const venue = String(body.venue || "").trim();
-        const city = String(body.city || "").trim();
-        const event_date = String(body.event_date || "").trim();
-        const ticket_url = String(body.ticket_url || "").trim();
-
-        if (!artist) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Artist is required",
+                    message: "Invalid tour date details.",
                 },
                 {
                     status: 400,
@@ -61,47 +39,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (!venue) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Venue is required",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
-        if (!city) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "City is required",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
-        if (!event_date) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Event Date is required",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
+        const { artist, venue, city, event_date } = parsed.data;
+        const ticket_url = normaliseExternalUrl(parsed.data.ticket_url);
 
         if (!ticket_url) {
-            return NextResponse.json(
+            return noStoreJson(
                 {
                     success: false,
-                    message: "Ticket URL is required",
+                    message: "Valid Ticket URL is required",
                 },
                 {
                     status: 400,
@@ -109,7 +54,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await auth.supabase
             .from("tour_dates")
             .insert({
                 artist,
@@ -122,12 +67,15 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (error) {
-            console.error(error);
+            logger.error("Admin tour date create failed", {
+                actor_user_id: auth.user.id,
+                error: error.message,
+            });
 
-            return NextResponse.json(
+            return noStoreJson(
                 {
                     success: false,
-                    message: error.message,
+                    message: "Could not create tour date.",
                 },
                 {
                     status: 500,
@@ -135,19 +83,32 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        return NextResponse.json({
+        await logAdminContentEvent({
+            actorUserId: auth.user.id,
+            action: "admin_tour_date_created",
+            externalId: data.id,
+            message: "Admin created tour date.",
+            metadata: {
+                artist,
+                venue,
+                city,
+                event_date,
+            },
+        });
+
+        return noStoreJson({
             success: true,
             tourDate: data,
         });
-    } catch (error: any) {
-        console.error(error);
+    } catch (error: unknown) {
+        logger.error("Unexpected admin tour date create error", {
+            error: getErrorMessage(error),
+        });
 
-        return NextResponse.json(
+        return noStoreJson(
             {
                 success: false,
-                message:
-                    error?.message ??
-                    "An unexpected error occurred",
+                message: "Could not create tour date.",
             },
             {
                 status: 500,

@@ -1,10 +1,11 @@
 // src/lib/supabase/client.ts
 import { createBrowserClient } from "@supabase/ssr";
+import { publicEnv } from "@/lib/env";
 
 export function getBrowserSupabase() {
     return createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        publicEnv.supabaseUrl(),
+        publicEnv.supabaseAnonKey(),
         {
             auth: {
                 persistSession: true,

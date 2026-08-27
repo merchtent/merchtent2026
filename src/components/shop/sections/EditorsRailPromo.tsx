@@ -1,6 +1,7 @@
 "use client";
 
 import { Product, ProductCard } from "../ProductCard";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function EditorsRailPromo() {
@@ -9,12 +10,10 @@ export default function EditorsRailPromo() {
             <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
                 <div className="flex items-end justify-between mb-6">
                     <h3 className="text-xl md:text-2xl font-black">Editor’s Picks</h3>
-                    <a href="/editors" className="text-sm underline">View all</a>
+                    <Link href="/editors" className="text-sm underline">View all</Link>
                 </div>
 
                 <EditorsRail
-                    onQuickAdd={(p) => (1 + 1)} // addToCart
-                    onQuickView={(p) => (1 + 1)} // setQuickView
                     fallback={[]} // optional fallback to your temp set
                 />
             </div>
@@ -23,12 +22,8 @@ export default function EditorsRailPromo() {
 }
 
 function EditorsRail({
-    onQuickAdd,
-    onQuickView,
     fallback = [],
 }: {
-    onQuickAdd: (p: Product) => void;
-    onQuickView: (p: Product) => void;
     fallback?: Product[];
 }) {
     const [list, setList] = useState<Product[] | null>(null);

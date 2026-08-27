@@ -4,78 +4,44 @@ import FeaturedArtistsSection from "../FeaturedArtists";
 import JoinTheList from "../JoinTheList";
 import TourSection from "../TourSection";
 import Hero from "./sections/Hero";
-import AngledPromoRail from "./sections/AngledPromoRail";
+import SceneMarquee from "./sections/SceneMarquee";
+import SceneVideoHero from "./sections/SceneVideoHero";
+import RetailSceneFloor from "./sections/RetailSceneFloor";
+import ProductionConfidence from "./sections/ProductionConfidence";
+import DesignToFulfilmentShowcase from "./sections/DesignToFulfilmentShowcase";
+import CollectionBundleFeature from "./sections/CollectionBundleFeature";
+import AccountPathways from "./sections/AccountPathways";
 import MerchWall from "./sections/MerchWall";
-import ShopByCollection from "./sections/ShopByCollection";
-import SplitPromo from "./sections/SplitPromo";
-import BootlegSale from "./sections/BootlegSale";
-import EditorsRailPromo from "./sections/EditorsRailPromo";
-import BundleBuilder from "./sections/MixtapeBundle";
-import AllArtists from "./sections/AllArtists";
-import BackstagePolaroids from "./sections/BackstagePolaroids";
-import FanShouts from "./sections/FanShouts";
-import OurFavouriteMerch from "./sections/OurFavouriteMerch";
-import DropInConcept from "./sections/DropInConcept";
-import HowItWorks from "./sections/HowItWorks";
-import WhyThisIsBetter from "./sections/WhyThisIsBetter";
+import SceneSocialFeed from "./sections/SceneSocialFeed";
+import RealLifeInLoop from "./sections/RealLifeInLoop";
+import CommunityReviews from "./sections/CommunityReviews";
 import MiniCTAStrip from "./sections/MiniCTAStrip";
 import WhyTrustUs from "./sections/WhyTrustUs";
-import FeaturedArtist from "./sections/FeaturedArtist";
-import BundleBuilderForTwoTees from "./sections/MixtapeBundleForTwoTees";
-import React from "react";
-import MobileMerchWall from "./sections/MobileMerchWall";
-
-// ============================================================
-// BAND MERCH — "NOISE // NIGHT DRIVE" (maximum‑edgy edition)
-// Influence: bootleg flyers, tour stickers, diagonal splits, torn edges,
-// masonry merch wall, horizontal rails, countdown drop, second capsule.
-// Tech: shadcn/ui, framer-motion, lucide-react, Tailwind, Next/Image.
-// ============================================================
-
-function useIsMobile(breakpoint = 768) {
-    const [isMobile, setIsMobile] = React.useState(false);
-
-    React.useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth < breakpoint);
-        check();
-
-        window.addEventListener("resize", check);
-        return () => window.removeEventListener("resize", check);
-    }, [breakpoint]);
-
-    return isMobile;
-}
+import type { TourDate } from "@/lib/models/TourDates";
 
 export default function Home({
     tourDates,
 }: {
     tourDates: TourDate[];
 }) {
-
-    const isMobile = useIsMobile();
-
     return (
         <>
             <Hero />
+            <SceneMarquee />
+            <SceneVideoHero />
+            <DesignToFulfilmentShowcase />
+            <AccountPathways />
+            <RetailSceneFloor />
+            <MerchWall />
             <FeaturedArtistsSection />
-            <AngledPromoRail />
-            {isMobile ? <MobileMerchWall /> : <MerchWall />}
-            <FeaturedArtist />
-            <ShopByCollection />
-            <DropInConcept />
-            <OurFavouriteMerch />
-            {/* <EditorsRailPromo /> */}
-            <BundleBuilderForTwoTees />
-            <BundleBuilder />
-            <AllArtists />
+            <CollectionBundleFeature />
+            <SceneSocialFeed />
+            <ProductionConfidence />
+            {tourDates.length > 0 && <TourSection dates={tourDates} />}
+            <RealLifeInLoop />
+            <CommunityReviews />
             <WhyTrustUs />
-            <HowItWorks />
-            <SplitPromo />
-            <WhyThisIsBetter />
             <MiniCTAStrip />
-            <BackstagePolaroids />
-            <TourSection dates={tourDates} />
-            <FanShouts />
             <JoinTheList />
         </>
     );

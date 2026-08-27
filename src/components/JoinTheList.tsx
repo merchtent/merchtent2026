@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function JoinTheList() {
     const [email, setEmail] = useState("");
@@ -39,9 +40,9 @@ export default function JoinTheList() {
             setOk(true);
             setEmail("");
             setName("");
-        } catch (e: any) {
+        } catch (e: unknown) {
             setOk(false);
-            setErr(e?.message ?? "Something went wrong");
+            setErr(getErrorMessage(e, "Something went wrong"));
         } finally {
             setLoading(false);
         }

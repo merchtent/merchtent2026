@@ -11,6 +11,8 @@ import {
     ChevronLeft,
     Clock,
 } from "lucide-react";
+import { logger } from "@/lib/logger";
+import { normaliseExternalUrl } from "@/lib/urls";
 
 export const revalidate = 0;
 
@@ -56,6 +58,34 @@ function StatusPill({ status }: { status?: string | null }) {
     );
 }
 
+type OrderItem = {
+    product_id?: string | null;
+    title?: string | null;
+    qty?: number | null;
+    unit_price_cents?: number | null;
+};
+
+type OrderRow = {
+    id: string;
+    created_at?: string | null;
+    status?: string | null;
+    currency?: string | null;
+    subtotal_cents?: number | null;
+    tracking_code?: string | null;
+    tracking_carrier?: string | null;
+    tracking_url?: string | null;
+    order_items?: OrderItem[] | null;
+};
+
+type OrderStatusEvent = {
+    id: string;
+    from_status?: string | null;
+    to_status: string;
+    reason?: string | null;
+    metadata?: Record<string, unknown> | null;
+    created_at?: string | null;
+};
+
 export default async function OrderDetailPage({
     params,
 }: {
@@ -91,17 +121,25 @@ export default async function OrderDetailPage({
         );
     }
 
-    // Fetch the order and its items
-    // If your schema has orders.user_id, add `.eq("user_id", user.id)` for ownership.
+    // Fetch only orders owned by this signed-in user.
     const { data: order, error } = await supabase
         .from("orders")
         .select(
-            "id, created_at, status, currency, subtotal_cents, tracking_code, tracking_url, order_items ( product_id, title, qty, unit_price_cents )"
+            "id, created_at, status, currency, subtotal_cents, tracking_code, tracking_carrier, tracking_url, order_items ( product_id, title, qty, unit_price_cents )"
         )
         .eq("id", id)
+        .eq("user_id", user.id)
         .maybeSingle();
 
     if (error || !order) {
+        if (error) {
+            logger.error("customer order detail load failed", {
+                order_id: id,
+                user_id: user.id,
+                error: error.message,
+            });
+        }
+
         return (
             <main className="min-h-screen bg-neutral-950 text-neutral-100">
                 <section className="relative py-0">
@@ -114,10 +152,10 @@ export default async function OrderDetailPage({
                 <div className="max-w-5xl mx-auto px-4 py-10">
                     <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-red-400 flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
-                        {error ? `Error loading order: ${error.message}` : "Order not found."}
+                        {error ? "Could not load this order." : "Order not found."}
                     </div>
                     <div className="mt-4">
-                        <Link href="/dashboard/orders" className="inline-flex items-center underline">
+                        <Link href="/orders" className="inline-flex items-center underline">
                             <ChevronLeft className="h-4 w-4 mr-1" />
                             Back to orders
                         </Link>
@@ -127,10 +165,28 @@ export default async function OrderDetailPage({
         );
     }
 
-    const items: any[] = Array.isArray((order as any).order_items) ? (order as any).order_items : [];
-    const shortId = (order.id as string);
+    const typedOrder = order as OrderRow;
+    const items = Array.isArray(typedOrder.order_items) ? typedOrder.order_items : [];
+    const shortId = typedOrder.id;
+    const trackingUrl = normaliseExternalUrl(typedOrder.tracking_url);
+    const { data: statusEvents, error: statusEventsError } = await supabase
+        .from("order_status_events")
+        .select("id, from_status, to_status, reason, metadata, created_at")
+        .eq("order_id", typedOrder.id)
+        .order("created_at", { ascending: false })
+        .limit(25);
 
-    const subtotal = order.subtotal_cents ?? 0;
+    if (statusEventsError) {
+        logger.error("customer order status history load failed", {
+            order_id: typedOrder.id,
+            user_id: user.id,
+            error: statusEventsError.message,
+        });
+    }
+
+    const timeline = (statusEvents ?? []) as OrderStatusEvent[];
+
+    const subtotal = typedOrder.subtotal_cents ?? 0;
     // If you later add tax/shipping/discount columns, compute here
     const total = subtotal;
 
@@ -154,7 +210,7 @@ export default async function OrderDetailPage({
             {/* header rail */}
             <section className="max-w-5xl mx-auto px-4 pt-6 mt-2">
                 <div className="flex items-center justify-between text-sm text-neutral-300">
-                    <Link href="/dashboard/orders" className="inline-flex items-center hover:text-white">
+                    <Link href="/orders" className="inline-flex items-center hover:text-white">
                         <ChevronLeft className="h-4 w-4 mr-1" /> Back to orders
                     </Link>
                     <div className="flex items-center gap-3">
@@ -285,9 +341,9 @@ export default async function OrderDetailPage({
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-neutral-300">Tracking</span>
-                                    {order.tracking_url ? (
+                                    {trackingUrl ? (
                                         <a
-                                            href={order.tracking_url as any}
+                                            href={trackingUrl}
                                             className="underline"
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -298,6 +354,12 @@ export default async function OrderDetailPage({
                                         <span className="text-neutral-500">—</span>
                                     )}
                                 </div>
+                                {typedOrder.tracking_carrier ? (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-neutral-300">Carrier</span>
+                                        <span className="text-neutral-400">{typedOrder.tracking_carrier}</span>
+                                    </div>
+                                ) : null}
                             </div>
                         </CardContent>
                     </Card>
@@ -319,6 +381,49 @@ export default async function OrderDetailPage({
                                     <span className="font-black text-red-400">{fmtMoney(total, order.currency)}</span>
                                 </div>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-neutral-900 border-neutral-800" style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}>
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm text-neutral-400">Status history</p>
+                                <Clock className="h-4 w-4 text-neutral-300" />
+                            </div>
+                            {statusEventsError ? (
+                                <p className="mt-3 text-sm text-neutral-500">
+                                    Status history is unavailable right now.
+                                </p>
+                            ) : timeline.length === 0 ? (
+                                <p className="mt-3 text-sm text-neutral-500">
+                                    No status events recorded yet.
+                                </p>
+                            ) : (
+                                <div className="mt-4 space-y-3">
+                                    {timeline.map((event) => (
+                                        <div key={event.id} className="border-l border-neutral-700 pl-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-sm font-semibold text-neutral-200">
+                                                    {(event.to_status ?? "updated").replaceAll("_", " ")}
+                                                </span>
+                                                <span className="text-[11px] text-neutral-500">
+                                                    {fmtDate(event.created_at)}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 text-xs text-neutral-500">
+                                                {event.from_status ? `${event.from_status.replaceAll("_", " ")} → ` : ""}
+                                                {event.reason ? event.reason.replaceAll("_", " ") : "status update"}
+                                            </p>
+                                            {event.metadata?.carrier || event.metadata?.trackingNumber ? (
+                                                <p className="mt-1 text-xs text-neutral-400">
+                                                    Tracking: {String(event.metadata.trackingNumber ?? "-")}
+                                                    {event.metadata.carrier ? ` via ${String(event.metadata.carrier)}` : ""}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

@@ -1,14 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import Stars from "./Stars";
+import { publicImageUrl, publicStorageUrl } from "@/lib/storage";
 
 type Review = {
     id: string;
     name: string;
     text: string;
+    rating?: number | null;
+    artist?: JoinedArtist | JoinedArtist[] | null;
+    product?: JoinedProduct | JoinedProduct[] | null;
+};
+
+type JoinedArtist = {
+    display_name?: string | null;
+    hero_image_path?: string | null;
+};
+
+type JoinedProduct = {
+    slug?: string | null;
+    title?: string | null;
+    product_images?: { path?: string | null }[] | null;
 };
 
 export default function ArtistReviews({ artistId }: { artistId: string }) {
@@ -44,11 +59,6 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
             mounted = false;
         };
     }, [artistId]);
-
-    function artistImage(path?: string | null) {
-        if (!path) return null;
-        return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${path}`;
-    }
 
     if (!loading && reviews.length === 0) return null;
 
@@ -87,17 +97,15 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                 {!loading && (
                     <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto pb-2">
 
-                        {reviews.map((r: any, i) => {
+                        {reviews.map((r, i) => {
                             const artistObj = Array.isArray(r.artist) ? r.artist[0] : r.artist;
                             const productObj = Array.isArray(r.product) ? r.product[0] : r.product;
 
-                            const artistAvatar = artistImage(artistObj?.hero_image_path);
+                            const artistAvatar = publicStorageUrl("artist-images", artistObj?.hero_image_path);
 
                             const productImagePath = productObj?.product_images?.[0]?.path;
 
-                            const productAvatar = productImagePath
-                                ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${productImagePath}`
-                                : null;
+                            const productAvatar = publicImageUrl(productImagePath);
 
                             return (
                                 <Link
@@ -115,8 +123,11 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                                     {/* 🔥 PARALLAX PRODUCT IMAGE */}
                                     <div className="absolute inset-0 overflow-hidden rounded-2xl opacity-20 pointer-events-none">
                                         {productAvatar && (
-                                            <img
+                                            <Image
                                                 src={productAvatar}
+                                                alt={productObj?.title ?? "Product"}
+                                                fill
+                                                sizes="260px"
                                                 className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-1"
                                             />
                                         )}
@@ -131,8 +142,11 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                                             {/* ARTIST */}
                                             <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral-700">
                                                 {artistAvatar && (
-                                                    <img
+                                                    <Image
                                                         src={artistAvatar}
+                                                        alt={artistObj?.display_name ?? "Artist"}
+                                                        width={40}
+                                                        height={40}
                                                         className="w-full h-full object-cover"
                                                     />
                                                 )}
@@ -141,8 +155,11 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                                             {/* PRODUCT */}
                                             <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-800">
                                                 {productAvatar && (
-                                                    <img
+                                                    <Image
                                                         src={productAvatar}
+                                                        alt={productObj?.title ?? "Product"}
+                                                        width={40}
+                                                        height={40}
                                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                     />
                                                 )}

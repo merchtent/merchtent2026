@@ -1,13 +1,14 @@
 import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { publicEnv } from "@/lib/env";
 
 export function getWritableServerSupabase() {
     const cookieStore = cookies(); // writable in Actions/Route Handlers
 
     return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        publicEnv.supabaseUrl(),
+        publicEnv.supabaseAnonKey(),
         {
             cookies: {
                 async get(name: string) {

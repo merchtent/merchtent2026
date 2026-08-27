@@ -1,7 +1,23 @@
+import { serverEnv } from "@/lib/env.server";
+import { logger } from "@/lib/logger";
+
+const SMS_REQUEST_TIMEOUT_MS = 15_000;
+
+async function readProviderResponse(response: Response) {
+    const text = await response.text();
+    if (!text) return null;
+
+    try {
+        return JSON.parse(text) as unknown;
+    } catch {
+        return text;
+    }
+}
+
 export async function sendSms(to: string, message: string, ref?: string) {
     try {
-        const username = process.env.MOBILEMESSAGE_USERNAME!;
-        const password = process.env.MOBILEMESSAGE_PASSWORD!;
+        const username = serverEnv.mobileMessageUsername();
+        const password = serverEnv.mobileMessagePassword();
 
         const body = {
             enable_unicode: true,
@@ -23,16 +39,22 @@ export async function sendSms(to: string, message: string, ref?: string) {
                 Authorization: `Basic ${auth}`,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(SMS_REQUEST_TIMEOUT_MS)
         });
 
-        const json = await res.json();
+        const providerResponse = await readProviderResponse(res);
 
-        console.log("SMS response", json);
+        if (!res.ok) {
+            throw new Error(`MobileMessage request failed with ${res.status}`);
+        }
 
-        return json;
+        return providerResponse;
     } catch (err) {
-        console.error("SMS send failed", err);
+        logger.error("SMS send failed", {
+            error: err instanceof Error ? err.message : String(err),
+        });
+        throw new Error("Could not send SMS message.");
     }
 }
 

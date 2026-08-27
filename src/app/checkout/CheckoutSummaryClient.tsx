@@ -2,6 +2,8 @@
 "use client";
 
 import { useCart } from "@/components/CartProvider";
+import { publicProductImageUrlOrSource } from "@/lib/storage";
+import Image from "next/image";
 import Link from "next/link";
 
 const SHIPPING_OPTIONS = {
@@ -9,29 +11,25 @@ const SHIPPING_OPTIONS = {
     express: 1700,
 } as const;
 
-function publicImageUrl(path: string) {
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(
-        path
-    )}`;
-}
-
-function resolveCartImage(src?: string | null): string | null {
-    if (!src) return null;
-    if (src.startsWith("http://") || src.startsWith("https://")) return src;
-    return publicImageUrl(src);
-}
-
 export default function CheckoutSummaryClient({
     shippingMethod,
     isSubmitting,
+    useMerchCredits,
+    merchCreditBalance,
 }: {
     shippingMethod: "standard" | "express";
     isSubmitting: boolean;
+    useMerchCredits: boolean;
+    merchCreditBalance: number;
 }) {
     const { items, subtotal_cents, currency } = useCart();
 
     const shippingCents = SHIPPING_OPTIONS[shippingMethod] ?? 0;
-    const totalCents = subtotal_cents + shippingCents;
+    const merchCreditDiscountCents =
+        useMerchCredits && merchCreditBalance >= 20 && items.length > 0
+            ? Math.min(...items.map((item) => item.price_cents))
+            : 0;
+    const totalCents = Math.max(subtotal_cents + shippingCents - merchCreditDiscountCents, 0);
 
     return (
         <div className="sticky top-4 rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-4">
@@ -45,7 +43,7 @@ export default function CheckoutSummaryClient({
                 ) : (
                     items.map((item) => {
                         const lineId = item.sku ?? item.product_id;
-                        const displayImg = resolveCartImage(item.image_path);
+                        const displayImg = publicProductImageUrlOrSource(item.image_path);
                         const lineTotal = (item.price_cents * item.qty) / 100;
 
                         return (
@@ -56,10 +54,11 @@ export default function CheckoutSummaryClient({
                                 <div className="flex items-center gap-3 min-w-0">
                                     <div className="h-16 w-16 rounded-lg border border-neutral-800 bg-neutral-950 overflow-hidden shrink-0">
                                         {displayImg ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img
+                                            <Image
                                                 src={displayImg}
                                                 alt={item.title}
+                                                width={64}
+                                                height={64}
                                                 className="h-full w-full object-cover"
                                             />
                                         ) : (
@@ -141,6 +140,18 @@ export default function CheckoutSummaryClient({
                         })}
                     </span>
                 </div>
+                {merchCreditDiscountCents > 0 ? (
+                    <div className="flex items-center justify-between">
+                        <span className="text-neutral-400">Merch credits</span>
+                        <span className="text-green-300">
+                            -
+                            {(merchCreditDiscountCents / 100).toLocaleString("en-AU", {
+                                style: "currency",
+                                currency: currency || "AUD",
+                            })}
+                        </span>
+                    </div>
+                ) : null}
                 <div className="flex items-center justify-between text-base">
                     <span className="text-neutral-200 font-semibold">Total</span>
                     <span className="text-neutral-50 font-bold">

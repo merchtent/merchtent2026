@@ -1,10 +1,11 @@
 // app/dashboard/products/page.tsx
-import { getServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
 import Image from "next/image";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Box, FileClock, AlertTriangle } from "lucide-react";
+import { Plus, Box, FileClock, AlertTriangle, PenTool, ArrowRight, Shirt } from "lucide-react";
+import { publicImageUrl } from "@/lib/storage";
+import { logger } from "@/lib/logger";
+import { requireArtistPage } from "@/lib/auth/artist";
 
 function StatusPill({ published }: { published?: boolean | null }) {
     const styles = published
@@ -17,104 +18,78 @@ function StatusPill({ published }: { published?: boolean | null }) {
     );
 }
 
-function publicImageUrl(path: string) {
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(
-        path
-    )}`;
+function DesignStatusPill({ designed }: { designed: boolean }) {
+    const styles = designed
+        ? "border-sky-500/30 bg-sky-500/15 text-sky-200"
+        : "border-neutral-700 bg-neutral-500/10 text-neutral-300";
+
+    return (
+        <span className={`px-2 py-0.5 text-[11px] rounded-full border ${styles}`}>
+            {designed ? "Merch Tent design" : "Manual"}
+        </span>
+    );
+}
+
+type ProductLifecycle = {
+    id: string;
+    production_status?: string | null;
+    moderation_status?: string | null;
+    readiness_notes?: string | null;
+    price_cents?: number | null;
+    artist_cut_cents?: number | null;
+    category?: string | null;
+    is_published?: boolean | null;
+};
+
+type ProductDesignReadiness = {
+    product_id: string;
+    validation_status?: string | null;
+    print_asset_front_path?: string | null;
+    print_asset_back_path?: string | null;
+};
+
+type ProductImageCount = {
+    product_id: string;
+};
+
+function LifecyclePill({
+    label,
+    tone = "neutral",
+}: {
+    label?: string | null;
+    tone?: "neutral" | "good" | "warn" | "bad" | "info";
+}) {
+    const styles = {
+        neutral: "border-neutral-700 bg-neutral-500/10 text-neutral-300",
+        good: "border-green-500/30 bg-green-500/15 text-green-300",
+        warn: "border-yellow-500/30 bg-yellow-500/15 text-yellow-300",
+        bad: "border-red-500/30 bg-red-500/15 text-red-300",
+        info: "border-sky-500/30 bg-sky-500/15 text-sky-200",
+    }[tone];
+
+    return (
+        <span className={`px-2 py-0.5 text-[11px] rounded-full border ${styles}`}>
+            {(label ?? "unknown").replaceAll("_", " ")}
+        </span>
+    );
+}
+
+function productionTone(status?: string | null): "neutral" | "good" | "bad" | "info" {
+    if (status === "published" || status === "generated") return "good";
+    if (status === "generating") return "info";
+    if (status === "failed") return "bad";
+    return "neutral";
+}
+
+function moderationTone(status?: string | null): "neutral" | "good" | "warn" | "bad" {
+    if (status === "approved") return "good";
+    if (status === "pending_review") return "warn";
+    if (status === "blocked") return "bad";
+    return "neutral";
 }
 
 export default async function MyProductsPage() {
-    const supabase = getServerSupabase();
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                {/* angled banner */}
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                PRODUCTS // ACCESS
-                            </h1>
-                            <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">
-                                SIGN IN REQUIRED
-                            </span>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        Please <Link href="/auth/sign-in" className="underline">sign in</Link>.
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    const { data: artist, error: artistErr } = await supabase
-        .from("artists")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-    if (artistErr) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                PRODUCTS // ERROR
-                            </h1>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-red-400 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        Error: {artistErr.message}
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    if (!artist) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                {/* angled banner */}
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                PRODUCTS // SETUP
-                            </h1>
-                            <span className="text-xs bg-red-600 text-white px-2 py-1 rounded rotate-[2deg]">
-                                ACTION NEEDED
-                            </span>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <h2 className="text-lg md:text-xl font-black">No artist profile yet</h2>
-                        <p className="mt-2 text-neutral-300">
-                            Visit the{" "}
-                            <Link className="underline" href="/dashboard">
-                                Dashboard
-                            </Link>{" "}
-                            once to create it.
-                        </p>
-                    </div>
-                </div>
-            </main>
-        );
-    }
+    const { supabase, artist } = await requireArtistPage();
 
     // Products with first image + description
     const { data: rows, error } = await supabase
@@ -126,21 +101,21 @@ export default async function MyProductsPage() {
         .order("created_at", { ascending: false });
 
     if (error) {
+        logger.error("Dashboard products page failed to load products", {
+            artist_id: artist.id,
+            error: error.message,
+        });
+
         return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                PRODUCTS // ERROR
-                            </h1>
-                        </div>
-                    </div>
+            <main className="min-h-screen bg-black text-white">
+                <section className="border-b border-neutral-800 p-5 md:p-8">
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist backstage</p>
+                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Products error.</h1>
                 </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-red-400 flex items-center gap-2">
+                <div className="p-5 md:p-8">
+                    <div className="border border-neutral-800 bg-neutral-950 p-6 text-red-400 flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
-                        Error: {error.message}
+                        Could not load your products right now.
                     </div>
                 </div>
             </main>
@@ -160,83 +135,171 @@ export default async function MyProductsPage() {
         unitsByProduct.set(pid, (unitsByProduct.get(pid) ?? 0) + qty);
     });
 
+    const productIds = (rows ?? []).map((product) => product.id);
+    const { data: designRows } = productIds.length
+        ? await supabase
+            .from("product_designs")
+            .select("product_id, validation_status, print_asset_front_path, print_asset_back_path")
+            .eq("artist_id", artist.id)
+            .in("product_id", productIds)
+        : { data: [] };
+
+    const { data: lifecycleRows, error: lifecycleError } = productIds.length
+        ? await supabase
+            .from("products")
+            .select("id, production_status, moderation_status, readiness_notes")
+            .eq("artist_id", artist.id)
+            .in("id", productIds)
+        : { data: [], error: null };
+
+    const { data: readinessRows, error: readinessError } = productIds.length
+        ? await supabase
+            .from("products")
+            .select("id, price_cents, artist_cut_cents, category, is_published")
+            .eq("artist_id", artist.id)
+            .in("id", productIds)
+        : { data: [], error: null };
+
+    const { data: imageRows } = productIds.length
+        ? await supabase
+            .from("product_images")
+            .select("product_id")
+            .in("product_id", productIds)
+        : { data: [] };
+
+    if (lifecycleError) {
+        logger.error("Dashboard products page failed to load product lifecycle metadata", {
+            artist_id: artist.id,
+            error: lifecycleError.message,
+        });
+    }
+
+    if (readinessError) {
+        logger.error("Dashboard products page failed to load product readiness metadata", {
+            artist_id: artist.id,
+            error: readinessError.message,
+        });
+    }
+
+    const designByProductId = new Map(
+        ((designRows ?? []) as ProductDesignReadiness[]).map((design) => [design.product_id, design])
+    );
+    const designedProductIds = new Set(Array.from(designByProductId.keys()));
+    const readinessByProductId = new Map(
+        ((readinessRows ?? []) as ProductLifecycle[]).map((product) => [product.id, product])
+    );
+    const lifecycleByProductId = new Map(
+        ((lifecycleRows ?? []) as ProductLifecycle[]).map((product) => [
+            product.id,
+            { ...product, ...readinessByProductId.get(product.id) },
+        ])
+    );
+    const imageCountByProductId = new Map<string, number>();
+    ((imageRows ?? []) as ProductImageCount[]).forEach((image) => {
+        imageCountByProductId.set(image.product_id, (imageCountByProductId.get(image.product_id) ?? 0) + 1);
+    });
+
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* angled banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">Artist Dashboard</p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">My Products</h1>
-                        </div>
-                        <Button asChild>
-                            <Link href="/dashboard/products/new" className="inline-flex items-center gap-2">
-                                <Plus className="h-4 w-4" /> Add product
-                            </Link>
-                        </Button>
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 bg-black">
+                <div className="grid lg:grid-cols-[1fr_auto]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Product floor</p>
+                        <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">My products.</h1>
+                        <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                            Drafts, live drops, generated mockups, moderation state, and production readiness in one place.
+                        </p>
+                    </div>
+                    <div className="flex flex-col justify-end gap-3 p-5 md:p-8">
+                        <Link
+                            href="/dashboard/products/designer"
+                            className="inline-flex items-center justify-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                        >
+                            <PenTool className="h-4 w-4" /> Design product
+                        </Link>
+                        <Link
+                            href="/dashboard/products/new"
+                            className="inline-flex items-center justify-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black hover:border-red-500"
+                        >
+                            <Plus className="h-4 w-4" /> Manual product
+                        </Link>
                     </div>
                 </div>
             </section>
 
-            {/* list / empty */}
-            <section className="max-w-5xl mx-auto px-4 py-8">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
                 {!rows || rows.length === 0 ? (
-                    <Card
-                        className="bg-neutral-900 border-neutral-800"
-                        style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}
-                    >
-                        <CardContent className="p-6">
-                            <div className="flex items-center gap-3">
-                                <Box className="h-5 w-5 text-neutral-300" />
-                                <div>
-                                    <p className="font-semibold">No products yet.</p>
-                                    <p className="text-sm text-neutral-400">
-                                        Start your first drop — add a tee with hover imagery.
-                                    </p>
-                                </div>
+                    <div className="border border-neutral-800 bg-neutral-950 p-6 md:p-8">
+                        <div className="flex items-center gap-3">
+                            <Box className="h-6 w-6 text-red-400" />
+                            <div>
+                                <p className="text-2xl font-black uppercase">No products yet.</p>
+                                <p className="mt-1 text-sm text-neutral-400">
+                                    Start your first drop with the designer, or keep using the manual creator.
+                                </p>
                             </div>
-                            <div className="mt-4">
-                                <Button asChild>
-                                    <Link href="/dashboard/products/new">Add product</Link>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <div className="mt-6 flex flex-wrap gap-3">
+                            <Button asChild>
+                                <Link href="/dashboard/products/designer">Design product</Link>
+                            </Button>
+                            <Button asChild variant="secondary">
+                                <Link href="/dashboard/products/new">Manual product</Link>
+                            </Button>
+                        </div>
+                    </div>
                 ) : (
-                    <ul className="space-y-3">
+                    <div className="border border-neutral-800">
+                        <div className="grid border-b border-neutral-800 bg-neutral-950 p-4 md:grid-cols-[1fr_auto] md:items-center">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">Inventory state</p>
+                                <h2 className="mt-1 text-3xl font-black uppercase leading-none">{rows.length} product{rows.length === 1 ? "" : "s"}</h2>
+                            </div>
+                            <p className="mt-2 text-sm text-neutral-500 md:mt-0">Live, draft, production and moderation checks.</p>
+                        </div>
+                        <ul>
                         {rows.map((p) => {
                             const unitsSold = unitsByProduct.get(p.id) ?? 0;
+                            const isDesignedProduct = designedProductIds.has(p.id);
+                            const thumbnailUrl = publicImageUrl(p.primary_image_path);
+                            const lifecycle = lifecycleByProductId.get(p.id);
+                            const design = designByProductId.get(p.id);
+                            const imageCount = imageCountByProductId.get(p.id) ?? 0;
+                            const readinessChecks = buildReadinessChecks({
+                                product: lifecycle,
+                                designed: isDesignedProduct,
+                                design,
+                                imageCount,
+                            });
+                            const readyCount = readinessChecks.filter((check) => check.ok).length;
+                            const readyForLaunch = readyCount === readinessChecks.length;
                             return (
                                 <li
                                     key={p.id}
-                                    className="rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3 md:px-4 md:py-4 flex items-center gap-4"
-                                    style={{ clipPath: "polygon(1% 0,100% 0,99% 100%,0 100%)" }}
+                                    className="grid gap-4 border-b border-neutral-800 bg-neutral-950 p-4 last:border-b-0 md:grid-cols-[96px_1fr_auto] md:items-center"
                                 >
-                                    {/* thumb */}
-                                    <div className="relative h-16 w-16 md:h-20 md:w-20 shrink-0 overflow-hidden rounded bg-neutral-950 border border-neutral-800">
-                                        {p.primary_image_path ? (
+                                    <div className="relative h-24 w-24 shrink-0 overflow-hidden border border-neutral-800 bg-black">
+                                        {thumbnailUrl ? (
                                             <Image
-                                                src={publicImageUrl(p.primary_image_path)}
+                                                src={thumbnailUrl}
                                                 alt={p.title}
                                                 fill
                                                 sizes="80px"
                                                 className="object-cover"
                                             />
                                         ) : (
-                                            <div className="h-full w-full grid place-items-center text-[10px] text-neutral-500">
-                                                No image
+                                            <div className="h-full w-full grid place-items-center text-neutral-500">
+                                                <Shirt className="h-6 w-6" />
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* text */}
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
-                                                <div className="font-medium truncate">{p.title}</div>
-                                                <div className="text-xs text-neutral-500">
-                                                    {new Date(p.created_at as any).toLocaleString("en-AU", {
+                                                <div className="text-xl font-black leading-tight">{p.title}</div>
+                                                <div className="mt-1 text-xs uppercase tracking-[0.14em] text-neutral-500">
+                                                    {new Date(String(p.created_at)).toLocaleString("en-AU", {
                                                         year: "numeric",
                                                         month: "short",
                                                         day: "numeric",
@@ -246,9 +309,21 @@ export default async function MyProductsPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="text-right">
+                                            <div className="hidden text-right md:block">
                                                 <StatusPill published={p.is_published} />
-                                                {/* 👇 sales count under the pill */}
+                                                <div className="mt-1">
+                                                    <DesignStatusPill designed={isDesignedProduct} />
+                                                </div>
+                                                <div className="mt-1 flex flex-col items-end gap-1">
+                                                    <LifecyclePill
+                                                        label={lifecycle?.production_status}
+                                                        tone={productionTone(lifecycle?.production_status)}
+                                                    />
+                                                    <LifecyclePill
+                                                        label={lifecycle?.moderation_status}
+                                                        tone={moderationTone(lifecycle?.moderation_status)}
+                                                    />
+                                                </div>
                                                 <div className="mt-1 text-[11px] text-neutral-400">
                                                     {unitsSold} {unitsSold === 1 ? "sale" : "sales"}
                                                 </div>
@@ -260,22 +335,44 @@ export default async function MyProductsPage() {
                                                 {p.description}
                                             </p>
                                         )}
+                                        {lifecycle?.readiness_notes ? (
+                                            <p className="mt-2 text-xs text-neutral-500 line-clamp-2">
+                                                {lifecycle.readiness_notes}
+                                            </p>
+                                        ) : null}
+                                        <div className="mt-4 border border-neutral-800 bg-black p-3">
+                                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-red-400">
+                                                    Launch readiness
+                                                </p>
+                                                <span className={`text-xs font-black ${readyForLaunch ? "text-green-300" : "text-yellow-300"}`}>
+                                                    {readyCount}/{readinessChecks.length} ready
+                                                </span>
+                                            </div>
+                                            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                                                {readinessChecks.map((check) => (
+                                                    <div key={check.label} className="flex items-center gap-2 text-xs">
+                                                        <span className={`h-2 w-2 ${check.ok ? "bg-green-400" : "bg-red-500"}`} />
+                                                        <span className={check.ok ? "text-neutral-300" : "text-red-300"}>{check.label}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* actions */}
-                                    <div className="hidden md:flex items-center gap-2">
+                                    <div className="flex items-center gap-3 md:justify-end">
                                         {p.is_published ? (
                                             <>
                                                 <Link
                                                     href={`/product/${p.slug ?? p.id}`}
-                                                    className="text-sm underline"
+                                                    className="inline-flex items-center gap-1 text-sm font-black text-red-400 hover:text-red-300"
                                                     title="View product"
                                                 >
-                                                    View
+                                                    View <ArrowRight className="h-4 w-4" />
                                                 </Link>
                                                 <Link
                                                     href={`/dashboard/products/${p.id}/edit`}
-                                                    className="text-sm underline"
+                                                    className="text-sm font-black underline"
                                                 >
                                                     Edit
                                                 </Link>
@@ -288,7 +385,7 @@ export default async function MyProductsPage() {
                                                 </span>
                                                 <Link
                                                     href={`/dashboard/products/${p.id}/edit`}
-                                                    className="text-sm underline"
+                                                    className="text-sm font-black underline"
                                                 >
                                                     Edit
                                                 </Link>
@@ -301,8 +398,37 @@ export default async function MyProductsPage() {
                             );
                         })}
                     </ul>
+                    </div>
                 )}
             </section>
         </main>
     );
+}
+
+function buildReadinessChecks({
+    product,
+    designed,
+    design,
+    imageCount,
+}: {
+    product?: ProductLifecycle;
+    designed: boolean;
+    design?: ProductDesignReadiness;
+    imageCount: number;
+}) {
+    const isManual = product?.production_status === "manual";
+    const mockupsGenerated = imageCount > 0;
+    const printAssetsReady = isManual || Boolean(design?.print_asset_front_path);
+    const designValidated = isManual || design?.validation_status === "validated";
+
+    return [
+        { label: "Image present", ok: mockupsGenerated },
+        { label: "Price set", ok: Number(product?.price_cents ?? 0) > 0 },
+        { label: "Artist cut set", ok: Number(product?.artist_cut_cents ?? 0) >= 0 },
+        { label: "Category set", ok: Boolean(product?.category) },
+        { label: "Mockups generated", ok: mockupsGenerated },
+        { label: "Design data saved", ok: isManual || designed },
+        { label: "Print asset ready", ok: printAssetsReady && designValidated },
+        { label: "Moderation approved", ok: product?.moderation_status === "approved" || !product?.is_published },
+    ];
 }

@@ -1,5 +1,9 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { publicApiError, publicApiJson } from "@/lib/api/public-error";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+
+type FanShoutRow = {
+    rating: number | null;
+};
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -7,10 +11,7 @@ export async function GET(req: Request) {
     const artistId = searchParams.get("artist_id");
     const productId = searchParams.get("product_id");
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = getPublicServerSupabase();
 
     // 🔥 base query
     let query = supabase
@@ -44,18 +45,18 @@ export async function GET(req: Request) {
     const { data, error } = await query;
 
     if (error) {
-        return NextResponse.json({ shouts: [], avgRating: null });
+        return publicApiError("/api/fan-shouts", error);
     }
 
     // 🔥 calculate average
-    const ratings = (data ?? []).map((r: any) => r.rating ?? 5);
+    const ratings = ((data ?? []) as FanShoutRow[]).map((r) => r.rating ?? 5);
 
     const avg =
         ratings.length > 0
             ? ratings.reduce((a, b) => a + b, 0) / ratings.length
             : null;
 
-    return NextResponse.json({
+    return publicApiJson({
         shouts: data ?? [],
         avgRating: avg,
         count: ratings.length,

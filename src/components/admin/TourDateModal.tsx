@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useToast } from "@/components/ToastProvider";
 
 type TourDate = {
     id?: string;
@@ -10,6 +11,27 @@ type TourDate = {
     event_date: string;
     ticket_url: string;
 };
+
+const emptyTourDate: TourDate = {
+    artist: "",
+    venue: "",
+    city: "",
+    event_date: "",
+    ticket_url: "",
+};
+
+function initialTourDateForm(tourDate?: TourDate | null): TourDate {
+    return tourDate
+        ? {
+            id: tourDate.id,
+            artist: tourDate.artist ?? "",
+            venue: tourDate.venue ?? "",
+            city: tourDate.city ?? "",
+            event_date: tourDate.event_date ?? "",
+            ticket_url: tourDate.ticket_url ?? "",
+        }
+        : emptyTourDate;
+}
 
 interface Props {
     open: boolean;
@@ -27,44 +49,23 @@ export default function TourDateModal({
     artists = [],
 }: Props) {
     const [isPending, startTransition] = useTransition();
+    const toast = useToast();
 
-    const [form, setForm] = useState<TourDate>({
-        artist: "",
-        venue: "",
-        city: "",
-        event_date: "",
-        ticket_url: "",
-    });
-
-    useEffect(() => {
-        if (tourDate) {
-            setForm({
-                id: tourDate.id,
-                artist: tourDate.artist ?? "",
-                venue: tourDate.venue ?? "",
-                city: tourDate.city ?? "",
-                event_date: tourDate.event_date ?? "",
-                ticket_url: tourDate.ticket_url ?? "",
-            });
-        } else {
-            setForm({
-                artist: "",
-                venue: "",
-                city: "",
-                event_date: "",
-                ticket_url: "",
-            });
-        }
-    }, [tourDate, open]);
+    const [form, setForm] = useState<TourDate>(() => initialTourDateForm(tourDate));
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const save = () => {
+        setErrorMessage(null);
+
         if (
             !form.artist ||
             !form.venue ||
             !form.city ||
             !form.event_date
         ) {
-            alert("Please complete all required fields");
+            const message = "Please complete all required fields.";
+            setErrorMessage(message);
+            toast({ title: "Tour date not saved", description: message, variant: "error" });
             return;
         }
 
@@ -84,10 +85,16 @@ export default function TourDateModal({
 
             if (!response.ok) {
                 const error = await response.json();
-                alert(error.message ?? "Failed to save");
+                const message = error.message ?? "Failed to save tour date.";
+                setErrorMessage(message);
+                toast({ title: "Tour date not saved", description: message, variant: "error" });
                 return;
             }
 
+            toast({
+                title: form.id ? "Tour date updated" : "Tour date added",
+                variant: "success",
+            });
             onSaved();
             onClose();
         });
@@ -136,6 +143,11 @@ export default function TourDateModal({
                 </div>
 
                 <div className="space-y-5">
+                    {errorMessage ? (
+                        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                            {errorMessage}
+                        </p>
+                    ) : null}
 
                     <div>
                         <label className="block mb-2 text-sm text-neutral-400">

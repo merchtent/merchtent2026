@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
     LayoutDashboard,
@@ -6,38 +5,22 @@ import {
     Users,
     Package,
     Settings,
+    ClipboardList,
+    Activity,
+    BarChart3,
 } from "lucide-react";
 
-import { getServerSupabase } from "@/lib/supabase/server";
+import { requireAdminPage } from "@/lib/auth/admin";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const supabase = getServerSupabase();
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-        redirect("/login");
-    }
-
-    const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-
-    if (error || !profile) {
-        redirect("/");
-    }
-
-    if (profile.role !== "admin") {
-        redirect("/");
-    }
+    const { user } = await requireAdminPage();
 
     return (
         <div className="min-h-screen bg-black text-white flex">
@@ -80,6 +63,14 @@ export default async function AdminLayout({
                     </Link>
 
                     <Link
+                        href="/admin/analytics"
+                        className="flex items-center gap-3 rounded-xl border border-neutral-800 px-4 py-3 hover:border-red-500 hover:bg-red-500/10 transition"
+                    >
+                        <BarChart3 className="h-4 w-4" />
+                        Analytics
+                    </Link>
+
+                    <Link
                         href="/admin/artists"
                         className="flex items-center gap-3 rounded-xl border border-neutral-800 px-4 py-3 hover:border-red-500 hover:bg-red-500/10 transition"
                     >
@@ -93,6 +84,22 @@ export default async function AdminLayout({
                     >
                         <Package className="h-4 w-4" />
                         Products
+                    </Link>
+
+                    <Link
+                        href="/admin/fulfillment"
+                        className="flex items-center gap-3 rounded-xl border border-neutral-800 px-4 py-3 hover:border-red-500 hover:bg-red-500/10 transition"
+                    >
+                        <ClipboardList className="h-4 w-4" />
+                        Fulfillment
+                    </Link>
+
+                    <Link
+                        href="/admin/operations"
+                        className="flex items-center gap-3 rounded-xl border border-neutral-800 px-4 py-3 hover:border-red-500 hover:bg-red-500/10 transition"
+                    >
+                        <Activity className="h-4 w-4" />
+                        Operations
                     </Link>
 
                     <Link

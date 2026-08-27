@@ -1,20 +1,30 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useToast } from "@/components/ToastProvider";
 
 export default function OrderStatusUpdater({
     orderId,
     currentStatus,
+    currentTrackingNumber = "",
+    currentCarrier = "",
 }: {
     orderId: string;
     currentStatus: string;
+    currentTrackingNumber?: string | null;
+    currentCarrier?: string | null;
 }) {
     const [status, setStatus] = useState(currentStatus);
-    const [trackingNumber, setTrackingNumber] = useState("");
-    const [carrier, setCarrier] = useState("");
+    const [trackingNumber, setTrackingNumber] = useState(currentTrackingNumber ?? "");
+    const [carrier, setCarrier] = useState(currentCarrier ?? "");
     const [isPending, startTransition] = useTransition();
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const router = useRouter();
+    const toast = useToast();
 
     const save = () => {
+        setErrorMessage(null);
 
         if (
             status === "shipped" &&
@@ -23,9 +33,9 @@ export default function OrderStatusUpdater({
                 !carrier.trim()
             )
         ) {
-            alert(
-                "Tracking Number and Carrier are required when marking an order as shipped."
-            );
+            const message = "Tracking number and carrier are required when marking an order as shipped.";
+            setErrorMessage(message);
+            toast({ title: "Order not updated", description: message, variant: "error" });
 
             return;
         }
@@ -48,15 +58,24 @@ export default function OrderStatusUpdater({
             );
 
             if (!response.ok) {
-                alert("Failed to update order");
+                const payload = await response.json().catch(() => null);
+                const message = payload?.error ?? payload?.message ?? "Failed to update order.";
+                setErrorMessage(message);
+                toast({ title: "Order not updated", description: message, variant: "error" });
                 return;
             }
 
-            window.location.reload();
+            toast({ title: "Order updated", description: "Order status has been saved." });
+            router.refresh();
         });
     };
     return (
         <div className="flex flex-wrap items-center gap-3">
+            {errorMessage ? (
+                <p className="basis-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {errorMessage}
+                </p>
+            ) : null}
 
             <select
                 value={status}
@@ -105,13 +124,13 @@ export default function OrderStatusUpdater({
                         <option value="Australia Post">
                             Australia Post
                         </option>
-                        <option value="Aramex">
+                        <option value="Star Track">
                             Star Track
                         </option>
-                        <option value="Couriers Please">
+                        <option value="Customer Pickup">
                             Customer Pickup
                         </option>
-                        <option value="Sendle">
+                        <option value="Other">
                             Other
                         </option>
                     </select>

@@ -1,7 +1,9 @@
 // app/dashboard/artist/actions.ts
 "use server";
 
-import { getServerSupabase } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
+import { requireArtistAction } from "@/lib/auth/artist";
+import { normaliseExternalUrl } from "@/lib/urls";
 
 type UpdateArtistPayload = {
     artistId: string;
@@ -15,55 +17,52 @@ type UpdateArtistPayload = {
 };
 
 export async function updateArtistProfile(payload: UpdateArtistPayload) {
-    const supabase = getServerSupabase();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    let auth: Awaited<ReturnType<typeof requireArtistAction>>;
 
-    if (!user) {
-        return { error: "Not signed in" };
+    try {
+        auth = await requireArtistAction();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not verify artist ownership.";
+        return {
+            error: message === "Sign in required." ? "Not signed in" : "Could not verify artist ownership.",
+        };
     }
 
-    // make sure the artist is owned by this user
-    const { data: artist, error: fetchErr } = await supabase
-        .from("artists")
-        .select("id, user_id")
-        .eq("id", payload.artistId)
-        .maybeSingle();
+    const { supabase, user, artist } = auth;
 
-    if (fetchErr) {
-        return { error: fetchErr.message };
-    }
-    if (!artist) {
-        return { error: "Artist not found" };
-    }
-    if (artist.user_id !== user.id) {
+    if (payload.artistId !== artist.id) {
         return { error: "Not allowed to edit this artist" };
     }
 
     // build update object – only include what we got
-    const update: Record<string, any> = {};
+    const update: Partial<Omit<UpdateArtistPayload, "artistId">> = {};
     if (typeof payload.hero_image_path !== "undefined")
         update.hero_image_path = payload.hero_image_path;
     if (typeof payload.bio !== "undefined") update.bio = payload.bio;
     if (typeof payload.facebook_url !== "undefined")
-        update.facebook_url = payload.facebook_url;
+        update.facebook_url = normaliseExternalUrl(payload.facebook_url);
     if (typeof payload.instagram_url !== "undefined")
-        update.instagram_url = payload.instagram_url;
+        update.instagram_url = normaliseExternalUrl(payload.instagram_url);
     if (typeof payload.bandcamp_url !== "undefined")
-        update.bandcamp_url = payload.bandcamp_url;
+        update.bandcamp_url = normaliseExternalUrl(payload.bandcamp_url);
     if (typeof payload.spotify_url !== "undefined")
-        update.spotify_url = payload.spotify_url;
+        update.spotify_url = normaliseExternalUrl(payload.spotify_url);
     if (typeof payload.website_url !== "undefined")
-        update.website_url = payload.website_url;
+        update.website_url = normaliseExternalUrl(payload.website_url);
 
     const { error: updateErr } = await supabase
         .from("artists")
         .update(update)
-        .eq("id", payload.artistId);
+        .eq("id", artist.id)
+        .eq("user_id", user.id);
 
     if (updateErr) {
-        return { error: updateErr.message };
+        logger.error("artist profile update failed", {
+            artist_id: payload.artistId,
+            user_id: user.id,
+            error: updateErr.message,
+        });
+        return { error: "Could not update artist profile." };
     }
 
     return { ok: true };

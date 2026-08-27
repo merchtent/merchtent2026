@@ -1,89 +1,85 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight, Check, X } from "lucide-react";
+
+const comparisons = [
+    {
+        old: "Bulk boxes before you know demand",
+        new: "Publish first, produce after the fan buys",
+    },
+    {
+        old: "Guessing sizes and colours upfront",
+        new: "Real orders tell the system what to make",
+    },
+    {
+        old: "Generic product pages with no artist story",
+        new: "Drops tied to artists, fans, credits, and scenes",
+    },
+    {
+        old: "Stock left under the bed after the tour",
+        new: "No dead stock sitting around after launch week",
+    },
+];
+
 export default function WhyThisIsBetter() {
-    const items = [
-        {
-            title: "No bulk orders",
-            text: "No guessing sizes, no leftover stock sitting in boxes.",
-        },
-        {
-            title: "No upfront costs",
-            text: "Artists don’t pay to get started. Just design and launch.",
-        },
-        {
-            title: "No wasted product",
-            text: "Everything is printed on demand — better for the planet, no excess.",
-        },
-        {
-            title: "Artists get paid",
-            text: "Every sale directly supports the band, not a middleman.",
-        },
-        {
-            title: "Better designs",
-            text: "Real band merch, not generic templates or mass-produced prints.",
-        },
-        {
-            title: "Built for the scene",
-            text: "Independent artists, real fans, and a platform that actually gets it.",
-        },
-    ];
-
     return (
-        <section className="py-12 md:py-16 bg-neutral-950 text-white border-y border-neutral-800">
-
-            <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
-
-                {/* HEADER */}
-                <div className="text-center mb-10">
-                    <p className="text-xs uppercase tracking-widest text-neutral-400">
-                        Why this works
-                    </p>
-
-                    <h2 className="text-2xl md:text-4xl font-black mt-2">
-                        Better than traditional merch
-                    </h2>
-
-                    <p className="text-neutral-400 mt-3 max-w-xl mx-auto text-sm">
-                        No risk. No waste. No nonsense.
-                    </p>
-                </div>
-
-                {/* GRID */}
-                <div className="grid md:grid-cols-3 gap-6">
-
-                    {items.map((item, i) => (
-                        <div
-                            key={i}
-                            className="p-5 rounded-2xl border border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition group"
-                            style={{
-                                clipPath:
-                                    i % 4 === 0
-                                        ? "polygon(1% 0,100% 0,98% 100%,0 100%)"
-                                        : undefined,
-                            }}
+        <section className="border-y border-neutral-800 bg-black text-white">
+            <div className="mx-auto max-w-7xl px-4 py-10 md:px-6 md:py-14 lg:px-8">
+                <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            Why this is better
+                        </p>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-6xl">
+                            Old merch was a gamble.
+                        </h2>
+                        <p className="mt-5 max-w-xl text-sm leading-6 text-neutral-400 md:text-base">
+                            Merch Tent turns the risk around: prove the demand, keep the design data, and fulfil the
+                            order instead of forcing artists to become warehouse managers.
+                        </p>
+                        <Link
+                            href="/dashboard/products/designer"
+                            className="mt-7 inline-flex items-center gap-2 rounded-md bg-red-600 px-5 py-3 text-sm font-black hover:bg-red-500"
                         >
-                            <h3 className="font-semibold text-base">
-                                {item.title}
-                            </h3>
+                            Start selling your merch
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </div>
 
-                            <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
-                                {item.text}
-                            </p>
-                        </div>
-                    ))}
-
+                    <div className="grid border border-neutral-800 md:grid-cols-2">
+                        {comparisons.map((item) => (
+                            <div key={item.old} className="border-b border-r border-neutral-800 bg-neutral-950">
+                                <div className="border-b border-neutral-800 p-4">
+                                    <div className="flex items-start gap-3">
+                                        <span className="mt-0.5 flex h-6 w-6 items-center justify-center bg-neutral-800 text-neutral-500">
+                                            <X className="h-4 w-4" />
+                                        </span>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
+                                                Old way
+                                            </p>
+                                            <p className="mt-1 text-sm leading-5 text-neutral-300">{item.old}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <span className="mt-0.5 flex h-6 w-6 items-center justify-center bg-red-600 text-white">
+                                            <Check className="h-4 w-4" />
+                                        </span>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-red-400">
+                                                Merch Tent
+                                            </p>
+                                            <p className="mt-1 text-sm font-bold leading-5 text-white">{item.new}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-
-                {/* CTA */}
-                <div className="text-center mt-10">
-                    <a
-                        href="/start"
-                        className="inline-block bg-red-600 hover:bg-red-500 px-6 py-3 rounded-xl font-bold"
-                    >
-                        Start selling your merch
-                    </a>
-                </div>
-
             </div>
         </section>
     );

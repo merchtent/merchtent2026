@@ -1,5 +1,8 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { AlertTriangle, Download, PackageCheck, Truck } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 function formatMoney(cents: number) {
     return `AUD ${(cents / 100).toFixed(2)}`;
@@ -24,11 +27,28 @@ function StatusBadge({ status }: { status: string }) {
     );
 }
 
-function getArtists(order: any) {
+type OrderArtist = {
+    display_name?: string | null;
+};
+
+type OrderItem = {
+    artists?: OrderArtist | OrderArtist[] | null;
+};
+
+type AdminOrder = {
+    status?: string | null;
+    tracking_code?: string | null;
+    order_items?: OrderItem[] | null;
+};
+
+function getArtists(order: AdminOrder) {
     const names = new Set<string>();
 
-    order.order_items?.forEach((item: any) => {
-        const artist = item.artists?.display_name;
+    order.order_items?.forEach((item) => {
+        const joinedArtist = Array.isArray(item.artists)
+            ? item.artists[0]
+            : item.artists;
+        const artist = joinedArtist?.display_name;
 
         if (artist) {
             names.add(artist);
@@ -52,8 +72,8 @@ export default async function OrdersPage() {
         created_at,
         first_name,
         last_name,
-        tracking_number,
-        carrier,
+        tracking_code,
+        tracking_carrier,
         order_items (
             id,
             artist_id,
@@ -66,7 +86,9 @@ export default async function OrdersPage() {
         .order("created_at", { ascending: false });
 
     if (error) {
-        console.error(error);
+        logger.error("Admin orders page failed to load orders", {
+            error: error.message,
+        });
 
         return (
             <div className="rounded-xl border border-red-900 bg-red-950/20 p-6">
@@ -75,17 +97,54 @@ export default async function OrdersPage() {
         );
     }
 
+    const orderRows = orders ?? [];
+    const totalOrders = orderRows.length;
+    const ordersWithoutTracking = orderRows.filter((order) =>
+        ["paid", "in_production"].includes(order.status ?? "") && !order.tracking_code
+    ).length;
+    const shippedOrders = orderRows.filter((order) => order.status === "shipped").length;
+    const statusCounts = orderRows.reduce((acc, order) => {
+        const status = order.status ?? "unknown";
+        acc[status] = (acc[status] ?? 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
     return (
         <main className="bg-neutral-950 text-neutral-100 min-h-screen">
             <div className="mx-auto px-6 py-8">
-                <div className="mb-6">
-                    <h1 className="text-3xl font-black">
-                        Orders
-                    </h1>
+                <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h1 className="text-3xl font-black">
+                            Orders
+                        </h1>
 
-                    <p className="text-neutral-400 mt-1">
-                        Manage customer orders and fulfilment.
-                    </p>
+                        <p className="text-neutral-400 mt-1">
+                            Admin-only customer orders, fulfilment state, tracking, exports and support triage.
+                        </p>
+                    </div>
+
+                    <Link
+                        href="/api/admin/orders/export"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-700 px-4 py-3 text-sm font-semibold text-neutral-100 transition hover:border-red-500 hover:text-red-200"
+                    >
+                        <Download className="h-4 w-4" />
+                        Export CSV
+                    </Link>
+                </div>
+
+                <div className="mb-6 grid gap-4 md:grid-cols-4">
+                    <OpsCard title="Total orders" value={String(totalOrders)} icon={<PackageCheck className="h-4 w-4" />} />
+                    <OpsCard title="Needs tracking" value={String(ordersWithoutTracking)} icon={<AlertTriangle className="h-4 w-4" />} warn={ordersWithoutTracking > 0} />
+                    <OpsCard title="Shipped" value={String(shippedOrders)} icon={<Truck className="h-4 w-4" />} />
+                    <OpsCard title="Status groups" value={String(Object.keys(statusCounts).length)} icon={<PackageCheck className="h-4 w-4" />} />
+                </div>
+
+                <div className="mb-6 flex flex-wrap gap-2">
+                    {Object.entries(statusCounts).map(([status, count]) => (
+                        <span key={status} className="border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-black uppercase text-neutral-300">
+                            {status}: {count}
+                        </span>
+                    ))}
                 </div>
 
                 <div className="border border-neutral-800 rounded-2xl overflow-hidden bg-neutral-900">
@@ -97,6 +156,7 @@ export default async function OrdersPage() {
                                 <th className="p-4 text-left">Order</th>
                                 <th className="p-4 text-left">Customer</th>
                                 <th className="p-4 text-left">Artist</th>
+                                <th className="p-4 text-left">Items</th>
                                 <th className="p-4 text-left">Total</th>
                                 <th className="p-4 text-left">Status</th>
                                 <th className="p-4 text-left">Date</th>
@@ -109,6 +169,7 @@ export default async function OrdersPage() {
 
                             {orders?.map((o) => (
                                 <tr
+                                    key={o.id}
                                     className="border-t border-neutral-800 hover:bg-neutral-800/40 transition"
                                 >
                                     <td className="p-4">
@@ -172,6 +233,10 @@ export default async function OrdersPage() {
                                         </div>
                                     </td>
 
+                                    <td className="p-4 text-neutral-300">
+                                        {o.order_items?.length ?? 0}
+                                    </td>
+
                                     <td className="p-4 font-semibold">
                                         {formatMoney(o.total_cents)}
                                     </td>
@@ -187,11 +252,11 @@ export default async function OrdersPage() {
                                     </td>
 
                                     <td className="p-4">
-                                        {o.tracking_number || "-"}
+                                        {o.tracking_code || "-"}
                                     </td>
 
                                     <td className="p-4">
-                                        {o.carrier || "-"}
+                                        {o.tracking_carrier || "-"}
                                     </td>
                                 </tr>
 
@@ -206,5 +271,27 @@ export default async function OrdersPage() {
             </div>
         </main>
 
+    );
+}
+
+function OpsCard({
+    title,
+    value,
+    icon,
+    warn,
+}: {
+    title: string;
+    value: string;
+    icon: ReactNode;
+    warn?: boolean;
+}) {
+    return (
+        <div className={`border p-4 ${warn ? "border-yellow-500/40 bg-yellow-500/10" : "border-neutral-800 bg-neutral-900"}`}>
+            <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-black uppercase text-neutral-500">{title}</p>
+                <div className={warn ? "text-yellow-300" : "text-red-400"}>{icon}</div>
+            </div>
+            <p className="mt-3 text-3xl font-black">{value}</p>
+        </div>
     );
 }

@@ -2,7 +2,6 @@
 "use client";
 
 import { useCart } from "@/components/CartProvider";
-import { useToast } from "@/components/ToastProvider";
 
 type AddToCartButtonProps = {
     product_id: string;
@@ -31,7 +30,6 @@ export default function AddToCartButton({
     className,
 }: AddToCartButtonProps) {
     const { add, open } = useCart();
-    const toast = useToast();
 
     const sku = `${product_id}-${(selectedSize || "nosize").toLowerCase()}-${(
         selectedColor || "nocolor"
@@ -45,7 +43,10 @@ export default function AddToCartButton({
             //     // ✅ same look as checkout
             //     "relative h-11 px-6 font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 rounded-2xl"
             // }
-            className="relative rounded-xl px-5 py-3 text-sm font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-50"
+            className={
+                className ??
+                "relative rounded-xl px-5 py-3 text-sm font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-50"
+            }
             style={{
                 clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)",
                 cursor: "pointer"
@@ -65,9 +66,6 @@ export default function AddToCartButton({
                     1
                 );
                 open();
-
-                // leave toast commented
-                // toast({ ... })
             }}
         >
             Add to cart

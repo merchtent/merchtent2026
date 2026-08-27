@@ -7,28 +7,31 @@ import { useEffect, useState } from "react";
 
 type Props = {
     userEmail: string;
+    merchCreditBalance: number;
+    canUseMerchCredits: boolean;
 };
 
 const SHIP_KEY = "checkout_ship_v1";
 
-export default function CheckoutShellClient({ userEmail }: Props) {
+export default function CheckoutShellClient({
+    userEmail,
+    merchCreditBalance,
+    canUseMerchCredits,
+}: Props) {
     // shared shipping state
     const [shippingMethod, setShippingMethod] = useState<"standard" | "express">(
-        "standard"
+        () => {
+            try {
+                const raw = localStorage.getItem(SHIP_KEY);
+                return raw === "standard" || raw === "express" ? raw : "standard";
+            } catch {
+                return "standard";
+            }
+        }
     );
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-
-    // hydrate shipping method from localStorage
-    useEffect(() => {
-        try {
-            const raw = localStorage.getItem(SHIP_KEY);
-            if (raw === "standard" || raw === "express") {
-                setShippingMethod(raw);
-            }
-        } catch { }
-    }, []);
+    const [useMerchCredits, setUseMerchCredits] = useState(false);
 
     // save shipping method whenever it changes
     useEffect(() => {
@@ -45,8 +48,17 @@ export default function CheckoutShellClient({ userEmail }: Props) {
                 setShippingMethod={setShippingMethod}
                 setIsSubmitting={setIsSubmitting}
                 isSubmitting={isSubmitting}
+                merchCreditBalance={merchCreditBalance}
+                canUseMerchCredits={canUseMerchCredits}
+                useMerchCredits={useMerchCredits}
+                setUseMerchCredits={setUseMerchCredits}
             />
-            <CheckoutSummaryClient shippingMethod={shippingMethod} isSubmitting={isSubmitting} />
+            <CheckoutSummaryClient
+                shippingMethod={shippingMethod}
+                isSubmitting={isSubmitting}
+                useMerchCredits={useMerchCredits}
+                merchCreditBalance={merchCreditBalance}
+            />
         </section>
     );
 }

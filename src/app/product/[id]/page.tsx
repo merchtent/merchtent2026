@@ -2,14 +2,11 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
 import ProductViewClient from "../ProductViewClient";
+import { logger } from "@/lib/logger";
+import { publicImageUrl } from "@/lib/storage";
+import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
 
 export const revalidate = 60;
-
-function publicImageUrl(path: string) {
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(
-        path
-    )}`;
-}
 
 function formatCurrency(cents: number, currency: string) {
     try {
@@ -39,7 +36,7 @@ export default async function ProductPage({
     const supabase = getServerSupabase();
 
     // try by slug first
-    let { data: product, error } = await supabase
+    let { data: product, error } = await publicCatalogProductQuery(supabase
         .from("products_with_first_image")
         // .select(
         //     "id, slug, title, description, price_cents, currency, primary_image_path"
@@ -59,11 +56,12 @@ export default async function ProductPage({
         hero_image_path
     )
 `)
+    )
         .eq("slug", idOrSlug)
         .maybeSingle();
 
     if ((!product || error) && looksLikeUUID(idOrSlug)) {
-        const byId = await supabase
+        const byId = await publicCatalogProductQuery(supabase
             .from("products_with_first_image")
             // .select(
             //     "id, slug, title, description, price_cents, currency, primary_image_path"
@@ -83,6 +81,7 @@ export default async function ProductPage({
                 hero_image_path
             )
 `)
+        )
             .eq("id", idOrSlug)
             .maybeSingle();
         product = byId.data ?? null;
@@ -115,11 +114,14 @@ export default async function ProductPage({
             .eq("product_id", product.id)
             .order("position", { ascending: true })) || {};
 
+    const primaryImageUrl = publicImageUrl(product.primary_image_path);
     const galleryUrls: string[] =
         Array.isArray(galleryRows) && galleryRows.length
-            ? galleryRows.map((g) => publicImageUrl(g.image_path))
-            : product.primary_image_path
-                ? [publicImageUrl(product.primary_image_path)]
+            ? galleryRows
+                .map((g) => publicImageUrl(g.image_path))
+                .filter((url): url is string => Boolean(url))
+            : primaryImageUrl
+                ? [primaryImageUrl]
                 : [];
 
     // colors
@@ -145,20 +147,24 @@ export default async function ProductPage({
         })) ?? [];
 
     if (!artist?.id) {
-        console.warn("No artist id, skipping related products");
+        logger.warn("product detail missing artist relation", {
+            productId: product.id,
+            productSlug: product.slug,
+        });
     }
 
     // related
-    const { data: related } = await supabase
+    const { data: related } = await publicCatalogProductQuery(supabase
         .from("products_with_first_image")
         .select("id, slug, title, price_cents, currency, primary_image_path")
-        .eq("is_published", true)
+    )
         .eq("artist_id", artist?.id)
         .neq("id", product.id)
         .limit(8);
     const relatedFormatted =
         related?.map((p) => ({
             id: p.id,
+            slug: p.slug,
             title: p.title,
             price_cents: p.price_cents,
             currency: p.currency,
@@ -192,9 +198,7 @@ export default async function ProductPage({
                 description: product.description,
                 price_cents: product.price_cents,
                 currency: product.currency,
-                primary_image_url: product.primary_image_path
-                    ? publicImageUrl(product.primary_image_path)
-                    : null,
+                primary_image_url: primaryImageUrl,
                 artist: Array.isArray(product.artist)
                     ? product.artist[0]
                     : product.artist

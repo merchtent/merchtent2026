@@ -1,83 +1,77 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight, MousePointer2, PackageCheck, Shirt, Users } from "lucide-react";
+
+const steps = [
+    {
+        label: "Artist",
+        title: "Design the thing",
+        text: "Open the designer, pick the blank, place the artwork, and save the product data.",
+        icon: MousePointer2,
+    },
+    {
+        label: "Platform",
+        title: "Make it shoppable",
+        text: "Mockups become a listing, the artist profile links through, and fans can buy immediately.",
+        icon: Shirt,
+    },
+    {
+        label: "Fan",
+        title: "Back the drop",
+        text: "Fans buy the merch, earn credits, and keep a record of what they backed.",
+        icon: Users,
+    },
+    {
+        label: "Order",
+        title: "Fulfil from data",
+        text: "The saved design travels with the order so production can happen after the sale.",
+        icon: PackageCheck,
+    },
+];
+
 export default function HowItWorks() {
-    const steps = [
-        {
-            title: "Artists create",
-            text: "Bands design their merch and launch it on the platform — no upfront costs, no risk.",
-        },
-        {
-            title: "We print & ship",
-            text: "Every order is printed on demand, packed, and shipped directly to the customer.",
-        },
-        {
-            title: "Fans support",
-            text: "You get quality merch, and artists earn from every sale. Simple as that.",
-        },
-    ];
-
     return (
-        <section className="py-12 md:py-16 border-y border-neutral-800 bg-neutral-950 text-white">
-
-            <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
-
-                {/* HEADER */}
-                <div className="text-center mb-10">
-                    <p className="text-xs uppercase tracking-widest text-neutral-400">
-                        How it works
-                    </p>
-
-                    <h2 className="text-2xl md:text-4xl font-black mt-2">
-                        Simple. No fluff.
-                    </h2>
-
-                    <p className="text-neutral-400 mt-3 max-w-xl mx-auto text-sm">
-                        Built for artists, backed by fans — here’s how it all comes together.
-                    </p>
-                </div>
-
-                {/* STEPS */}
-                <div className="grid md:grid-cols-3 gap-6">
-
-                    {steps.map((step, i) => (
-                        <div
-                            key={i}
-                            className="relative p-6 rounded-2xl border border-neutral-800 bg-neutral-900 group hover:border-neutral-700 transition"
-                            style={{
-                                clipPath:
-                                    i === 0
-                                        ? "polygon(1% 0,100% 0,98% 100%,0 100%)"
-                                        : undefined,
-                            }}
-                        >
-                            {/* NUMBER */}
-                            <div className="absolute top-3 left-3 text-xs bg-red-600 px-2 py-0.5 font-bold rounded rotate-[-3deg]">
-                                {i + 1}
-                            </div>
-
-                            {/* CONTENT */}
-                            <h3 className="text-lg font-semibold mt-2">
-                                {step.title}
-                            </h3>
-
-                            <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
-                                {step.text}
-                            </p>
-                        </div>
-                    ))}
-
-                </div>
-
-                {/* CTA */}
-                <div className="text-center mt-10">
-                    <a
+        <section className="border-y border-neutral-800 bg-neutral-950 text-white">
+            <div className="mx-auto max-w-7xl px-4 py-10 md:px-6 md:py-14 lg:px-8">
+                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            How it works
+                        </p>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-6xl">
+                            Four moves. One merch engine.
+                        </h2>
+                    </div>
+                    <Link
                         href="/start"
-                        className="inline-block bg-red-600 hover:bg-red-500 px-6 py-3 rounded-xl font-bold"
+                        className="inline-flex w-fit items-center gap-2 rounded-md bg-red-600 px-5 py-3 text-sm font-black hover:bg-red-500"
                     >
                         Learn more
-                    </a>
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
                 </div>
 
+                <div className="mt-8 grid border border-neutral-800 md:grid-cols-4">
+                    {steps.map((step, index) => {
+                        const Icon = step.icon;
+
+                        return (
+                            <div key={step.title} className="relative min-h-[260px] border-b border-r border-neutral-800 bg-black p-5 last:border-r-0 md:border-b-0 md:p-6">
+                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-neutral-500">
+                                    {String(index + 1).padStart(2, "0")} / {step.label}
+                                </p>
+                                <Icon className="mt-8 h-7 w-7 text-red-400" />
+                                <h3 className="mt-5 text-2xl font-black uppercase leading-none">
+                                    {step.title}
+                                </h3>
+                                <p className="mt-4 text-sm leading-6 text-neutral-400">
+                                    {step.text}
+                                </p>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </section>
     );

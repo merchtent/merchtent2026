@@ -1,139 +1,84 @@
-"use client";
+import Link from "next/link";
+import { Camera, Megaphone, Radio, Shirt } from "lucide-react";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
-
-type Polaroid = {
-    id: string;
-    image: string;
-    caption?: string | null;
-    link?: string | null;
-};
+const communityCards = [
+    {
+        icon: Camera,
+        title: "Backstage shots",
+        text: "Gig photos, studio corners, first samples, and the small moments behind each drop.",
+    },
+    {
+        icon: Shirt,
+        title: "Drop stories",
+        text: "Why the design exists, what song or show it belongs to, and what fans are helping fund.",
+    },
+    {
+        icon: Megaphone,
+        title: "Fan proof",
+        text: "Shouts, supporter notes, and real people wearing unsigned merch in the wild.",
+    },
+];
 
 export default function BackstagePolaroids() {
-    const [images, setImages] = useState<Polaroid[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        let mounted = true;
-
-        (async () => {
-            try {
-                const res = await fetch("/api/polaroids", { cache: "no-store" });
-                const json = await res.json();
-
-                if (mounted) {
-                    setImages(Array.isArray(json.images) ? json.images : []);
-                }
-            } catch {
-                if (mounted) setImages([]);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        })();
-
-        return () => {
-            mounted = false;
-        };
-    }, []);
-
-    const list =
-        images.length > 0
-            ? images
-            : Array.from({ length: 18 }).map((_, i) => ({
-                id: `fallback-${i}`,
-                image: `https://picsum.photos/seed/pol-${i}/600/600`,
-                caption: `#${i + 1}`,
-                link: null,
-            }));
-
     return (
-        <section className="py-10 md:py-14">
+        <section className="relative overflow-hidden border-y border-neutral-800 bg-black py-12 md:py-16 text-white">
+            <div className="absolute inset-x-0 top-0 h-px bg-red-500/50" />
+
             <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-
-                {/* HEADER */}
-                <div className="flex items-end justify-between mb-6">
+                <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-8 lg:gap-10">
                     <div>
-                        <h3 className="text-xl md:text-2xl font-black">
-                            Backstage Polaroids
+                        <div className="inline-flex items-center gap-2 border border-neutral-700 bg-neutral-950 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-neutral-300">
+                            <Radio className="h-3.5 w-3.5 text-red-400" />
+                            Community feed
+                        </div>
+
+                        <h3 className="mt-5 text-3xl md:text-5xl font-black leading-[0.95]">
+                            Backstage is part of the product.
                         </h3>
-                        <p className="text-sm text-neutral-400">
-                            Behind the scenes — gigs, drops, and chaos
+
+                        <p className="mt-4 max-w-xl text-neutral-300">
+                            The next version of Merch Tent should not just list products. It should make each artist
+                            feel active, followed, and worth backing.
                         </p>
-                    </div>
-                </div>
-                <div className="flex items-end justify-between mb-6">
-                    <div>
-                        <h3 className="text-lg md:text-lg font-black">
-                            Coming soon...
-                        </h3>
-                    </div>
-                </div>
 
-                {/* GRID */}
-                {/* <div className="grid grid-cols-2 md:grid-cols-6 auto-rows-[120px] gap-3 md:gap-4">
-
-                    {list.map((img, i) => {
-                        const span =
-                            i % 7 === 0
-                                ? "md:row-span-3 md:col-span-2"
-                                : i % 5 === 0
-                                    ? "md:row-span-2"
-                                    : i % 4 === 0
-                                        ? "md:col-span-2"
-                                        : "";
-
-                        const rot = i % 2 ? "rotate-2" : "-rotate-2";
-
-                        const content = (
-                            <div
-                                className={`relative rounded-xl overflow-hidden border border-neutral-800 group ${span} ${rot}`}
+                        <div className="mt-6 flex flex-wrap gap-3">
+                            <Link
+                                href="/artists"
+                                className="rounded-md bg-white px-4 py-2 text-sm font-bold text-black transition hover:bg-red-200"
                             >
-                                <Image
-                                    src={img.image}
-                                    alt={img.caption || "Polaroid"}
-                                    fill
-                                    className="object-cover group-hover:scale-105 transition duration-300"
-                                />
-
-                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition" />
-
-                                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
-                                    <span className="bg-neutral-950/80 px-2 py-0.5 rounded">
-                                        {img.caption || `#${i + 1}`}
-                                    </span>
-
-                                    {img.link && (
-                                        <span className="bg-red-600 text-white px-2 py-0.5 rounded">
-                                            View
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        );
-
-                        if (img.link) {
-                            return (
-                                <a
-                                    key={img.id}
-                                    href={img.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    {content}
-                                </a>
-                            );
-                        }
-
-                        return <div key={img.id}>{content}</div>;
-                    })}
-                </div> */}
-
-                {loading && (
-                    <div className="mt-4 text-xs text-neutral-500">
-                        Loading polaroids...
+                                Find artists
+                            </Link>
+                            <Link
+                                href="/start"
+                                className="rounded-md border border-neutral-700 px-4 py-2 text-sm font-bold text-white transition hover:border-red-400"
+                            >
+                                Open your merch tent
+                            </Link>
+                        </div>
                     </div>
-                )}
+
+                    <div className="grid sm:grid-cols-3 gap-4">
+                        {communityCards.map((card, index) => {
+                            const Icon = card.icon;
+
+                            return (
+                                <div
+                                    key={card.title}
+                                    className="min-h-[220px] border border-neutral-800 bg-neutral-950 p-5 rounded-lg"
+                                    style={{
+                                        transform: index === 1 ? "rotate(1deg)" : index === 2 ? "rotate(-1deg)" : undefined,
+                                    }}
+                                >
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-white">
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                    <h4 className="mt-5 text-lg font-black">{card.title}</h4>
+                                    <p className="mt-3 text-sm leading-relaxed text-neutral-400">{card.text}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
         </section>
     );

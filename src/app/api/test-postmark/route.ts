@@ -1,27 +1,58 @@
 // app/api/test-basic-postmark/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { ServerClient } from "postmark";
+import { noStoreJson } from "@/lib/api/no-store";
+import { rejectCrossOriginRequest } from "@/lib/auth/request-origin";
+import { serverEnv } from "@/lib/env.server";
+import { getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { checkDurableRateLimit } from "@/lib/rate-limit";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-    const url = new URL(req.url);
-    const secret = url.searchParams.get("secret");
-
-    const expectedSecret = process.env.POSTMARK_TEST_SECRET;
-    if (!expectedSecret || secret !== expectedSecret) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function POST(req: NextRequest) {
+    if (process.env.NODE_ENV === "production") {
+        return noStoreJson({ error: "Not found" }, { status: 404 });
     }
 
-    const serverToken = process.env.POSTMARK_SERVER_TOKEN;
-    const from = process.env.POSTMARK_FROM;
+    const originError = rejectCrossOriginRequest(req);
+    if (originError) return originError;
+
+    const ip =
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip") ||
+        "unknown";
+    const supabase = getPublicServerSupabase();
+    const allowed = await checkDurableRateLimit(
+        supabase,
+        `postmark-test:${ip}`,
+        3,
+        60_000,
+        "check_public_rate_limit",
+        { fallback: "deny" }
+    );
+
+    if (!allowed) {
+        return noStoreJson({ error: "Too many attempts." }, { status: 429 });
+    }
+
+    const secret = req.headers.get("x-postmark-test-secret");
+    const expectedSecret = serverEnv.postmarkTestSecret();
+    if (!expectedSecret || secret !== expectedSecret) {
+        return noStoreJson({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const serverToken = serverEnv.optionalPostmarkServerToken();
+    const from = serverEnv.optionalPostmarkFrom();
     const to =
-        process.env.POSTMARK_TEST_CUSTOMER_EMAIL ||
-        process.env.POSTMARK_ADMIN_TO ||
+        serverEnv.postmarkTestCustomerEmail() ||
+        serverEnv.optionalPostmarkAdminTo() ||
         null;
 
     if (!serverToken || !from || !to) {
-        return NextResponse.json(
+        return noStoreJson(
             {
                 error: "Missing POSTMARK_SERVER_TOKEN, POSTMARK_FROM, or recipient email.",
             },
@@ -38,21 +69,22 @@ export async function GET(req: NextRequest) {
             TemplateAlias: "order-confirmation", // <-- make sure this matches your Postmark template alias
             TemplateModel: {
                 order_number: "TEST-ORDER-1234",
-                store_name: process.env.STORE_NAME || "Merch Tent",
+                store_name: serverEnv.storeName(),
             },
         });
 
-        return NextResponse.json({
+        return noStoreJson({
             ok: true,
             to,
             postmarkMessageId: response.MessageID,
         });
-    } catch (err: any) {
-        console.error("❌ Postmark basic test failed:", err);
-        return NextResponse.json(
+    } catch (err: unknown) {
+        logger.error("Postmark basic test failed", {
+            error: getErrorMessage(err, String(err)),
+        });
+        return noStoreJson(
             {
                 error: "Failed to send Postmark test email",
-                detail: err?.message ?? String(err),
             },
             { status: 500 }
         );

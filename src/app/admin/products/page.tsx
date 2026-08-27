@@ -7,6 +7,17 @@ function money(cents: number) {
     return `$${(cents / 100).toFixed(2)}`;
 }
 
+type ProductOrderItem = {
+    qty?: number | null;
+    unit_price_cents?: number | null;
+};
+
+type ProductColour = {
+    id: string;
+    hex?: string | null;
+    label?: string | null;
+};
+
 export default async function ProductsPage() {
     const supabase = getServerSupabase();
 
@@ -59,15 +70,15 @@ export default async function ProductsPage() {
 
             const revenueA =
                 a.order_items?.reduce(
-                    (sum: number, item: any) =>
-                        sum + (item.unit_price_cents * item.qty),
+                    (sum: number, item: ProductOrderItem) =>
+                        sum + ((item.unit_price_cents ?? 0) * (item.qty ?? 0)),
                     0
                 ) ?? 0;
 
             const revenueB =
                 b.order_items?.reduce(
-                    (sum: number, item: any) =>
-                        sum + (item.unit_price_cents * item.qty),
+                    (sum: number, item: ProductOrderItem) =>
+                        sum + ((item.unit_price_cents ?? 0) * (item.qty ?? 0)),
                     0
                 ) ?? 0;
 
@@ -80,7 +91,7 @@ export default async function ProductsPage() {
                 sum +
                 (
                     product.order_items?.reduce(
-                        (x: number, oi: any) => x + (oi.qty ?? 0),
+                        (x: number, oi: ProductOrderItem) => x + (oi.qty ?? 0),
                         0
                     ) ?? 0
                 ),
@@ -155,13 +166,13 @@ export default async function ProductsPage() {
 
                 <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
                     <div className="text-sm text-neutral-500">
-                        Featured
+                        Pending Review
                     </div>
 
                     <div className="text-3xl font-black mt-2">
                         {
                             products?.filter(
-                                p => p.editors_choice
+                                p => p.moderation_status === "pending_review"
                             ).length
                         }
                     </div>
@@ -241,7 +252,7 @@ export default async function ProductsPage() {
 
                             const sales =
                                 product.order_items?.reduce(
-                                    (sum: number, item: any) =>
+                                    (sum: number, item: ProductOrderItem) =>
                                         sum +
                                         (item.qty ?? 0),
                                     0
@@ -249,9 +260,9 @@ export default async function ProductsPage() {
 
                             const revenue =
                                 product.order_items?.reduce(
-                                    (sum: number, item: any) =>
+                                    (sum: number, item: ProductOrderItem) =>
                                         sum +
-                                        (item.unit_price_cents * item.qty),
+                                        ((item.unit_price_cents ?? 0) * (item.qty ?? 0)),
                                     0
                                 ) ?? 0;
 
@@ -300,7 +311,7 @@ export default async function ProductsPage() {
                                         <div className="flex flex-wrap gap-1">
 
                                             {product.product_colors?.map(
-                                                (colour: any) => (
+                                                (colour: ProductColour) => (
                                                     <div
                                                         key={colour.id}
                                                         className="
@@ -312,11 +323,12 @@ export default async function ProductsPage() {
                                                         "
                                                         style={{
                                                             backgroundColor:
-                                                                colour.hex,
+                                                                colour.hex ?? undefined,
                                                         }}
                                                         title={
                                                             colour.label ??
-                                                            colour.hex
+                                                            colour.hex ??
+                                                            undefined
                                                         }
                                                     />
                                                 )
@@ -403,6 +415,21 @@ export default async function ProductsPage() {
                                                     "
                                                 >
                                                     DRAFT
+                                                </span>
+                                            )}
+
+                                            {product.moderation_status && (
+                                                <span
+                                                    className="
+                                                        px-2
+                                                        py-1
+                                                        rounded
+                                                        text-xs
+                                                        bg-yellow-500/15
+                                                        text-yellow-200
+                                                    "
+                                                >
+                                                    {String(product.moderation_status).replaceAll("_", " ").toUpperCase()}
                                                 </span>
                                             )}
 

@@ -3,8 +3,9 @@
 import { useCart } from "@/components/CartProvider";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { publicProductImageUrlOrSource } from "@/lib/storage";
 
 function fmt(amount_cents: number, currency: string | null) {
     const c = currency ?? "AUD";
@@ -20,25 +21,13 @@ function fmt(amount_cents: number, currency: string | null) {
     }
 }
 
-function publicImageUrl(path: string) {
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(
-        path
-    )}`;
-}
-
-// support storage path OR full URL (colour override)
-function resolveCartImage(src?: string | null): string | null {
-    if (!src) return null;
-    if (src.startsWith("http://") || src.startsWith("https://")) return src;
-    return publicImageUrl(src);
-}
-
 export default function CartPageClient() {
+    const router = useRouter();
     const { items, setQty, remove, clear, subtotal_cents, currency } = useCart();
 
     function goToCheckout() {
         // no POST needed anymore — checkout reads local cart
-        window.location.href = "/checkout";
+        router.push("/checkout");
     }
 
     return (
@@ -87,7 +76,7 @@ export default function CartPageClient() {
                             <ul className="divide-y divide-neutral-800">
                                 {items.map((item) => {
                                     const lineId = item.sku ?? item.product_id;
-                                    const resolvedImg = resolveCartImage(item.image_path);
+                                    const resolvedImg = publicProductImageUrlOrSource(item.image_path);
                                     const hasVariantLine = item.sku || item.color_label || item.size;
 
                                     return (

@@ -1,14 +1,9 @@
 // app/api/products/route.ts
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import "server-only";
-
-function publicImageUrl(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(
-        path
-    )}`;
-}
+import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
+import { mapCatalogProductCard, type CatalogProductRow } from "@/lib/catalog/product-card";
+import { publicApiError, publicApiJson } from "@/lib/api/public-error";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 
 export async function GET(request: Request) {
 
@@ -16,24 +11,9 @@ export async function GET(request: Request) {
     const artistId = searchParams.get("artistId");
     const artistSlug = searchParams.get("artist");
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabase = getPublicServerSupabase();
 
-    if (!url || !anon) {
-        return NextResponse.json(
-            {
-                error:
-                    "Supabase env vars missing (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)",
-            },
-            { status: 500 }
-        );
-    }
-
-    const supabase = createClient(url, anon, {
-        auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    let query = supabase
+    let query = publicCatalogProductQuery(supabase
         .from("products")
         .select(
             `
@@ -48,7 +28,7 @@ export async function GET(request: Request) {
         artist:artists ( id, slug, display_name )
       `
         )
-        .eq("is_published", true)
+    )
         .order("created_at", { ascending: false });
 
     // ✅ Filter by artistId (preferred)
@@ -64,62 +44,12 @@ export async function GET(request: Request) {
     const { data, error } = await query;
 
     if (error) {
-        return NextResponse.json(
-            { error: `Supabase select failed: ${error.message}` },
-            { status: 500 }
-        );
+        return publicApiError("/api/products/artist", error);
     }
 
-    const products =
-        (data ?? []).map((p: any) => {
-            // base images (fallback)
-            const imgs = Array.isArray(p.product_images)
-                ? [...p.product_images].sort(
-                    (a, b) => (a?.sort_order ?? 999) - (b?.sort_order ?? 999)
-                )
-                : [];
-            const primary =
-                publicImageUrl(imgs[0]?.path) ??
-                "https://picsum.photos/seed/fallback1/900/1200";
-            const hover = publicImageUrl(imgs[1]?.path) ?? primary;
+    const products = ((data ?? []) as CatalogProductRow[]).map((product) =>
+        mapCatalogProductCard(product)
+    );
 
-            // richer colours
-            const colorVariants = Array.isArray(p.product_colors)
-                ? [...p.product_colors]
-                    .sort(
-                        (a, b) => (a?.sort_order ?? 999) - (b?.sort_order ?? 999)
-                    )
-                    .map((c) => ({
-                        hex: c.hex,
-                        label: c.label,
-                        front: c.front_image_path
-                            ? publicImageUrl(c.front_image_path)
-                            : primary,
-                        back: c.back_image_path
-                            ? publicImageUrl(c.back_image_path)
-                            : hover,
-                    }))
-                : [];
-
-            // 👇 badge = artist name
-            const artistName =
-                p.artist?.display_name ??
-                p.artist?.name ?? // just in case
-                "Artist";
-
-            return {
-                id: String(p.id),
-                title: p.title as string,
-                price: (p.price_cents ?? 0) / 100,
-                image: primary,
-                hover,
-                slug: p.slug,
-                badge: artistName,
-                colors: colorVariants,
-                kind: "tee" as const,
-                sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"], // 👈 add this if the product should be sizeable
-            };
-        }) ?? [];
-
-    return NextResponse.json({ products }, { status: 200 });
+    return publicApiJson({ products }, { status: 200 });
 }

@@ -39,6 +39,7 @@ export default function BundleBuilderForTwoTees() {
     const [picked, setPicked] = useState<Picked[]>([]);
 
     const [activeProductId, setActiveProductId] = useState<string | null>(null);
+    const { add, open } = useCart();
 
     // ✅ FIX: per-product variant state
     const [variantState, setVariantState] = useState<{
@@ -117,8 +118,6 @@ export default function BundleBuilderForTwoTees() {
             </div>
         );
     }
-
-    const { add, open } = useCart();
 
     function handleAddBundle() {
         if (picked.length !== 2) return;

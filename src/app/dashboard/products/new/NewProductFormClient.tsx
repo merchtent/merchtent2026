@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Rocket, Loader2, Image as ImageIcon, X } from "lucide-react";
 import { createProductAction } from "./actions";
@@ -19,23 +20,33 @@ export default function NewProductFormClient() {
     ]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     // top-level product image previews
     const [primaryPreview, setPrimaryPreview] = useState<string | null>(null);
     const [backPreview, setBackPreview] = useState<string | null>(null);
+    const previewUrlsRef = useRef(new Set<string>());
 
-    // clean up object URLs when component unmounts
+    function createPreviewUrl(file: File) {
+        const url = URL.createObjectURL(file);
+        previewUrlsRef.current.add(url);
+        return url;
+    }
+
+    function revokePreviewUrl(url?: string | null) {
+        if (!url) return;
+        URL.revokeObjectURL(url);
+        previewUrlsRef.current.delete(url);
+    }
+
     useEffect(() => {
+        const previewUrls = previewUrlsRef.current;
         return () => {
-            if (primaryPreview) URL.revokeObjectURL(primaryPreview);
-            if (backPreview) URL.revokeObjectURL(backPreview);
-            colors.forEach((c) => {
-                if (c.frontPreview) URL.revokeObjectURL(c.frontPreview);
-                if (c.backPreview) URL.revokeObjectURL(c.backPreview);
+            previewUrls.forEach((url) => {
+                URL.revokeObjectURL(url);
             });
+            previewUrls.clear();
         };
-        // we intentionally don't put colors in deps to avoid revoking on every change
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     function addColorRow() {
@@ -48,8 +59,8 @@ export default function NewProductFormClient() {
     function removeColorRow(idx: number) {
         setColors((prev) => {
             const target = prev[idx];
-            if (target?.frontPreview) URL.revokeObjectURL(target.frontPreview);
-            if (target?.backPreview) URL.revokeObjectURL(target.backPreview);
+            revokePreviewUrl(target?.frontPreview);
+            revokePreviewUrl(target?.backPreview);
             return prev.filter((_, i) => i !== idx);
         });
     }
@@ -66,10 +77,10 @@ export default function NewProductFormClient() {
 
                 // revoke old url if exists
                 if (kind === "front" && row.frontPreview) {
-                    URL.revokeObjectURL(row.frontPreview);
+                    revokePreviewUrl(row.frontPreview);
                 }
                 if (kind === "back" && row.backPreview) {
-                    URL.revokeObjectURL(row.backPreview);
+                    revokePreviewUrl(row.backPreview);
                 }
 
                 if (!file) {
@@ -81,7 +92,7 @@ export default function NewProductFormClient() {
                     };
                 }
 
-                const url = URL.createObjectURL(file);
+                const url = createPreviewUrl(file);
                 return {
                     ...row,
                     ...(kind === "front" ? { frontPreview: url } : { backPreview: url }),
@@ -94,6 +105,7 @@ export default function NewProductFormClient() {
         e.preventDefault();
         if (isSubmitting) return;
         setIsSubmitting(true);
+        setSubmitError(null);
 
         try {
             const formData = new FormData(e.currentTarget);
@@ -102,8 +114,8 @@ export default function NewProductFormClient() {
 
             await createProductAction(formData);
             // server action will redirect on success
-        } catch (err) {
-            console.error(err);
+        } catch (err: unknown) {
+            setSubmitError(err instanceof Error ? err.message : "Could not create product");
             setIsSubmitting(false);
         }
     }
@@ -114,6 +126,12 @@ export default function NewProductFormClient() {
             encType="multipart/form-data"
             className="space-y-6"
         >
+            {submitError ? (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {submitError}
+                </p>
+            ) : null}
+
             {/* Title */}
             <div>
                 <label
@@ -230,9 +248,9 @@ export default function NewProductFormClient() {
                     disabled={isSubmitting}
                     onChange={(e) => {
                         const file = e.target.files?.[0] ?? null;
-                        if (primaryPreview) URL.revokeObjectURL(primaryPreview);
+                        revokePreviewUrl(primaryPreview);
                         if (file) {
-                            const url = URL.createObjectURL(file);
+                            const url = createPreviewUrl(file);
                             setPrimaryPreview(url);
                         } else {
                             setPrimaryPreview(null);
@@ -246,16 +264,18 @@ export default function NewProductFormClient() {
 
                 {primaryPreview ? (
                     <div className="mt-3 inline-block relative rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 w-40 h-40">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <Image
                             src={primaryPreview}
                             alt="Primary preview"
+                            width={160}
+                            height={160}
+                            unoptimized
                             className="w-full h-full object-cover"
                         />
                         <button
                             type="button"
                             onClick={() => {
-                                URL.revokeObjectURL(primaryPreview);
+                                revokePreviewUrl(primaryPreview);
                                 setPrimaryPreview(null);
                                 // also clear input
                                 const input = document.getElementById(
@@ -287,9 +307,9 @@ export default function NewProductFormClient() {
                     disabled={isSubmitting}
                     onChange={(e) => {
                         const file = e.target.files?.[0] ?? null;
-                        if (backPreview) URL.revokeObjectURL(backPreview);
+                        revokePreviewUrl(backPreview);
                         if (file) {
-                            const url = URL.createObjectURL(file);
+                            const url = createPreviewUrl(file);
                             setBackPreview(url);
                         } else {
                             setBackPreview(null);
@@ -303,16 +323,18 @@ export default function NewProductFormClient() {
 
                 {backPreview ? (
                     <div className="mt-3 inline-block relative rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 w-40 h-40">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <Image
                             src={backPreview}
                             alt="Back preview"
+                            width={160}
+                            height={160}
+                            unoptimized
                             className="w-full h-full object-cover"
                         />
                         <button
                             type="button"
                             onClick={() => {
-                                URL.revokeObjectURL(backPreview);
+                                revokePreviewUrl(backPreview);
                                 setBackPreview(null);
                                 const input = document.getElementById(
                                     "image_back"
@@ -405,10 +427,12 @@ export default function NewProductFormClient() {
 
                             {c.frontPreview ? (
                                 <div className="mt-2 w-20 h-20 rounded-md overflow-hidden border border-neutral-700 relative bg-neutral-900">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
+                                    <Image
                                         src={c.frontPreview}
                                         alt={`${c.label ?? "colour"} front`}
+                                        width={80}
+                                        height={80}
+                                        unoptimized
                                         className="w-full h-full object-cover"
                                     />
                                     <button
@@ -452,10 +476,12 @@ export default function NewProductFormClient() {
 
                             {c.backPreview ? (
                                 <div className="mt-2 w-20 h-20 rounded-md overflow-hidden border border-neutral-700 relative bg-neutral-900">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
+                                    <Image
                                         src={c.backPreview}
                                         alt={`${c.label ?? "colour"} back`}
+                                        width={80}
+                                        height={80}
+                                        unoptimized
                                         className="w-full h-full object-cover"
                                     />
                                     <button

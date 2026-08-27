@@ -54,8 +54,8 @@ export default async function AdminDashboard() {
             created_at,
             first_name,
             last_name,
-            tracking_number,
-            carrier
+            tracking_code,
+            tracking_carrier
         `)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -155,10 +155,10 @@ export default async function AdminDashboard() {
                                             {new Date(o.created_at).toLocaleString()}
                                         </td>
                                         <td className="p-3">
-                                            {o.tracking_number}
+                                            {o.tracking_code || "-"}
                                         </td>
                                         <td className="p-3">
-                                            {o.carrier}
+                                            {o.tracking_carrier || "-"}
                                         </td>
                                     </tr>
                                 ))}

@@ -1,30 +1,45 @@
 // app/api/subscribe/route.ts
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-type Body = {
-    email: string;
-    name?: string;
-    source?: string;
-    utm?: string;
-    consent?: boolean;
-};
+import { z } from "zod";
+import { noStoreJson } from "@/lib/api/no-store";
+import { logger } from "@/lib/logger";
+import { checkDurableRateLimit } from "@/lib/rate-limit";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { rejectCrossOriginRequest } from "@/lib/auth/request-origin";
+
+const subscribeSchema = z.object({
+    email: z.string().email().max(320),
+    name: z.string().max(200).nullish(),
+    source: z.string().max(100).nullish(),
+    utm: z.string().max(500).nullish(),
+    consent: z.boolean().optional(),
+});
 
 export async function POST(req: Request) {
     try {
-        const { email, name, source, utm, consent }: Body = await req.json();
+        const originRejection = rejectCrossOriginRequest(req);
+        if (originRejection) return originRejection;
 
-        if (!email || typeof email !== "string") {
-            return NextResponse.json({ error: "Email required" }, { status: 400 });
+        const ip =
+            req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+            req.headers.get("x-real-ip") ||
+            "unknown";
+
+        const supabase = getPublicServerSupabase();
+
+        if (!(await checkDurableRateLimit(supabase, `newsletter:${ip}`, 10, 60_000, "check_public_rate_limit", { fallback: "deny" }))) {
+            return noStoreJson({ ok: true });
         }
 
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-        const supabase = createClient(url, anon, {
-            auth: { persistSession: false, autoRefreshToken: false },
-        });
+        const parsed = subscribeSchema.safeParse(await req.json().catch(() => ({})));
+        if (!parsed.success) {
+            return noStoreJson({ error: "Invalid subscription details" }, { status: 400 });
+        }
 
-        const { error } = await supabase.rpc("subscribe_newsletter", {
+        const { email, name, source, utm, consent } = parsed.data;
+        const { error } = await supabase.rpc("public_subscribe_newsletter", {
             p_email: email,
             p_name: name ?? null,
             p_source: source ?? null,
@@ -33,11 +48,17 @@ export async function POST(req: Request) {
         });
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            logger.error("newsletter subscription failed", {
+                source: source ?? null,
+                error: error.message,
+            });
+            return noStoreJson({ error: "Could not subscribe this email." }, { status: 400 });
         }
 
-        return NextResponse.json({ ok: true });
-    } catch (e: any) {
-        return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
+        return noStoreJson({ ok: true });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        logger.error("unexpected newsletter subscription error", { error: message });
+        return noStoreJson({ error: "Could not subscribe this email." }, { status: 500 });
     }
 }

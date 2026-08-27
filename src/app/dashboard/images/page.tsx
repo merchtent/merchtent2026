@@ -1,10 +1,12 @@
 // app/dashboard/images/page.tsx
 import Link from "next/link";
 import Image from "next/image";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { AlertTriangle, Image as ImageIcon } from "lucide-react";
+import { AlertTriangle, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { requireArtistPage } from "@/lib/auth/artist";
+import { publicImageUrl } from "@/lib/storage";
+import { logger } from "@/lib/logger";
 
-export const revalidate = 0; // always fresh in dashboard
+export const revalidate = 0;
 
 type Product = { id: string; title: string | null };
 type ImgRow = {
@@ -12,18 +14,11 @@ type ImgRow = {
     product_id: string;
     path: string | null;
     sort_order: number | null;
-    created_at: string | null;
+    created_at?: string | null;
 };
 
-function publicImageUrl(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(
-        path
-    )}`;
-}
-
 function fmtDate(iso?: string | null) {
-    if (!iso) return "—";
+    if (!iso) return "--";
     try {
         return new Date(iso).toLocaleString("en-AU", {
             year: "numeric",
@@ -33,212 +28,111 @@ function fmtDate(iso?: string | null) {
             minute: "2-digit",
         });
     } catch {
-        return iso ?? "—";
+        return iso ?? "--";
     }
 }
 
+function ErrorPage({ message }: { message: string }) {
+    return (
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist backstage</p>
+                <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Images error.</h1>
+            </section>
+            <div className="p-5 md:p-8">
+                <div className="flex items-center gap-2 border border-neutral-800 bg-neutral-950 p-6 text-red-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    {message}
+                </div>
+            </div>
+        </main>
+    );
+}
+
 export default async function MyImagesPage() {
-    const supabase = getServerSupabase();
+    const { supabase, artist } = await requireArtistPage();
 
-    // Require sign-in
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">IMAGES // ACCESS</h1>
-                            <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">SIGN IN REQUIRED</span>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        Please <Link href="/auth/sign-in" className="underline">sign in</Link> to view your images.
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    // Get artist for this user
-    const { data: artist, error: artistErr } = await supabase
-        .from("artists")
-        .select("id, display_name")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-    if (artistErr) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">IMAGES // ERROR</h1>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-red-400 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        {artistErr.message}
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    if (!artist) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">IMAGES // SETUP</h1>
-                            <span className="text-xs bg-red-600 text-white px-2 py-1 rounded rotate-[2deg]">ACTION NEEDED</span>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <h2 className="text-lg md:text-xl font-black">No artist profile yet</h2>
-                        <p className="mt-2 text-neutral-300">
-                            Visit the <Link className="underline" href="/dashboard">Dashboard</Link> once to create it.
-                        </p>
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    // 1) Fetch their products (ids + titles)
     const { data: products, error: prodErr } = await supabase
         .from("products")
         .select("id, title")
         .eq("artist_id", artist.id);
 
     if (prodErr) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">IMAGES // ERROR</h1>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-red-400 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        {prodErr.message}
-                    </div>
-                </div>
-            </main>
-        );
+        logger.error("Dashboard images page failed to load products", {
+            artist_id: artist.id,
+            error: prodErr.message,
+        });
+
+        return <ErrorPage message="Could not load products for your images." />;
     }
 
     const productMap = new Map<string, Product>();
-    const productIds = (products ?? []).map(p => {
-        productMap.set(p.id as string, p as Product);
-        return p.id as string;
+    const productIds = (products ?? []).map((product) => {
+        productMap.set(product.id as string, product as Product);
+        return product.id as string;
     });
 
-    // If they have no products, they’ll have no images
     if (productIds.length === 0) {
         return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                {/* angled banner */}
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                            <div>
-                                <p className="uppercase tracking-[0.25em] text-xs text-red-600">Artist Dashboard</p>
-                                <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">My Images</h1>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="max-w-5xl mx-auto px-4 py-8">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <p className="text-neutral-300">No products yet — upload an image when creating a product.</p>
-                        <div className="mt-3">
-                            <Link href="/dashboard/products/new" className="underline">Add product</Link>
-                        </div>
+            <main className="min-h-screen bg-black text-white">
+                <AssetHeader total={0} />
+                <section className="p-5 md:p-8">
+                    <div className="border border-neutral-800 bg-neutral-950 p-6">
+                        <p className="text-neutral-300">No products yet. Images appear here after a product exists.</p>
+                        <Link
+                            href="/dashboard/products/designer"
+                            className="mt-4 inline-flex items-center gap-2 text-sm font-black text-red-400 hover:text-red-300"
+                        >
+                            Design product <ArrowRight className="h-4 w-4" />
+                        </Link>
                     </div>
                 </section>
             </main>
         );
     }
 
-    // 2) Fetch their images for those products
     const { data: imgs, error: imgErr } = await supabase
         .from("product_images")
-        .select("id, product_id, path, sort_order")
-        .in("product_id", productIds)
+        .select("id, product_id, path, sort_order, created_at")
+        .in("product_id", productIds);
 
     if (imgErr) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">IMAGES // ERROR</h1>
-                        </div>
-                    </div>
-                </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-red-400 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        {imgErr.message}
-                    </div>
-                </div>
-            </main>
-        );
+        logger.error("Dashboard images page failed to load product images", {
+            artist_id: artist.id,
+            product_count: productIds.length,
+            error: imgErr.message,
+        });
+
+        return <ErrorPage message="Could not load your product images right now." />;
     }
 
     const images = (imgs ?? []) as ImgRow[];
     const total = images.length;
 
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* angled banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">Artist Dashboard</p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">My Images</h1>
-                        </div>
-                        <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">
-                            {total} {total === 1 ? "image" : "images"}
-                        </span>
-                    </div>
-                </div>
-            </section>
+        <main className="min-h-screen bg-black text-white">
+            <AssetHeader total={total} />
 
-            {/* Grid */}
-            <section className="max-w-5xl mx-auto px-4 py-8">
+            <section className="p-5 md:p-8">
                 {total === 0 ? (
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                    <div className="border border-neutral-800 bg-neutral-950 p-6">
                         <p className="text-neutral-300">No images yet.</p>
-                        <div className="mt-3">
-                            <Link href="/dashboard/products/new" className="underline">Add product</Link>
-                        </div>
+                        <Link
+                            href="/dashboard/products/designer"
+                            className="mt-4 inline-flex items-center gap-2 text-sm font-black text-red-400 hover:text-red-300"
+                        >
+                            Design product <ArrowRight className="h-4 w-4" />
+                        </Link>
                     </div>
                 ) : (
-                    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {images.map((img, i) => {
+                    <ul className="grid border border-neutral-800 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {images.map((img) => {
                             const url = publicImageUrl(img.path);
-                            const fileName = img.path?.split("/").slice(-1)[0] ?? "—";
+                            const fileName = img.path?.split("/").slice(-1)[0] ?? "--";
                             const product = productMap.get(img.product_id);
+
                             return (
-                                <li
-                                    key={img.id}
-                                    className="group relative rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden hover:border-neutral-700 transition-colors"
-                                    style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
-                                >
+                                <li key={img.id} className="group overflow-hidden border-b border-r border-neutral-800 bg-neutral-950 transition hover:bg-neutral-900">
                                     <div className="relative">
                                         {url ? (
                                             <Image
@@ -246,17 +140,15 @@ export default async function MyImagesPage() {
                                                 alt={fileName}
                                                 width={800}
                                                 height={800}
-                                                className="w-full aspect-square object-cover"
+                                                className="aspect-square w-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-full aspect-square grid place-items-center text-neutral-500 bg-neutral-950">
+                                            <div className="grid aspect-square w-full place-items-center bg-black text-neutral-500">
                                                 <ImageIcon className="h-8 w-8" />
                                             </div>
                                         )}
-
-                                        {/* info rail */}
-                                        <div className="px-3 py-2 border-t border-neutral-800 bg-neutral-900/70 text-xs flex items-center justify-between">
-                                            <span className="text-neutral-300 truncate">{fileName}</span>
+                                        <div className="flex items-center justify-between border-t border-neutral-800 bg-black px-3 py-2 text-xs">
+                                            <span className="truncate text-neutral-300">{fileName}</span>
                                             <span className="text-neutral-500">{fmtDate(img.created_at)}</span>
                                         </div>
                                     </div>
@@ -264,7 +156,7 @@ export default async function MyImagesPage() {
                                     <div className="p-4">
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="min-w-0">
-                                                <p className="text-sm md:text-base font-medium truncate">
+                                                <p className="truncate text-sm font-black md:text-base">
                                                     {product?.title ?? "Untitled product"}
                                                 </p>
                                                 <p className="text-xs text-neutral-500">
@@ -272,25 +164,20 @@ export default async function MyImagesPage() {
                                                 </p>
                                             </div>
                                             {product?.id ? (
-                                                <Link
-                                                    href={`/product/${product.id}`}
-                                                    className="text-sm underline shrink-0"
-                                                >
+                                                <Link href={`/product/${product.id}`} className="shrink-0 text-sm font-black text-red-400">
                                                     View
                                                 </Link>
                                             ) : null}
                                         </div>
                                         {url && (
-                                            <div className="mt-3">
-                                                <a
-                                                    href={url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs underline text-neutral-400 hover:text-neutral-200"
-                                                >
-                                                    Open original
-                                                </a>
-                                            </div>
+                                            <a
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="mt-3 inline-flex text-xs font-bold text-neutral-400 underline hover:text-neutral-200"
+                                            >
+                                                Open original
+                                            </a>
                                         )}
                                     </div>
                                 </li>
@@ -300,5 +187,26 @@ export default async function MyImagesPage() {
                 )}
             </section>
         </main>
+    );
+}
+
+function AssetHeader({ total }: { total: number }) {
+    return (
+        <section className="border-b border-neutral-800 bg-black">
+            <div className="grid lg:grid-cols-[1fr_auto]">
+                <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Asset wall</p>
+                    <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">My images.</h1>
+                    <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                        Product mockups, uploaded artwork, and generated storefront images.
+                    </p>
+                </div>
+                <div className="flex items-end p-5 md:p-8">
+                    <span className="bg-red-600 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-white">
+                        {total} {total === 1 ? "image" : "images"}
+                    </span>
+                </div>
+            </div>
+        </section>
     );
 }

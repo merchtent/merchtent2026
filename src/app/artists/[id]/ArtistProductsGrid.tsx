@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { ProductCard, type Product as CardProduct } from "@/components/shop/ProductCard";
 
 export type ArtistGridProduct = CardProduct & {
@@ -13,10 +13,6 @@ export default function ArtistProductsGrid({ products }: { products: ArtistGridP
 
     const [page, setPage] = useState(1);
     const PAGE_SIZE = 12;
-
-    useEffect(() => {
-        setPage(1);
-    }, [maxPrice, sort]);
 
     // 🔥 FILTER + SORT
     const filtered = useMemo(() => {
@@ -50,6 +46,7 @@ export default function ArtistProductsGrid({ products }: { products: ArtistGridP
     function clearFilters() {
         setMaxPrice(200);
         setSort("new");
+        setPage(1);
     }
 
     if (!products.length) {
@@ -81,7 +78,10 @@ export default function ArtistProductsGrid({ products }: { products: ArtistGridP
 
                     <select
                         value={sort}
-                        onChange={(e) => setSort(e.target.value)}
+                        onChange={(e) => {
+                            setSort(e.target.value);
+                            setPage(1);
+                        }}
                         className="bg-neutral-900 border border-neutral-700 text-sm px-3 py-2 rounded-lg"
                     >
                         <option value="new">Newest</option>
@@ -104,7 +104,10 @@ export default function ArtistProductsGrid({ products }: { products: ArtistGridP
                     max={200}
                     step={5}
                     value={maxPrice}
-                    onChange={(e) => setMaxPrice(Number(e.target.value))}
+                    onChange={(e) => {
+                        setMaxPrice(Number(e.target.value));
+                        setPage(1);
+                    }}
                     className="w-full accent-red-500"
                 />
             </div>

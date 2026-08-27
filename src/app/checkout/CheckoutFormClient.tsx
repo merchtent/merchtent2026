@@ -2,7 +2,6 @@
 "use client";
 
 import * as React from "react";
-import { Loader2 } from "lucide-react";
 import { placeOrderAndGoToStripe } from "./actions";
 import { useCart } from "@/components/CartProvider";
 
@@ -27,17 +26,54 @@ type Draft = {
     voucher: string;
 };
 
+const DRAFT_LIMITS = {
+    email: 320,
+    first_name: 80,
+    last_name: 80,
+    line1: 160,
+    line2: 160,
+    city: 100,
+    state: 100,
+    postal_code: 20,
+    country: 2,
+    phone: 40,
+    voucher: 100,
+} satisfies Record<keyof Draft, number>;
+
+function cleanDraftString(value: unknown, maxLength: number): string {
+    return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function normaliseDraft(value: unknown): Draft | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+    const raw = value as Partial<Record<keyof Draft, unknown>>;
+    return {
+        email: cleanDraftString(raw.email, DRAFT_LIMITS.email),
+        first_name: cleanDraftString(raw.first_name, DRAFT_LIMITS.first_name),
+        last_name: cleanDraftString(raw.last_name, DRAFT_LIMITS.last_name),
+        line1: cleanDraftString(raw.line1, DRAFT_LIMITS.line1),
+        line2: cleanDraftString(raw.line2, DRAFT_LIMITS.line2),
+        city: cleanDraftString(raw.city, DRAFT_LIMITS.city),
+        state: cleanDraftString(raw.state, DRAFT_LIMITS.state),
+        postal_code: cleanDraftString(raw.postal_code, DRAFT_LIMITS.postal_code),
+        country: cleanDraftString(raw.country, DRAFT_LIMITS.country).toUpperCase(),
+        phone: cleanDraftString(raw.phone, DRAFT_LIMITS.phone),
+        voucher: cleanDraftString(raw.voucher, DRAFT_LIMITS.voucher),
+    };
+}
+
 function loadDraft(): Draft | null {
     try {
         const raw = localStorage.getItem(DRAFT_KEY);
-        return raw ? (JSON.parse(raw) as Draft) : null;
+        return raw ? normaliseDraft(JSON.parse(raw)) : null;
     } catch {
         return null;
     }
 }
 function saveDraft(d: Draft) {
     try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(normaliseDraft(d)));
     } catch { }
 }
 
@@ -47,7 +83,11 @@ type CheckoutFormClientProps = {
     setShippingMethod: (id: "standard" | "express") => void;
 
     setIsSubmitting: (v: boolean) => void;
-    isSubmitting: boolean; // 👈 ADD THIS
+    isSubmitting: boolean;
+    merchCreditBalance: number;
+    canUseMerchCredits: boolean;
+    useMerchCredits: boolean;
+    setUseMerchCredits: (value: boolean) => void;
 };
 
 export default function CheckoutFormClient({
@@ -56,41 +96,39 @@ export default function CheckoutFormClient({
     setShippingMethod,
     setIsSubmitting,
     isSubmitting,
+    merchCreditBalance,
+    canUseMerchCredits,
+    useMerchCredits,
+    setUseMerchCredits,
 }: CheckoutFormClientProps) {
     const { items: cartItems, subtotal_cents } = useCart();
     const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
     // form state (controlled inputs)
-    const [form, setForm] = React.useState<Draft>({
-        email: userEmail || "",
-        first_name: "",
-        last_name: "",
-        line1: "",
-        line2: "",
-        city: "",
-        state: "",
-        postal_code: "",
-        country: "AU",
-        phone: "",
-        voucher: "",
+    const [form, setForm] = React.useState<Draft>(() => {
+        const emptyDraft: Draft = {
+            email: userEmail || "",
+            first_name: "",
+            last_name: "",
+            line1: "",
+            line2: "",
+            city: "",
+            state: "",
+            postal_code: "",
+            country: "AU",
+            phone: "",
+            voucher: "",
+        };
+        const savedDraft = loadDraft();
+        return savedDraft
+            ? {
+                ...emptyDraft,
+                ...savedDraft,
+                email: savedDraft.email || userEmail || "",
+                country: savedDraft.country || emptyDraft.country,
+            }
+            : emptyDraft;
     });
-
-    // hydrate once
-    React.useEffect(() => {
-        const d = loadDraft();
-        if (d) {
-            setForm((f) => ({
-                ...f,
-                ...d,
-                // prefer prop email if present and different
-                email: f.email || d.email || userEmail || "",
-            }));
-        } else if (userEmail) {
-            // ensure email is seeded on first load
-            setForm((f) => ({ ...f, email: f.email || userEmail }));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     // debounce save
     const saveRef = React.useRef<number | null>(null);
@@ -131,7 +169,9 @@ export default function CheckoutFormClient({
         fd.set("phone", form.phone);
         fd.set("shipping_method", shippingMethod);
         fd.set("voucher", form.voucher);
+        fd.set("use_merch_credits", useMerchCredits ? "true" : "false");
         fd.set("cart_json", JSON.stringify(cartItems));
+        fd.set("checkout_attempt_id", crypto.randomUUID());
 
         try {
             const res = await placeOrderAndGoToStripe(fd);
@@ -140,9 +180,8 @@ export default function CheckoutFormClient({
             } else if (res?.error) {
                 setErrorMsg(res.error);
             }
-        } catch (err: any) {
-            console.error(err);
-            setErrorMsg(err?.message ?? "Something went wrong");
+        } catch {
+            setErrorMsg("Could not start checkout. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -234,8 +273,11 @@ export default function CheckoutFormClient({
                 <input
                     name="country"
                     value={form.country}
-                    onChange={(e) => update("country", e.target.value)}
+                    onChange={(e) => update("country", e.target.value.toUpperCase().slice(0, 2))}
                     required
+                    maxLength={2}
+                    pattern="[A-Za-z]{2}"
+                    aria-label="Country code"
                     className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
                 />
                 <input
@@ -243,6 +285,7 @@ export default function CheckoutFormClient({
                     placeholder="Phone (for delivery)"
                     value={form.phone}
                     onChange={(e) => update("phone", e.target.value)}
+                    required
                     className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
                 />
             </div>
@@ -276,6 +319,31 @@ export default function CheckoutFormClient({
                 </div>
             </div>
 
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
+                <p className="text-xs uppercase tracking-wide text-neutral-400">
+                    Merch credits
+                </p>
+                <label className="flex items-start gap-3 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={useMerchCredits}
+                        disabled={!canUseMerchCredits || merchCreditBalance < 20}
+                        onChange={(event) => setUseMerchCredits(event.target.checked)}
+                        className="mt-1"
+                    />
+                    <span>
+                        <span className="block text-neutral-100">
+                            Use 20 credits for a free tee discount
+                        </span>
+                        <span className="block text-xs text-neutral-500">
+                            {canUseMerchCredits
+                                ? `${merchCreditBalance} credits available. Credits are reserved for this checkout and only redeemed after payment succeeds.`
+                                : "Sign in to redeem merch credits."}
+                        </span>
+                    </span>
+                </label>
+            </div>
+
             {/* <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
                 <p className="text-xs uppercase tracking-wide text-neutral-400">
                     Voucher / coupon
@@ -303,7 +371,7 @@ export default function CheckoutFormClient({
                 <div className="text-sm text-neutral-300">
                     Total today:{" "}
                     <span className="font-bold text-white">
-                        {((subtotal_cents + selectedShipping.amount_cents) / 100).toLocaleString("en-AU", {
+                        {(totalCents / 100).toLocaleString("en-AU", {
                             style: "currency",
                             currency: "AUD",
                         })}

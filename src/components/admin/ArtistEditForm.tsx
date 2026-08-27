@@ -2,16 +2,30 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ToastProvider";
+
+type EditableArtist = {
+    id: string;
+    display_name?: string | null;
+    slug?: string | null;
+    bio?: string | null;
+    instagram_url?: string | null;
+    spotify_url?: string | null;
+    bandcamp_url?: string | null;
+    website_url?: string | null;
+};
 
 export default function ArtistEditForm({
     artist,
 }: {
-    artist: any;
+    artist: EditableArtist;
 }) {
     const router = useRouter();
+    const toast = useToast();
 
     const [isPending, startTransition] =
         useTransition();
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const [form, setForm] = useState({
         display_name:
@@ -31,6 +45,8 @@ export default function ArtistEditForm({
     });
 
     const save = () => {
+        setErrorMessage(null);
+
         startTransition(async () => {
 
             const response = await fetch(
@@ -46,10 +62,14 @@ export default function ArtistEditForm({
             );
 
             if (!response.ok) {
-                alert("Failed to save");
+                const payload = await response.json().catch(() => null);
+                const message = payload?.error ?? payload?.message ?? "Failed to save artist.";
+                setErrorMessage(message);
+                toast({ title: "Artist not saved", description: message, variant: "error" });
                 return;
             }
 
+            toast({ title: "Artist saved", variant: "success" });
             router.push(
                 `/admin/artists/${artist.id}`
             );
@@ -60,6 +80,11 @@ export default function ArtistEditForm({
 
     return (
         <div className="space-y-6">
+            {errorMessage ? (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {errorMessage}
+                </p>
+            ) : null}
 
             <div>
                 <label className="block mb-2 text-sm text-neutral-400">

@@ -1,17 +1,18 @@
 // app/api/polaroids/route.ts
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { publicStorageUrlOrSource } from "@/lib/storage";
+import { publicApiError, publicApiJson } from "@/lib/api/public-error";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { normaliseExternalUrl } from "@/lib/urls";
 
-function publicImage(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/polaroids/${encodeURIComponent(path)}`;
-}
+type PolaroidRow = {
+    id: string;
+    image_path: string | null;
+    caption: string | null;
+    instagram_url: string | null;
+};
 
 export async function GET() {
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabase = getPublicServerSupabase();
 
     const { data, error } = await supabase
         .from("backstage_polaroids")
@@ -20,15 +21,15 @@ export async function GET() {
         .limit(24);
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return publicApiError("/api/polaroids", error);
     }
 
-    const images = (data ?? []).map((p: any) => ({
+    const images = ((data ?? []) as PolaroidRow[]).map((p) => ({
         id: p.id,
-        image: publicImage(p.image_path),
+        image: publicStorageUrlOrSource("backstage-polaroids", p.image_path),
         caption: p.caption,
-        link: p.instagram_url,
+        link: normaliseExternalUrl(p.instagram_url),
     }));
 
-    return NextResponse.json({ images });
+    return publicApiJson({ images });
 }

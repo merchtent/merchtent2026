@@ -1,4 +1,4 @@
-type TourDate = {
+export type TourDate = {
     id: string;
     artist: string;
     venue: string;

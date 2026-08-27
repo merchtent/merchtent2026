@@ -1,63 +1,31 @@
 // app/api/admin/tour-dates/[id]/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-async function ensureAdmin() {
-    const supabase = getServerSupabase();
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { noStoreJson } from "@/lib/api/no-store";
+import { logAdminContentEvent } from "@/lib/admin/content-audit";
+import { requireAdmin } from "@/lib/auth/admin";
+import { getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { normaliseExternalUrl } from "@/lib/urls";
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-        return {
-            ok: false,
-            response: NextResponse.json(
-                {
-                    success: false,
-                    message: "Unauthorised",
-                },
-                {
-                    status: 401,
-                }
-            ),
-        };
-    }
-
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-    if (!profile || profile.role !== "admin") {
-        return {
-            ok: false,
-            response: NextResponse.json(
-                {
-                    success: false,
-                    message: "Forbidden",
-                },
-                {
-                    status: 403,
-                }
-            ),
-        };
-    }
-
-    return {
-        ok: true,
-        supabase,
-    };
-}
+const tourDateUpdateSchema = z.object({
+    artist: z.string().trim().min(1).max(160),
+    venue: z.string().trim().min(1).max(200),
+    city: z.string().trim().min(1).max(160),
+    event_date: z.string().trim().min(1).max(80),
+    ticket_url: z.string().trim().min(1).max(500),
+});
 
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const auth = await ensureAdmin();
+        const auth = await requireAdmin(request);
 
         if (!auth.ok) {
             return auth.response;
@@ -67,19 +35,13 @@ export async function PUT(
 
         const { id } = await params;
 
-        const body = await request.json();
+        const parsed = tourDateUpdateSchema.safeParse(await request.json().catch(() => ({})));
 
-        const artist = String(body.artist || "").trim();
-        const venue = String(body.venue || "").trim();
-        const city = String(body.city || "").trim();
-        const event_date = String(body.event_date || "").trim();
-        const ticket_url = String(body.ticket_url || "").trim();
-
-        if (!artist) {
-            return NextResponse.json(
+        if (!parsed.success) {
+            return noStoreJson(
                 {
                     success: false,
-                    message: "Artist is required",
+                    message: "Invalid tour date details.",
                 },
                 {
                     status: 400,
@@ -87,47 +49,14 @@ export async function PUT(
             );
         }
 
-        if (!venue) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Venue is required",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
-        if (!city) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "City is required",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
-        if (!event_date) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Event Date is required",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
+        const { artist, venue, city, event_date } = parsed.data;
+        const ticket_url = normaliseExternalUrl(parsed.data.ticket_url);
 
         if (!ticket_url) {
-            return NextResponse.json(
+            return noStoreJson(
                 {
                     success: false,
-                    message: "Ticket URL is required",
+                    message: "Valid Ticket URL is required",
                 },
                 {
                     status: 400,
@@ -149,12 +78,16 @@ export async function PUT(
             .single();
 
         if (error) {
-            console.error(error);
+            logger.error("Admin tour date update failed", {
+                tour_date_id: id,
+                actor_user_id: auth.user.id,
+                error: error.message,
+            });
 
-            return NextResponse.json(
+            return noStoreJson(
                 {
                     success: false,
-                    message: error.message,
+                    message: "Could not update tour date.",
                 },
                 {
                     status: 500,
@@ -162,19 +95,32 @@ export async function PUT(
             );
         }
 
-        return NextResponse.json({
+        await logAdminContentEvent({
+            actorUserId: auth.user.id,
+            action: "admin_tour_date_updated",
+            externalId: id,
+            message: "Admin updated tour date.",
+            metadata: {
+                artist,
+                venue,
+                city,
+                event_date,
+            },
+        });
+
+        return noStoreJson({
             success: true,
             tourDate: data,
         });
-    } catch (error: any) {
-        console.error(error);
+    } catch (error: unknown) {
+        logger.error("Unexpected admin tour date update error", {
+            error: getErrorMessage(error),
+        });
 
-        return NextResponse.json(
+        return noStoreJson(
             {
                 success: false,
-                message:
-                    error?.message ??
-                    "An unexpected error occurred",
+                message: "Could not update tour date.",
             },
             {
                 status: 500,
@@ -188,7 +134,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const auth = await ensureAdmin();
+        const auth = await requireAdmin(request);
 
         if (!auth.ok) {
             return auth.response;
@@ -204,12 +150,16 @@ export async function DELETE(
             .eq("id", id);
 
         if (error) {
-            console.error(error);
+            logger.error("Admin tour date delete failed", {
+                tour_date_id: id,
+                actor_user_id: auth.user.id,
+                error: error.message,
+            });
 
-            return NextResponse.json(
+            return noStoreJson(
                 {
                     success: false,
-                    message: error.message,
+                    message: "Could not delete tour date.",
                 },
                 {
                     status: 500,
@@ -217,18 +167,26 @@ export async function DELETE(
             );
         }
 
-        return NextResponse.json({
+        await logAdminContentEvent({
+            actorUserId: auth.user.id,
+            action: "admin_tour_date_deleted",
+            severity: "warning",
+            externalId: id,
+            message: "Admin deleted tour date.",
+        });
+
+        return noStoreJson({
             success: true,
         });
-    } catch (error: any) {
-        console.error(error);
+    } catch (error: unknown) {
+        logger.error("Unexpected admin tour date delete error", {
+            error: getErrorMessage(error),
+        });
 
-        return NextResponse.json(
+        return noStoreJson(
             {
                 success: false,
-                message:
-                    error?.message ??
-                    "An unexpected error occurred",
+                message: "Could not delete tour date.",
             },
             {
                 status: 500,

@@ -1,5 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { noStoreJson } from "@/lib/api/no-store";
+import { logAdminContentEvent } from "@/lib/admin/content-audit";
+import { requireAdmin } from "@/lib/auth/admin";
+import { getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { normaliseExternalUrl } from "@/lib/urls";
+
+const artistUpdateSchema = z.object({
+    display_name: z.string().trim().min(1).max(120),
+    slug: z.string().trim().max(160).nullish(),
+    bio: z.string().trim().max(5_000).nullish(),
+    instagram_url: z.string().trim().max(500).nullish(),
+    spotify_url: z.string().trim().max(500).nullish(),
+    bandcamp_url: z.string().trim().max(500).nullish(),
+    website_url: z.string().trim().max(500).nullish(),
+});
 
 export async function PUT(
     request: NextRequest,
@@ -8,43 +27,22 @@ export async function PUT(
     try {
         const { id } = await params;
 
-        const supabase = getServerSupabase();
+        const auth = await requireAdmin(request);
+        if (!auth.ok) return auth.response;
 
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
+        const parsed = artistUpdateSchema.safeParse(await request.json().catch(() => ({})));
 
-        if (!user) {
-            return NextResponse.json(
+        if (!parsed.success) {
+            return noStoreJson(
                 {
                     success: false,
-                    message: "Unauthorised",
+                    message: "Invalid artist details.",
                 },
                 {
-                    status: 401,
+                    status: 400,
                 }
             );
         }
-
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", user.id)
-            .single();
-
-        if (!profile || profile.role !== "admin") {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Forbidden",
-                },
-                {
-                    status: 403,
-                }
-            );
-        }
-
-        const body = await request.json();
 
         const {
             display_name,
@@ -54,46 +52,34 @@ export async function PUT(
             spotify_url,
             bandcamp_url,
             website_url,
-        } = body;
+        } = parsed.data;
 
-        if (!display_name?.trim()) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Display Name is required",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
-        const { data, error } = await supabase
+        const { data, error } = await auth.supabase
             .from("artists")
             .update({
-                display_name: display_name.trim(),
-                slug: slug?.trim() || null,
-                bio: bio?.trim() || null,
-                instagram_url:
-                    instagram_url?.trim() || null,
-                spotify_url:
-                    spotify_url?.trim() || null,
-                bandcamp_url:
-                    bandcamp_url?.trim() || null,
-                website_url:
-                    website_url?.trim() || null,
+                display_name,
+                slug: slug || null,
+                bio: bio || null,
+                instagram_url: normaliseExternalUrl(instagram_url),
+                spotify_url: normaliseExternalUrl(spotify_url),
+                bandcamp_url: normaliseExternalUrl(bandcamp_url),
+                website_url: normaliseExternalUrl(website_url),
             })
             .eq("id", id)
             .select()
             .single();
 
         if (error) {
-            console.error(error);
+            logger.error("Admin artist update failed", {
+                artist_id: id,
+                actor_user_id: auth.user.id,
+                error: error.message,
+            });
 
-            return NextResponse.json(
+            return noStoreJson(
                 {
                     success: false,
-                    message: error.message,
+                    message: "Could not update artist.",
                 },
                 {
                     status: 500,
@@ -101,19 +87,35 @@ export async function PUT(
             );
         }
 
-        return NextResponse.json({
+        await logAdminContentEvent({
+            actorUserId: auth.user.id,
+            action: "admin_artist_updated",
+            artistId: id,
+            message: "Admin updated artist profile content.",
+            metadata: {
+                display_name,
+                slug: slug || null,
+                has_bio: Boolean(bio),
+                has_instagram_url: Boolean(normaliseExternalUrl(instagram_url)),
+                has_spotify_url: Boolean(normaliseExternalUrl(spotify_url)),
+                has_bandcamp_url: Boolean(normaliseExternalUrl(bandcamp_url)),
+                has_website_url: Boolean(normaliseExternalUrl(website_url)),
+            },
+        });
+
+        return noStoreJson({
             success: true,
             artist: data,
         });
-    } catch (error: any) {
-        console.error(error);
+    } catch (error: unknown) {
+        logger.error("Unexpected admin artist update error", {
+            error: getErrorMessage(error),
+        });
 
-        return NextResponse.json(
+        return noStoreJson(
             {
                 success: false,
-                message:
-                    error?.message ??
-                    "An unexpected error occurred",
+                message: "Could not update artist.",
             },
             {
                 status: 500,

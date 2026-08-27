@@ -1,7 +1,10 @@
 // app/artists/page.tsx
 import { getServerSupabase } from "@/lib/supabase/server";
+import Image from "next/image";
 import Link from "next/link";
 import { Users } from "lucide-react";
+import { publicStorageUrl } from "@/lib/storage";
+import { logger } from "@/lib/logger";
 
 export const revalidate = 60;
 
@@ -27,13 +30,6 @@ function initials(name: string | null): string {
     );
 }
 
-function publicArtistImage(path: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${encodeURIComponent(
-        path
-    )}`;
-}
-
 export default async function ArtistsIndex() {
     const supabase = getServerSupabase();
 
@@ -44,21 +40,25 @@ export default async function ArtistsIndex() {
         .order("display_name", { ascending: true });
 
     if (error) {
+        logger.error("Artists index failed to load artists", {
+            error: error.message,
+        });
+
         return (
             <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
+                <section className="border-b border-neutral-800 bg-neutral-950">
+                    <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
+                        <div className="border border-neutral-800 bg-black p-5">
+                            <h1 className="text-4xl font-black uppercase leading-none">
                                 ARTISTS // ERROR
                             </h1>
                         </div>
                     </div>
                 </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                <div className="mx-auto max-w-7xl px-4 py-10 md:px-6 lg:px-8">
+                    <div className="border border-neutral-800 bg-neutral-950 p-6">
                         <p className="text-red-400">
-                            Error loading artists: {error.message}
+                            Could not load artists right now.
                         </p>
                     </div>
                 </div>
@@ -85,20 +85,19 @@ export default async function ArtistsIndex() {
 
     return (
         <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* Angled banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
+            <section className="border-b border-neutral-800 bg-neutral-950">
+                <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
+                    <div className="grid gap-6 border border-neutral-800 bg-black p-5 md:grid-cols-[1fr_auto] md:items-end md:p-7">
                         <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">
-                                Directory
+                            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-500">
+                                Scene directory
                             </p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
+                            <h1 className="mt-2 text-5xl font-black uppercase leading-none md:text-7xl">
                                 Artists
                             </h1>
                         </div>
-                        <div className="hidden md:flex items-center gap-2 text-xs">
-                            <span className="px-2 py-0.5 rounded-full bg-neutral-900 text-white">
+                        <div className="hidden border border-neutral-800 bg-neutral-950 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white md:block">
+                            <span>
                                 {count} {count === 1 ? "artist" : "artists"}
                             </span>
                         </div>
@@ -107,18 +106,18 @@ export default async function ArtistsIndex() {
             </section>
 
             {/* Content */}
-            <section className="max-w-6xl mx-auto px-4 py-8 space-y-10">
+            <section className="mx-auto max-w-7xl space-y-10 px-4 py-8 md:px-6 lg:px-8">
                 {count === 0 ? (
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 flex items-center justify-between">
+                    <div className="flex items-center justify-between border border-neutral-800 bg-neutral-950 p-6">
                         <div>
-                            <p className="text-lg font-semibold">No artists yet.</p>
+                            <p className="text-lg font-black uppercase">No artists yet.</p>
                             <p className="text-sm text-neutral-400 mt-1">
                                 Be the first to drop merch.
                             </p>
                         </div>
                         <Link
                             href="/auth/sign-up"
-                            className="inline-flex items-center h-11 px-4 font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 rounded-xl"
+                            className="inline-flex h-11 items-center border border-red-500 bg-red-600 px-4 font-black tracking-wide text-white shadow-lg shadow-red-900/30 hover:bg-red-500"
                             style={{ clipPath: "polygon(1% 0,100% 0,99% 100%,0 100%)" }}
                         >
                             <Users className="h-4 w-4 mr-2" />
@@ -130,31 +129,31 @@ export default async function ArtistsIndex() {
                         <div key={letter} id={`letter-${letter}`}>
                             {/* Section header */}
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-sm uppercase tracking-[0.25em] text-neutral-400">
+                                <h2 className="text-sm font-black uppercase tracking-[0.25em] text-red-500">
                                     {letter}
                                 </h2>
                                 <div className="h-px flex-1 ml-4 bg-neutral-800" />
                             </div>
 
                             {/* Grid */}
-                            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <ul className="grid gap-px bg-neutral-800 sm:grid-cols-2 lg:grid-cols-3">
                                 {groups.get(letter)!.map((a) => {
-                                    const heroUrl = publicArtistImage(a.hero_image_path);
+                                    const heroUrl = publicStorageUrl("artist-images", a.hero_image_path);
                                     return (
                                         <li
                                             key={a.id}
-                                            className="group relative rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden hover:border-neutral-700 transition-colors"
-                                            style={{ clipPath: "polygon(1% 0,100% 0,99% 100%,0 100%)" }}
+                                            className="group relative overflow-hidden bg-neutral-950 transition-colors hover:bg-black"
                                         >
                                             <Link href={`/artists/${a.slug}`} className="block">
                                                 {/* Top banner / hero */}
-                                                <div className="h-24 w-full overflow-hidden bg-neutral-800">
+                                                <div className="h-28 w-full overflow-hidden bg-neutral-800">
                                                     {heroUrl ? (
-                                                        // eslint-disable-next-line @next/next/no-img-element
-                                                        <img
+                                                        <Image
                                                             src={heroUrl}
                                                             alt={a.display_name ?? "Artist hero"}
-                                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                                                            width={640}
+                                                            height={192}
+                                                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                                                         />
                                                     ) : (
                                                         <div className="h-full w-full bg-[linear-gradient(135deg,rgba(255,255,255,0.06)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.06)_50%,rgba(255,255,255,0.06)_75%,transparent_75%,transparent)] bg-[length:12px_12px]" />
@@ -162,22 +161,22 @@ export default async function ArtistsIndex() {
                                                 </div>
 
                                                 {/* Body */}
-                                                <div className="p-5 flex items-center justify-between gap-3">
+                                                <div className="flex items-center justify-between gap-3 border-t border-neutral-800 p-5">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 rounded-full bg-neutral-900 border border-neutral-700 grid place-items-center font-black">
+                                                        <div className="grid h-10 w-10 place-items-center border border-neutral-700 bg-black font-black">
                                                             {initials(a.display_name)}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <p className="truncate font-semibold">
+                                                            <p className="truncate font-black">
                                                                 {a.display_name ?? "Unnamed artist"}
                                                             </p>
                                                             <p className="text-xs text-neutral-400">
-                                                                View products →
+                                                                View products
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5 rounded rotate-2">
-                                                        FEATURED
+                                                    <span className="bg-red-600 px-2 py-0.5 text-[10px] font-black text-white">
+                                                        ARTIST
                                                     </span>
                                                 </div>
                                             </Link>

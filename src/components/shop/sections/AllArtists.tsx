@@ -39,8 +39,10 @@ export default function AllArtists() {
                 if (alive) {
                     setArtists(Array.isArray(json.artists) ? json.artists : []);
                 }
-            } catch (e: any) {
-                if (alive) setErr(e?.message ?? "Failed to load");
+            } catch {
+                if (alive) {
+                    setErr("Could not load artists.");
+                }
             }
         })();
 
@@ -138,7 +140,7 @@ export default function AllArtists() {
                             filteredArtists.length === 0 && (
                                 <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-8 text-center">
                                     <p className="text-neutral-400">
-                                        No artists found for "{selectedLetter}"
+                                        No artists found for &quot;{selectedLetter}&quot;
                                     </p>
                                 </div>
                             )}
@@ -162,18 +164,13 @@ export default function AllArtists() {
                                     <div className="relative h-40 w-full bg-neutral-950">
                                         {a.image ? (
                                             <div className="relative h-40 w-full bg-neutral-950 overflow-hidden">
-                                                {a.image ? (
-                                                    <Image
-                                                        src={a.image}
-                                                        alt={a.name}
-                                                        fill
-                                                        className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-hover:brightness-110"
-                                                    />
-                                                ) : (
-                                                    <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-neutral-800 to-neutral-900 text-2xl font-black">
-                                                        {initials(a.name)}
-                                                    </div>
-                                                )}
+                                                <Image
+                                                    src={a.image}
+                                                    alt={a.name}
+                                                    fill
+                                                    sizes="180px"
+                                                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-hover:brightness-110"
+                                                />
 
                                                 {/* subtle overlay */}
                                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />

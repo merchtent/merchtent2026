@@ -1,10 +1,12 @@
 // app/dashboard/cash-out/page.tsx
-import { getServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
+import { Suspense } from "react";
 import CashOutButton from "./CashOutButton";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { DollarSign, PiggyBank, AlertTriangle, BadgePercent } from "lucide-react";
+import StripeConnectButton from "./StripeConnectButton";
+import StripeConnectReturnSync from "./StripeConnectReturnSync";
+import { DollarSign, PiggyBank, AlertTriangle, BadgePercent, CreditCard, ArrowRight } from "lucide-react";
+import { requireArtistPage } from "@/lib/auth/artist";
+import { logger } from "@/lib/logger";
 
 export const revalidate = 0;
 
@@ -20,68 +22,19 @@ function formatCurrency(amount: number, currency = "AUD") {
     }
 }
 
+type CashOutItem = {
+    id: string;
+    qty: number | null;
+    title: string | null;
+    product_id: string | null;
+    products:
+    | { artist_cut_cents: number | null }
+    | { artist_cut_cents: number | null }[]
+    | null;
+};
+
 export default async function CashOutPage() {
-    const supabase = getServerSupabase();
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                {/* angled banner */}
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">CASH OUT // ACCESS</h1>
-                            <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">SIGN IN REQUIRED</span>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <p className="text-neutral-300">
-                            Please <Link href="/auth/sign-in" className="underline">sign in</Link> to view your payouts.
-                        </p>
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    const { data: artist } = await supabase
-        .from("artists")
-        .select("id, display_name")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-    if (!artist) {
-        return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">CASH OUT // SETUP</h1>
-                            <span className="text-xs bg-red-600 text-white px-2 py-1 rounded rotate-[2deg]">ACTION NEEDED</span>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                        <p className="text-neutral-300">No artist record found.</p>
-                        <div className="mt-4">
-                            <Button asChild>
-                                <Link href="/auth/sign-up">Create artist profile</Link>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        );
-    }
+    const { supabase, artist } = await requireArtistPage();
 
     const { data: items, error } = await supabase
         .from("order_items")
@@ -96,93 +49,137 @@ export default async function CashOutPage() {
         .eq("artist_id", artist.id)
         .eq("cashed_out", false);
 
+    const { data: paymentAccount } = await supabase
+        .from("artist_payment_accounts")
+        .select("onboarding_status, charges_enabled, payouts_enabled, details_submitted, disabled_reason, last_synced_at")
+        .eq("artist_id", artist.id)
+        .maybeSingle();
+
     if (error) {
+        logger.error("Cash-out page failed to load unpaid items", {
+            artist_id: artist.id,
+            error: error.message,
+        });
+
         return (
-            <main className="min-h-screen bg-neutral-950 text-neutral-100">
-                <section className="relative py-0">
-                    <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                        <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8">
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">CASH OUT // ERROR</h1>
-                        </div>
-                    </div>
+            <main className="min-h-screen bg-black text-white">
+                <section className="border-b border-neutral-800 p-5 md:p-8">
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist backstage</p>
+                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Cash out error.</h1>
                 </section>
-                <div className="max-w-5xl mx-auto px-4 py-10">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-red-400 flex items-center gap-2">
+                <div className="p-5 md:p-8">
+                    <div className="border border-neutral-800 bg-neutral-950 p-6 text-red-400 flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
-                        Error: {error.message}
+                        Could not load unpaid sales right now.
                     </div>
                 </div>
             </main>
         );
     }
 
+    const cashOutItems = (items ?? []) as CashOutItem[];
     const totalCents =
-        items?.reduce((sum, i: any) => {
+        cashOutItems.reduce((sum, i) => {
             const product = Array.isArray(i.products) ? i.products[0] : i.products;
             const artistCut = product?.artist_cut_cents ?? 0;
             return sum + ((i.qty ?? 0) * artistCut);
         }, 0) ?? 0;
 
     const total = totalCents / 100;
+    const payoutsReady = Boolean(paymentAccount?.payouts_enabled && paymentAccount?.details_submitted);
 
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* angled banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">Artist Dashboard</p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">{artist.display_name} // CASH OUT</h1>
-                        </div>
-                        <div className="hidden md:flex items-center gap-2 text-xs">
-                            <span className="px-2 py-0.5 rounded-full bg-neutral-900 text-white">LIVE</span>
-                        </div>
+        <main className="min-h-screen bg-black text-white">
+            <Suspense fallback={null}>
+                <StripeConnectReturnSync />
+            </Suspense>
+            <section className="border-b border-neutral-800 bg-black">
+                <div className="grid lg:grid-cols-[1fr_auto]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Payout desk</p>
+                        <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            {artist.display_name} cash out.
+                        </h1>
+                        <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                            Review unpaid artist earnings, confirm Stripe readiness, and request payout without losing the audit trail.
+                        </p>
+                    </div>
+                    <div className="flex items-end p-5 md:p-8">
+                        <Link
+                            href="/dashboard/cash-outs"
+                            className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black hover:border-red-500"
+                        >
+                            Payout history <ArrowRight className="h-4 w-4" />
+                        </Link>
                     </div>
                 </div>
             </section>
 
-            {/* summary + action */}
-            <section className="max-w-5xl mx-auto px-4 py-8">
-                <div className="grid md:grid-cols-[1fr_auto] gap-4 items-stretch">
-                    <Card
-                        className="bg-neutral-900 border-neutral-800"
-                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
-                    >
-                        <CardContent className="p-5 md:p-6">
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm text-neutral-400">Available to withdraw</p>
-                                <PiggyBank className="h-4 w-4 text-neutral-300" />
-                            </div>
-                            <p className="mt-2 text-3xl font-black text-red-400">
-                                {formatCurrency(total)}
-                            </p>
-                            <p className="mt-1 text-xs text-neutral-500 inline-flex items-center gap-1">
-                                <BadgePercent className="h-3.5 w-3.5" />
-                                Artist share only (after split)
-                            </p>
-                        </CardContent>
-                    </Card>
+            <section className="border-b border-neutral-800">
+                <div className="grid md:grid-cols-[1fr_360px]">
+                    <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5 md:p-8">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Available to withdraw</p>
+                            <PiggyBank className="h-5 w-5 text-red-400" />
+                        </div>
+                        <p className="mt-5 text-5xl font-black text-red-400 md:text-7xl">
+                            {formatCurrency(total)}
+                        </p>
+                        <p className="mt-3 text-xs text-neutral-500 inline-flex items-center gap-1">
+                            <BadgePercent className="h-3.5 w-3.5" />
+                            Artist share only after split
+                        </p>
+                    </div>
 
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4 grid">
-                        <CashOutButton disabled={!items?.length} />
+                    <div className="grid border-b border-neutral-800 bg-neutral-950 p-5 md:p-8">
+                        <CashOutButton disabled={!cashOutItems.length || !payoutsReady} />
                         <p className="mt-2 text-[11px] text-neutral-400">
-                            Payouts may take 1–3 business days depending on your bank.
+                            Stripe payouts must be connected before cash-out requests can be processed.
                         </p>
                     </div>
                 </div>
             </section>
 
-            {/* table or empty */}
-            <section className="max-w-5xl mx-auto px-4 pb-12">
-                {items?.length ? (
-                    <div className="rounded-2xl border border-neutral-800 overflow-hidden">
-                        <div className="bg-neutral-900/70 border-b border-neutral-800 px-4 py-3 text-sm text-neutral-300">
-                            Unpaid items
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+                <div className="border border-neutral-800 bg-neutral-950 p-5 md:p-6">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-neutral-300" />
+                                <h2 className="text-lg font-black">Stripe payout account</h2>
+                            </div>
+                            <p className="mt-2 text-sm text-neutral-400">
+                                {payoutsReady
+                                    ? "Your Stripe account is payout-ready."
+                                    : "Connect Stripe so Merch Tent can pay artist earnings without manual bank handling."}
+                            </p>
+                            {paymentAccount?.disabled_reason ? (
+                                <p className="mt-2 text-xs text-red-300">
+                                    Stripe restriction: {paymentAccount.disabled_reason}
+                                </p>
+                            ) : null}
+                            {paymentAccount?.last_synced_at ? (
+                                <p className="mt-2 text-[11px] text-neutral-500">
+                                    Last checked {new Date(paymentAccount.last_synced_at).toLocaleString("en-AU")}
+                                </p>
+                            ) : null}
+                        </div>
+                        <div className="w-full md:w-72">
+                            <StripeConnectButton connected={Boolean(paymentAccount)} />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="p-5 md:p-8">
+                {cashOutItems.length ? (
+                    <div className="overflow-hidden border border-neutral-800">
+                        <div className="border-b border-neutral-800 bg-neutral-950 px-4 py-4">
+                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">Unpaid items</p>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="text-left text-neutral-400 bg-neutral-950/50">
+                                <thead className="bg-black text-left text-neutral-400">
                                     <tr>
                                         <th className="py-2 px-4 font-medium">Product</th>
                                         <th className="py-2 px-2 font-medium">Qty</th>
@@ -190,13 +187,13 @@ export default async function CashOutPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {items.map((i: any) => {
+                                    {cashOutItems.map((i) => {
                                         const product = Array.isArray(i.products) ? i.products[0] : i.products;
                                         const artistCut = product?.artist_cut_cents ?? 0;
                                         const earn = ((i.qty ?? 0) * artistCut) / 100;
 
                                         return (
-                                            <tr key={i.id} className="border-t border-neutral-800 hover:bg-neutral-900/40">
+                                            <tr key={i.id} className="border-t border-neutral-800 bg-neutral-950 hover:bg-neutral-900">
                                                 <td className="py-2 px-4">
                                                     {i.product_id ? (
                                                         <Link href={`/product/${i.product_id}`} className="underline">
@@ -216,13 +213,13 @@ export default async function CashOutPage() {
                                 </tbody>
                             </table>
                         </div>
-                        <div className="bg-neutral-900/70 border-t border-neutral-800 px-4 py-3 text-xs text-neutral-400 flex items-center gap-2">
+                        <div className="border-t border-neutral-800 bg-black px-4 py-3 text-xs text-neutral-400 flex items-center gap-2">
                             <DollarSign className="h-3.5 w-3.5" />
                             Earnings shown reflect your artist cut per item.
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
+                    <div className="border border-neutral-800 bg-neutral-950 p-6 text-neutral-300">
                         No unpaid sales at the moment.
                     </div>
                 )}

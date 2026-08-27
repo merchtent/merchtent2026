@@ -11,6 +11,13 @@ export default async function CheckoutPage() {
     const {
         data: { user },
     } = await supabase.auth.getUser();
+    const { data: creditBalance } = user
+        ? await supabase
+            .from("merch_credit_balances")
+            .select("points_balance")
+            .eq("user_id", user.id)
+            .maybeSingle()
+        : { data: null };
 
     return (
         <main className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -52,7 +59,11 @@ export default async function CheckoutPage() {
             </div>
 
             {/* Pass signed-in email if present; guests can type theirs */}
-            <CheckoutShellClient userEmail={user?.email ?? ""} />
+            <CheckoutShellClient
+                userEmail={user?.email ?? ""}
+                merchCreditBalance={creditBalance?.points_balance ?? 0}
+                canUseMerchCredits={Boolean(user)}
+            />
         </main>
     );
 }

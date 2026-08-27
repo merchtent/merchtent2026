@@ -1,6 +1,10 @@
 // app/new/page.tsx
+import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+import { publicImageUrl } from "@/lib/storage";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { logger } from "@/lib/logger";
+import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
 
 export const revalidate = 60;
 
@@ -17,13 +21,6 @@ type ProductRow = {
 
 type SortOption = "new" | "plh" | "phl";
 
-function publicImageUrl(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(
-        path
-    )}`;
-}
-
 export default async function NewThisWeekPage({
     searchParams,
 }: {
@@ -34,25 +31,10 @@ export default async function NewThisWeekPage({
     const max = sp.max;
     const sort = (sp.sort as SortOption | undefined) ?? "new";
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    if (!url || !anon) {
-        return (
-            <main className="p-6 max-w-7xl mx-auto">
-                <h1 className="text-2xl font-bold">New This Week</h1>
-                <p className="text-red-400 mt-2">
-                    Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.
-                </p>
-            </main>
-        );
-    }
-
-    const supabase = createClient(url, anon, {
-        auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = getPublicServerSupabase();
 
     // Base: newest published products (limit 20)
-    let query = supabase
+    let query = publicCatalogProductQuery(supabase
         .from("products")
         .select(
             `
@@ -66,7 +48,7 @@ export default async function NewThisWeekPage({
       product_images ( path, sort_order )
     `
         )
-        .eq("is_published", true);
+    );
 
     // Optional price filters
     const minNum = isFinite(Number(min)) ? Math.max(0, Math.floor(Number(min))) : undefined;
@@ -94,10 +76,14 @@ export default async function NewThisWeekPage({
     const { data, error } = await query;
 
     if (error) {
+        logger.error("New products page failed to load products", {
+            error: error.message,
+        });
+
         return (
             <main className="p-6 max-w-7xl mx-auto">
                 <h1 className="text-2xl font-bold">New This Week</h1>
-                <p className="text-red-400 mt-2">Error loading products: {error.message}</p>
+                <p className="text-red-400 mt-2">Could not load new products right now.</p>
             </main>
         );
     }
@@ -107,7 +93,7 @@ export default async function NewThisWeekPage({
             const imgs = Array.isArray(p.product_images)
                 ? [...p.product_images].sort((a, b) => (a?.sort_order ?? 999) - (b?.sort_order ?? 999))
                 : [];
-            const primary = publicImageUrl(imgs[0]?.path) ?? "https://picsum.photos/seed/fallback1/900/1200";
+            const primary = publicImageUrl(imgs[0]?.path) ?? "/merch-placeholder.svg";
             const hover = publicImageUrl(imgs[1]?.path) ?? primary;
 
             return {
@@ -265,7 +251,7 @@ export default async function NewThisWeekPage({
                 <div className="[column-fill:_balance]_columns-2 md:columns-3 lg:columns-4 gap-4">
                     {products.map((p, i) => (
                         <div key={p.id} className="mb-4 break-inside-avoid">
-                            <a
+                            <Link
                                 href={`/product/${p.id}`}
                                 className="group block rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900"
                                 style={{
@@ -273,16 +259,22 @@ export default async function NewThisWeekPage({
                                 }}
                             >
                                 <div className="relative aspect-[3/4]">
-                                    <img
-                                        src={p.image!}
+                                    <Image
+                                        src={p.image ?? "/merch-placeholder.svg"}
                                         alt={p.title}
-                                        className="object-cover absolute inset-0 w-full h-full transition-opacity duration-300 group-hover:opacity-0"
+                                        fill
+                                        sizes="(max-width:768px) 50vw, (max-width:1024px) 33vw, 25vw"
+                                        className="object-cover transition-opacity duration-300 group-hover:opacity-0"
                                     />
-                                    <img
-                                        src={p.hover!}
-                                        alt={`${p.title} alt`}
-                                        className="object-cover absolute inset-0 w-full h-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                                    />
+                                    {p.hover ? (
+                                        <Image
+                                            src={p.hover}
+                                            alt={`${p.title} alt`}
+                                            fill
+                                            sizes="(max-width:768px) 50vw, (max-width:1024px) 33vw, 25vw"
+                                            className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                                        />
+                                    ) : null}
                                 </div>
                                 <div className="p-3 md:p-4">
                                     <div className="flex items-start justify-between gap-3">
@@ -292,7 +284,7 @@ export default async function NewThisWeekPage({
                                         </div>
                                     </div>
                                 </div>
-                            </a>
+                            </Link>
                         </div>
                     ))}
                 </div>

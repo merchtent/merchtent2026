@@ -5,6 +5,7 @@ import OrderStatusUpdater from "@/components/admin/OrderStatusUpdater";
 
 
 import { getServerSupabase } from "@/lib/supabase/server";
+import { normaliseExternalUrl } from "@/lib/urls";
 
 function money(cents?: number | null) {
     return `AUD ${((cents ?? 0) / 100).toFixed(2)}`;
@@ -30,12 +31,28 @@ function StatusBadge({ status }: { status: string }) {
     );
 }
 
-const statuses = [
-    "pending",
-    "in_production",
-    "shipped",
-    "delivered",
-];
+type OrderItem = {
+    id: string;
+    title?: string | null;
+    color_label?: string | null;
+    size?: string | null;
+    unit_price_cents?: number | null;
+    qty?: number | null;
+    artists?: { display_name?: string | null } | { display_name?: string | null }[] | null;
+};
+
+type OrderStatusEvent = {
+    id: string;
+    from_status: string | null;
+    to_status: string;
+    reason: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+};
+
+function firstJoined<T>(value: T | T[] | null | undefined): T | null {
+    return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
 
 export default async function OrderViewPage({
     params,
@@ -66,14 +83,23 @@ export default async function OrderViewPage({
         notFound();
     }
 
+    const { data: statusEvents } = await supabase
+        .from("order_status_events")
+        .select("id, from_status, to_status, reason, metadata, created_at")
+        .eq("order_id", id)
+        .order("created_at", { ascending: false });
+
+    const timeline = (statusEvents ?? []) as OrderStatusEvent[];
+    const trackingUrl = normaliseExternalUrl(order.tracking_url);
+
     const itemsSubtotal =
         order.order_items
             ?.filter(
-                (item: any) =>
+                (item: OrderItem) =>
                     !item.title?.toLowerCase().includes("shipping")
             )
             .reduce(
-                (sum: number, item: any) =>
+                (sum: number, item: OrderItem) =>
                     sum +
                     ((item.unit_price_cents ?? 0) *
                         (item.qty ?? 0)),
@@ -82,7 +108,7 @@ export default async function OrderViewPage({
 
     const shippingLine =
         order.order_items?.find(
-            (item: any) =>
+            (item: OrderItem) =>
                 item.title?.toLowerCase().includes("shipping")
         );
 
@@ -144,6 +170,8 @@ export default async function OrderViewPage({
                     <OrderStatusUpdater
                         orderId={order.id}
                         currentStatus={order.status}
+                        currentTrackingNumber={order.tracking_code}
+                        currentCarrier={order.tracking_carrier}
                     />
 
                 </div>
@@ -232,7 +260,10 @@ export default async function OrderViewPage({
 
                     <div className="space-y-4">
 
-                        {order.order_items?.map((item: any) => (
+                        {order.order_items?.map((item: OrderItem) => {
+                            const artist = firstJoined(item.artists);
+
+                            return (
                             <div
                                 key={item.id}
                                 className="border border-neutral-800 rounded-xl p-4"
@@ -265,7 +296,7 @@ export default async function OrderViewPage({
 
                                         </div>
 
-                                        {item.artists && (
+                                        {artist && (
                                             <div className="mt-3">
 
                                                 <span className="
@@ -281,8 +312,7 @@ export default async function OrderViewPage({
                                                     border-red-600/30
                                                 ">
                                                     {
-                                                        item.artists
-                                                            .display_name
+                                                        artist.display_name
                                                     }
                                                 </span>
 
@@ -295,14 +325,14 @@ export default async function OrderViewPage({
 
                                         <div className="font-semibold">
                                             {money(
-                                                item.unit_price_cents *
+                                                (item.unit_price_cents ?? 0) *
                                                 (item.qty ?? 0)
                                             )}
                                         </div>
 
                                         <div className="text-xs text-neutral-500 mt-1">
                                             {money(
-                                                item.unit_price_cents
+                                                item.unit_price_cents ?? 0
                                             )} each
                                         </div>
 
@@ -310,7 +340,8 @@ export default async function OrderViewPage({
 
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
 
                     </div>
 
@@ -338,7 +369,7 @@ export default async function OrderViewPage({
                                 </div>
 
                                 <div>
-                                    {order.carrier || "-"}
+                                    {order.tracking_carrier || "-"}
                                 </div>
                             </div>
 
@@ -348,7 +379,18 @@ export default async function OrderViewPage({
                                 </div>
 
                                 <div>
-                                    {order.tracking_number || "-"}
+                                    {trackingUrl ? (
+                                        <a
+                                            href={trackingUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-red-300 underline"
+                                        >
+                                            {order.tracking_code || "Track shipment"}
+                                        </a>
+                                    ) : (
+                                        order.tracking_code || "-"
+                                    )}
                                 </div>
                             </div>
 
@@ -417,6 +459,48 @@ export default async function OrderViewPage({
                             </div>
 
                         </div>
+
+                    </div>
+
+                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+
+                        <h2 className="font-black text-lg mb-4">
+                            Status Timeline
+                        </h2>
+
+                        {timeline.length === 0 ? (
+                            <p className="text-sm text-neutral-400">
+                                No status events recorded.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {timeline.map((event) => (
+                                    <div
+                                        key={event.id}
+                                        className="rounded-xl border border-neutral-800 bg-neutral-950 p-3"
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="text-sm font-semibold">
+                                                {event.from_status || "created"} → {event.to_status}
+                                            </div>
+                                            <div className="text-xs text-neutral-500">
+                                                {new Date(event.created_at).toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div className="mt-1 text-xs text-neutral-400">
+                                            {event.reason || "status_update"}
+                                        </div>
+                                        {event.metadata?.trackingNumber || event.metadata?.carrier ? (
+                                            <div className="mt-2 text-xs text-neutral-300">
+                                                Tracking: {String(event.metadata.trackingNumber ?? "-")}
+                                                {" · "}
+                                                Carrier: {String(event.metadata.carrier ?? "-")}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                     </div>
 

@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+function safeNextPath(value: string | null) {
+    if (!value || !value.startsWith("/") || value.startsWith("//")) {
+        return "/account/setup";
+    }
+    return value;
+}
+
 export default function AuthCallbackPage() {
     const router = useRouter();
     const search = useSearchParams();
@@ -14,7 +21,15 @@ export default function AuthCallbackPage() {
                 // A) PKCE: ?code=... → let server write cookies
                 const code = search.get("code");
                 if (code) {
-                    window.location.replace(`/auth/callback/complete?code=${encodeURIComponent(code)}`);
+                    const type = search.get("type");
+                    const nextPath = safeNextPath(search.get("next"));
+                    const next = new URL("/auth/callback/complete", window.location.origin);
+                    next.searchParams.set("code", code);
+                    next.searchParams.set("next", nextPath);
+                    if (type === "artist" || type === "fan") {
+                        next.searchParams.set("type", type);
+                    }
+                    window.location.replace(next.toString());
                     return;
                 }
 
@@ -29,34 +44,37 @@ export default function AuthCallbackPage() {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ access_token, refresh_token }),
                         });
-                        if (!r.ok) throw new Error(await r.text());
+                        if (!r.ok) throw new Error("Could not finish setting up your session.");
                     }
                 }
 
                 // Now cookies are set server-side — onboard safely
                 const pending = localStorage.getItem("pending_display_name");
-                if (pending) {
+                const pendingType = localStorage.getItem("pending_account_type");
+                if (pending || pendingType) {
                     const onboard = await fetch("/auth/onboard", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ display_name: pending }),
+                        body: JSON.stringify({
+                            display_name: pending,
+                            account_type: pendingType === "artist" ? "artist" : "fan",
+                        }),
                     });
-                    // Optional: helpful during setup
                     if (!onboard.ok) {
-                        console.warn("Onboard failed:", onboard.status, await onboard.text());
+                        setMsg("Sign-in completed, but account setup needs attention.");
+                        return;
                     }
                     localStorage.removeItem("pending_display_name");
+                    localStorage.removeItem("pending_account_type");
                 }
 
-                router.replace("/dashboard");
-            } catch (e: any) {
-                console.error(e);
-                setMsg(`Sign-in failed: ${e?.message ?? e}`);
+                router.replace(safeNextPath(search.get("next")));
+            } catch (e: unknown) {
+                setMsg(e instanceof Error ? `Sign-in failed: ${e.message}` : "Sign-in failed.");
             }
         };
         run();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [router, search]);
 
     return <main className="p-6">{msg}</main>;
 }

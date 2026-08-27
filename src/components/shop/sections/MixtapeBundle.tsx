@@ -39,6 +39,7 @@ export default function BundleBuilder() {
     const [picked, setPicked] = useState<Picked[]>([]);
 
     const [activeProductId, setActiveProductId] = useState<string | null>(null);
+    const { add, open } = useCart();
 
     // ✅ FIX: per-product variant state
     const [variantState, setVariantState] = useState<{
@@ -117,8 +118,6 @@ export default function BundleBuilder() {
             </div>
         );
     }
-
-    const { add, open } = useCart();
 
     function handleAddBundle() {
         if (picked.length !== 3) return;

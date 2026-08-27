@@ -1,5 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+import { NextRequest } from "next/server";
+import { noStoreJson } from "@/lib/api/no-store";
+import { logAdminContentEvent } from "@/lib/admin/content-audit";
+import { requireAdmin } from "@/lib/auth/admin";
+import { getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 
 export async function POST(
     request: NextRequest,
@@ -8,46 +15,23 @@ export async function POST(
     try {
         const { id } = await params;
 
-        const supabase = getServerSupabase();
+        const auth = await requireAdmin(request);
+        if (!auth.ok) return auth.response;
 
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-            return NextResponse.json(
-                { success: false, message: "Unauthorised" },
-                { status: 401 }
-            );
-        }
-
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", user.id)
-            .single();
-
-        if (!profile || profile.role !== "admin") {
-            return NextResponse.json(
-                { success: false, message: "Forbidden" },
-                { status: 403 }
-            );
-        }
-
-        const { data: artist, error: findError } = await supabase
+        const { data: artist, error: findError } = await auth.supabase
             .from("artists")
             .select("id, is_public")
             .eq("id", id)
             .single();
 
         if (findError || !artist) {
-            return NextResponse.json(
+            return noStoreJson(
                 { success: false, message: "Artist not found" },
                 { status: 404 }
             );
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await auth.supabase
             .from("artists")
             .update({
                 is_public: !artist.is_public,
@@ -57,21 +41,42 @@ export async function POST(
             .single();
 
         if (error) {
-            return NextResponse.json(
-                { success: false, message: error.message },
+            logger.error("Admin artist public toggle failed", {
+                artist_id: id,
+                actor_user_id: auth.user.id,
+                error: error.message,
+            });
+
+            return noStoreJson(
+                { success: false, message: "Could not update artist." },
                 { status: 500 }
             );
         }
 
-        return NextResponse.json({
+        await logAdminContentEvent({
+            actorUserId: auth.user.id,
+            action: "admin_artist_public_toggled",
+            artistId: id,
+            message: "Admin toggled artist public visibility.",
+            metadata: {
+                previous_is_public: artist.is_public,
+                is_public: data.is_public,
+            },
+        });
+
+        return noStoreJson({
             success: true,
             artist: data,
         });
-    } catch (error: any) {
-        return NextResponse.json(
+    } catch (error: unknown) {
+        logger.error("Unexpected admin artist public toggle error", {
+            error: getErrorMessage(error),
+        });
+
+        return noStoreJson(
             {
                 success: false,
-                message: error.message,
+                message: "Could not update artist.",
             },
             {
                 status: 500,

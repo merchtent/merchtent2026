@@ -1,20 +1,17 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import "server-only";
+import { publicStorageUrl } from "@/lib/storage";
+import { publicApiError, publicApiJson } from "@/lib/api/public-error";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 
-function publicArtistImage(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${encodeURIComponent(path)}`;
-}
+type ArtistRow = {
+    id: string;
+    display_name?: string | null;
+    slug?: string | null;
+    hero_image_path?: string | null;
+};
 
 export async function GET() {
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            auth: { persistSession: false, autoRefreshToken: false },
-        }
-    );
+    const supabase = getPublicServerSupabase();
 
     const { data, error } = await supabase
         .from("artists_public")
@@ -22,18 +19,18 @@ export async function GET() {
         .order("display_name", { ascending: true });
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return publicApiError("/api/artists", error);
     }
 
     const artists =
-        (data ?? []).map((a: any) => ({
+        ((data ?? []) as ArtistRow[]).map((a) => ({
             id: a.id,
             name: a.display_name ?? "Artist",
             slug: a.slug ?? a.id,
             image:
-                publicArtistImage(a.hero_image_path) ??
-                "https://picsum.photos/seed/artist/600/400",
+                publicStorageUrl("artist-images", a.hero_image_path) ??
+                "/merch-placeholder.svg",
         })) ?? [];
 
-    return NextResponse.json({ artists }, { status: 200 });
+    return publicApiJson({ artists }, { status: 200 });
 }

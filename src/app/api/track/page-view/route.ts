@@ -1,40 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { noStoreJson } from "@/lib/api/no-store";
+import { getServerSupabase } from "@/lib/supabase/server";
+import { checkDurableRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
+import { rejectCrossOriginRequest } from "@/lib/auth/request-origin";
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, // server-only
-    { auth: { persistSession: false } }
-);
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const pageViewSchema = z.object({
+    path: z.string().min(1).max(500).startsWith("/"),
+    referrer: z.string().max(1000).nullish(),
+    user_agent: z.string().max(500).nullish(),
+    session_id: z.string().min(1).max(100).nullish(),
+});
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
+        const originRejection = rejectCrossOriginRequest(req);
+        if (originRejection) return originRejection;
 
-        const {
-            path,
-            referrer,
-            user_agent,
-            user_id,
-            session_id,
-        } = body ?? {};
+        const ip =
+            req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+            req.headers.get("x-real-ip") ||
+            "unknown";
 
-        if (!path) {
-            return NextResponse.json({ error: "Missing path" }, { status: 400 });
+        const supabase = getServerSupabase();
+
+        if (!(await checkDurableRateLimit(supabase, `page_view:${ip}`, 120, 60_000, "check_public_rate_limit", { fallback: "deny" }))) {
+            return noStoreJson({ ok: true }, { status: 200 });
         }
 
-        await supabase.from("page_views").insert({
-            path,
-            referrer: referrer ?? null,
-            user_agent: user_agent ?? null,
-            user_id: user_id ?? null,
-            session_id: session_id ?? null,
+        const parsed = pageViewSchema.safeParse(await req.json());
+
+        if (!parsed.success) {
+            return noStoreJson({ error: "Invalid payload" }, { status: 400 });
+        }
+
+        const { path, referrer, user_agent, session_id } = parsed.data;
+
+        const { error } = await supabase.rpc("public_track_page_view", {
+            p_path: path,
+            p_referrer: referrer ?? null,
+            p_user_agent: user_agent ?? null,
+            p_session_id: session_id ?? null,
         });
 
-        return NextResponse.json({ ok: true });
+        if (error) {
+            logger.error("page view tracking insert failed", {
+                path,
+                error: error.message,
+            });
+        }
+
+        return noStoreJson({ ok: true });
     } catch (err) {
-        console.error("❌ page view tracking failed", err);
-        return NextResponse.json({ ok: false }, { status: 200 });
-        // ⬆️ always return 200 so analytics never break UX
+        logger.error("page view tracking failed", {
+            error: err instanceof Error ? err.message : String(err),
+        });
+        return noStoreJson({ ok: false }, { status: 200 });
     }
 }

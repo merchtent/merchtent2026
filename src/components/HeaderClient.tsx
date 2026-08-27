@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useCart } from "@/components/CartProvider";
 import MiniCartDrawer from "@/components/MiniCartDrawer";
+import BrandLogo from "@/components/BrandLogo";
 import { motion } from "framer-motion";
 import {
     Menu,
@@ -22,13 +23,6 @@ import {
 } from "lucide-react";
 
 type Props = { initialEmail: string | null };
-
-// ---------- Site Theme Helpers ----------
-const brand = {
-    name: "MERCH TENT",
-    tagline: "Band Merch for local & unsigned bands",
-    accent: "#ef4444",
-};
 
 const nav = [
     { label: "Tees", href: "/category/tees" },
@@ -66,7 +60,7 @@ export default function HeaderClient({ initialEmail }: Props) {
     useEffect(() => {
         let mounted = true;
 
-        // A) Hydrate opportunistically from current session (don’t clear if null)
+        // A) Hydrate opportunistically from current session
         (async () => {
             try {
                 const { data } = await supabase.auth.getSession();
@@ -92,7 +86,6 @@ export default function HeaderClient({ initialEmail }: Props) {
                     setEmail(null);
                     break;
                 default:
-                    // ignore PASSWORD_RECOVERY, LINKED_IDENTITY, etc.
                     break;
             }
         });
@@ -102,25 +95,25 @@ export default function HeaderClient({ initialEmail }: Props) {
             try {
                 const { data } = await supabase.auth.getSession();
                 if (!mounted) return;
-                // Only update if something changed (prevents unnecessary re-renders)
                 const nextEmail = data.session?.user?.email ?? null;
                 setEmail((prev) => (prev === nextEmail ? prev : nextEmail));
             } catch {
                 /* ignore */
             }
         };
-        window.addEventListener("focus", resync);
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") resync();
-        });
 
-        // D) Cross-tab sync (if user signs in/out in another tab)
+        const onVisibilityChange = () => {
+            if (document.visibilityState === "visible") resync();
+        };
+
         const onStorage = (e: StorageEvent) => {
-            // Supabase v2 uses "sb-[project-ref]-auth-token" locally; we resync on any storage change
             if (e.key && e.key.includes("-auth-token")) {
                 resync();
             }
         };
+
+        window.addEventListener("focus", resync);
+        document.addEventListener("visibilitychange", onVisibilityChange);
         window.addEventListener("storage", onStorage);
 
         return () => {
@@ -129,7 +122,7 @@ export default function HeaderClient({ initialEmail }: Props) {
                 sub.subscription.unsubscribe();
             } catch { }
             window.removeEventListener("focus", resync);
-            document.removeEventListener("visibilitychange", resync);
+            document.removeEventListener("visibilitychange", onVisibilityChange);
             window.removeEventListener("storage", onStorage);
         };
     }, [supabase]);
@@ -138,25 +131,17 @@ export default function HeaderClient({ initialEmail }: Props) {
         try {
             setLoadingSignOut(true);
 
-            // 1) sign out on the client
             await supabase.auth.signOut();
-
-            // 2) tell server to clear cookies
             await fetch("/auth/sign-out", { method: "POST" }).catch(() => { });
-
-            // 3) update local ui
             setEmail(null);
-
-            // 4) now actually navigate
             router.replace("/");
         } finally {
             setLoadingSignOut(false);
         }
     };
 
-
     return (
-        <>
+        <div className="site-shell-header">
             {/* Announcement / Marquee */}
             <div className="w-full bg-red-600 text-white text-xs md:text-sm py-4 tracking-wide">
                 <div className="max-w-7xl mx-auto px-4 overflow-hidden">
@@ -232,24 +217,20 @@ export default function HeaderClient({ initialEmail }: Props) {
                             </button>
                             <nav className="hidden md:flex gap-6">
                                 {nav.map((n) => (
-                                    <a
+                                    <Link
                                         key={n.label}
                                         href={n.href}
                                         className="text-sm text-neutral-300 hover:text-white transition-colors"
                                     >
                                         {n.label}
-                                    </a>
+                                    </Link>
                                 ))}
                             </nav>
                         </div>
+
                         {/* Center */}
-                        <div className="w-full text-center">
-                            <a
-                                href="/"
-                                className="inline-block font-black tracking-[0.25em] text-lg hover:text-red-400 transition-colors"
-                            >
-                                {brand.name}
-                            </a>
+                        <div className="relative flex h-16 w-full items-center justify-center overflow-visible text-center">
+                            <BrandLogo className="relative z-10 origin-center scale-[1.18] drop-shadow-[0_10px_22px_rgba(0,0,0,0.55)] md:scale-[1.32]" />
                         </div>
 
                         {/* Right */}
@@ -258,13 +239,13 @@ export default function HeaderClient({ initialEmail }: Props) {
                                 <>
                                     <nav className="hidden md:flex gap-6">
                                         {authNav.map((n) => (
-                                            <a
+                                            <Link
                                                 key={n.label}
                                                 href={n.href}
                                                 className="text-sm text-neutral-300 hover:text-white transition-colors"
                                             >
                                                 {n.label}
-                                            </a>
+                                            </Link>
                                         ))}
                                     </nav>
                                     <button
@@ -272,19 +253,19 @@ export default function HeaderClient({ initialEmail }: Props) {
                                         className="text-sm underline ml-2 hidden md:flex hover:cursor-pointer hover:text-white"
                                         disabled={loadingSignOut}
                                     >
-                                        {loadingSignOut ? "Signing out…" : "Sign out"}
+                                        {loadingSignOut ? "Signing out..." : "Sign out"}
                                     </button>
                                 </>
                             ) : (
                                 <nav className="hidden md:flex gap-6">
                                     {unAuthNav.map((n) => (
-                                        <a
+                                        <Link
                                             key={n.label}
                                             href={n.href}
                                             className="text-sm text-neutral-300 hover:text-white transition-colors"
                                         >
                                             {n.label}
-                                        </a>
+                                        </Link>
                                     ))}
                                 </nav>
                             )}
@@ -308,32 +289,32 @@ export default function HeaderClient({ initialEmail }: Props) {
                                 <X className="h-5 w-5" />
                             </button>
                             {nav.map((n) => (
-                                <a key={n.label} href={n.href} className="block py-2 text-sm">
+                                <Link key={n.label} href={n.href} className="block py-2 text-sm" onClick={() => setMobileMenu(false)}>
                                     {n.label}
-                                </a>
+                                </Link>
                             ))}
                             <div className="pt-2 border-t border-neutral-800 mt-2">
                                 {email ? (
                                     <>
                                         {authNav.map((n) => (
-                                            <a key={n.label} href={n.href} className="block py-2 text-sm">
+                                            <Link key={n.label} href={n.href} className="block py-2 text-sm" onClick={() => setMobileMenu(false)}>
                                                 {n.label}
-                                            </a>
+                                            </Link>
                                         ))}
                                         <button
                                             onClick={signOut}
                                             className="mt-2 text-sm underline"
                                             disabled={loadingSignOut}
                                         >
-                                            {loadingSignOut ? "Signing out…" : "Sign out"}
+                                            {loadingSignOut ? "Signing out..." : "Sign out"}
                                         </button>
                                     </>
                                 ) : (
                                     <>
                                         {unAuthNav.map((n) => (
-                                            <a key={n.label} href={n.href} className="block py-2 text-sm">
+                                            <Link key={n.label} href={n.href} className="block py-2 text-sm" onClick={() => setMobileMenu(false)}>
                                                 {n.label}
-                                            </a>
+                                            </Link>
                                         ))}
                                     </>
                                 )}
@@ -344,6 +325,6 @@ export default function HeaderClient({ initialEmail }: Props) {
             </header>
 
             <MiniCartDrawer />
-        </>
+        </div>
     );
 }

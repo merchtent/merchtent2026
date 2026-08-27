@@ -1,9 +1,20 @@
 // app/contact/page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { z } from "zod";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { checkDurableRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const revalidate = 0;
+
+const contactSchema = z.object({
+    name: z.string().trim().min(1).max(200),
+    email: z.email().max(320),
+    subject: z.string().trim().max(300).optional(),
+    message: z.string().trim().min(1).max(5000),
+});
 
 export default async function ContactPage({
     searchParams,
@@ -153,31 +164,50 @@ export default async function ContactPage({
 async function submitContact(formData: FormData) {
     "use server";
 
-    const supabase = getServerSupabase();
-
     // simple honeypot
     if (String(formData.get("company") || "").trim()) {
         redirect("/contact?sent=1"); // silently succeed
     }
 
-    const name = String(formData.get("name") || "").trim();
-    const email = String(formData.get("email") || "").trim();
-    const subject = String(formData.get("subject") || "").trim();
-    const message = String(formData.get("message") || "").trim();
+    const parsed = contactSchema.safeParse({
+        name: formData.get("name"),
+        email: formData.get("email"),
+        subject: formData.get("subject"),
+        message: formData.get("message"),
+    });
 
-    if (!name || !email || !message) {
+    if (!parsed.success) {
         // Don’t expose errors to end-user here; keep UX simple
         redirect("/contact?sent=1");
     }
 
-    // Insert into Supabase (see SQL below)
-    const { error } = await supabase
-        .from("contact_messages")
-        .insert({ name, email, subject, message });
+    const headerStore = await headers();
+    const ip =
+        headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        headerStore.get("x-real-ip") ||
+        "unknown";
+    const rateLimitSupabase = getPublicServerSupabase();
+
+    if (!(await checkDurableRateLimit(rateLimitSupabase, `contact:${ip}`, 5, 60_000, "check_public_rate_limit", { fallback: "deny" }))) {
+        redirect("/contact?sent=1");
+    }
+
+    const { name, email, subject, message } = parsed.data;
+    const { error } = await rateLimitSupabase.rpc("public_submit_contact_message", {
+        p_name: name,
+        p_email: email,
+        p_subject: subject ?? null,
+        p_message: message,
+    });
 
     // We redirect to success even if there’s a transient DB error to avoid blocking users.
-    // You can log error server-side if needed.
-    // if (error) console.error("contact insert error", error);
+    if (error) {
+        logger.error("contact message insert failed", {
+            subject_present: Boolean(subject),
+            message_length: message.length,
+            error: error.message,
+        });
+    }
 
     redirect("/contact?sent=1");
 }

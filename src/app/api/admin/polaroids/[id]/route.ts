@@ -1,63 +1,29 @@
 // app/api/admin/polaroids/[id]/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-async function ensureAdmin() {
-    const supabase = getServerSupabase();
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { noStoreJson } from "@/lib/api/no-store";
+import { logAdminContentEvent } from "@/lib/admin/content-audit";
+import { requireAdmin } from "@/lib/auth/admin";
+import { getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { normaliseExternalUrl } from "@/lib/urls";
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-        return {
-            ok: false,
-            response: NextResponse.json(
-                {
-                    success: false,
-                    message: "Unauthorised",
-                },
-                {
-                    status: 401,
-                }
-            ),
-        };
-    }
-
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-    if (!profile || profile.role !== "admin") {
-        return {
-            ok: false,
-            response: NextResponse.json(
-                {
-                    success: false,
-                    message: "Forbidden",
-                },
-                {
-                    status: 403,
-                }
-            ),
-        };
-    }
-
-    return {
-        ok: true,
-        supabase,
-    };
-}
+const polaroidUpdateSchema = z.object({
+    image_path: z.string().trim().min(1).max(1_000),
+    caption: z.string().trim().max(1_000).nullish(),
+    instagram_url: z.string().trim().max(500).nullish(),
+});
 
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const auth = await ensureAdmin();
+        const auth = await requireAdmin(request);
 
         if (!auth.ok) {
             return auth.response;
@@ -66,25 +32,13 @@ export async function PUT(
         const supabase = auth.supabase!;
         const { id } = await params;
 
-        const body = await request.json();
+        const parsed = polaroidUpdateSchema.safeParse(await request.json().catch(() => ({})));
 
-        const image_path = String(
-            body.image_path || ""
-        ).trim();
-
-        const caption = String(
-            body.caption || ""
-        ).trim();
-
-        const instagram_url = String(
-            body.instagram_url || ""
-        ).trim();
-
-        if (!image_path) {
-            return NextResponse.json(
+        if (!parsed.success) {
+            return noStoreJson(
                 {
                     success: false,
-                    message: "Image path is required",
+                    message: "Invalid backstage polaroid details.",
                 },
                 {
                     status: 400,
@@ -92,24 +46,30 @@ export async function PUT(
             );
         }
 
+        const { image_path, caption, instagram_url } = parsed.data;
+
         const { data, error } = await supabase
             .from("backstage_polaroids")
             .update({
                 image_path,
-                caption,
-                instagram_url,
+                caption: caption ?? "",
+                instagram_url: normaliseExternalUrl(instagram_url),
             })
             .eq("id", id)
             .select()
             .single();
 
         if (error) {
-            console.error(error);
+            logger.error("Admin polaroid update failed", {
+                polaroid_id: id,
+                actor_user_id: auth.user.id,
+                error: error.message,
+            });
 
-            return NextResponse.json(
+            return noStoreJson(
                 {
                     success: false,
-                    message: error.message,
+                    message: "Could not update backstage polaroid.",
                 },
                 {
                     status: 500,
@@ -117,19 +77,30 @@ export async function PUT(
             );
         }
 
-        return NextResponse.json({
+        await logAdminContentEvent({
+            actorUserId: auth.user.id,
+            action: "admin_polaroid_updated",
+            externalId: id,
+            message: "Admin updated backstage polaroid.",
+            metadata: {
+                has_caption: Boolean(caption),
+                has_instagram_url: Boolean(normaliseExternalUrl(instagram_url)),
+            },
+        });
+
+        return noStoreJson({
             success: true,
             polaroid: data,
         });
-    } catch (error: any) {
-        console.error(error);
+    } catch (error: unknown) {
+        logger.error("Unexpected admin polaroid update error", {
+            error: getErrorMessage(error),
+        });
 
-        return NextResponse.json(
+        return noStoreJson(
             {
                 success: false,
-                message:
-                    error?.message ??
-                    "An unexpected error occurred",
+                message: "Could not update backstage polaroid.",
             },
             {
                 status: 500,
@@ -143,7 +114,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const auth = await ensureAdmin();
+        const auth = await requireAdmin(request);
 
         if (!auth.ok) {
             return auth.response;
@@ -158,12 +129,16 @@ export async function DELETE(
             .eq("id", id);
 
         if (error) {
-            console.error(error);
+            logger.error("Admin polaroid delete failed", {
+                polaroid_id: id,
+                actor_user_id: auth.user.id,
+                error: error.message,
+            });
 
-            return NextResponse.json(
+            return noStoreJson(
                 {
                     success: false,
-                    message: error.message,
+                    message: "Could not delete backstage polaroid.",
                 },
                 {
                     status: 500,
@@ -171,18 +146,26 @@ export async function DELETE(
             );
         }
 
-        return NextResponse.json({
+        await logAdminContentEvent({
+            actorUserId: auth.user.id,
+            action: "admin_polaroid_deleted",
+            severity: "warning",
+            externalId: id,
+            message: "Admin deleted backstage polaroid.",
+        });
+
+        return noStoreJson({
             success: true,
         });
-    } catch (error: any) {
-        console.error(error);
+    } catch (error: unknown) {
+        logger.error("Unexpected admin polaroid delete error", {
+            error: getErrorMessage(error),
+        });
 
-        return NextResponse.json(
+        return noStoreJson(
             {
                 success: false,
-                message:
-                    error?.message ??
-                    "An unexpected error occurred",
+                message: "Could not delete backstage polaroid.",
             },
             {
                 status: 500,

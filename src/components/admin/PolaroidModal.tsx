@@ -1,12 +1,8 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
-import { useEffect, useState, useTransition } from "react";
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import Image from "next/image";
+import { useState, useTransition } from "react";
+import { useToast } from "@/components/ToastProvider";
 
 type Polaroid = {
     id?: string;
@@ -14,6 +10,23 @@ type Polaroid = {
     caption: string;
     instagram_url: string;
 };
+
+const emptyPolaroid: Polaroid = {
+    image_path: "",
+    caption: "",
+    instagram_url: "",
+};
+
+function initialPolaroidForm(polaroid?: Polaroid | null): Polaroid {
+    return polaroid
+        ? {
+            id: polaroid.id,
+            image_path: polaroid.image_path ?? "",
+            caption: polaroid.caption ?? "",
+            instagram_url: polaroid.instagram_url ?? "",
+        }
+        : emptyPolaroid;
+}
 
 interface Props {
     open: boolean;
@@ -29,36 +42,21 @@ export default function PolaroidModal({
     polaroid,
 }: Props) {
     const [isPending, startTransition] = useTransition();
+    const toast = useToast();
 
-    const [form, setForm] = useState<Polaroid>({
-        image_path: "",
-        caption: "",
-        instagram_url: "",
-    });
+    const [form, setForm] = useState<Polaroid>(() => initialPolaroidForm(polaroid));
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const [uploading, setUploading] =
         useState(false);
 
-    useEffect(() => {
-        if (polaroid) {
-            setForm({
-                id: polaroid.id,
-                image_path: polaroid.image_path ?? "",
-                caption: polaroid.caption ?? "",
-                instagram_url: polaroid.instagram_url ?? "",
-            });
-        } else {
-            setForm({
-                image_path: "",
-                caption: "",
-                instagram_url: "",
-            });
-        }
-    }, [polaroid, open]);
-
     const save = () => {
+        setErrorMessage(null);
+
         if (!form.image_path) {
-            alert("Image path is required");
+            const message = "Image path is required.";
+            setErrorMessage(message);
+            toast({ title: "Polaroid not saved", description: message, variant: "error" });
             return;
         }
 
@@ -78,10 +76,16 @@ export default function PolaroidModal({
 
             if (!response.ok) {
                 const error = await response.json();
-                alert(error.message ?? "Failed to save");
+                const message = error.message ?? "Failed to save polaroid.";
+                setErrorMessage(message);
+                toast({ title: "Polaroid not saved", description: message, variant: "error" });
                 return;
             }
 
+            toast({
+                title: form.id ? "Polaroid updated" : "Polaroid added",
+                variant: "success",
+            });
             onSaved();
             onClose();
         });
@@ -142,6 +146,11 @@ export default function PolaroidModal({
                 {/* BODY */}
 
                 <div className="p-6 space-y-5">
+                    {errorMessage ? (
+                        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                            {errorMessage}
+                        </p>
+                    ) : null}
 
                     {/* PREVIEW */}
 
@@ -155,9 +164,12 @@ export default function PolaroidModal({
                             shadow-xl
                             rotate-1
                         ">
-                            <img
+                            <Image
                                 src={form.image_path}
                                 alt=""
+                                width={224}
+                                height={224}
+                                unoptimized
                                 className="
         w-full
         aspect-square
@@ -207,56 +219,42 @@ export default function PolaroidModal({
                                     try {
 
                                         setUploading(true);
+                                        setErrorMessage(null);
 
-                                        const extension =
-                                            file.name
-                                                .split(".")
-                                                .pop();
+                                        const uploadData =
+                                            new FormData();
+                                        uploadData.set(
+                                            "file",
+                                            file
+                                        );
 
-                                        const fileName =
-                                            `${crypto.randomUUID()}.${extension}`;
-
-                                        const path =
-                                            `polaroids/${fileName}`;
-
-                                        const { error } =
-                                            await supabase
-                                                .storage
-                                                .from(
-                                                    "backstage-polaroids"
-                                                )
-                                                .upload(
-                                                    path,
-                                                    file,
-                                                    {
-                                                        upsert: false,
-                                                    }
-                                                );
-
-                                        if (error) {
-                                            alert(
-                                                error.message
+                                        const response =
+                                            await fetch(
+                                                "/api/admin/polaroids/upload",
+                                                {
+                                                    method: "POST",
+                                                    body: uploadData,
+                                                }
                                             );
+
+                                        const result =
+                                            await response.json();
+
+                                        if (!response.ok) {
+                                            const message =
+                                                result.message ??
+                                                "Upload failed";
+                                            setErrorMessage(message);
+                                            toast({ title: "Upload failed", description: message, variant: "error" });
                                             return;
                                         }
-
-                                        const {
-                                            data: publicUrl
-                                        } =
-                                            supabase
-                                                .storage
-                                                .from(
-                                                    "backstage-polaroids"
-                                                )
-                                                .getPublicUrl(
-                                                    path
-                                                );
 
                                         setForm({
                                             ...form,
                                             image_path:
-                                                publicUrl.publicUrl,
+                                                result.publicUrl,
                                         });
+                                        toast({ title: "Image uploaded", variant: "success" });
 
                                     } finally {
 

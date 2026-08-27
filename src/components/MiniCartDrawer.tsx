@@ -3,9 +3,10 @@
 import { useCart } from "@/components/CartProvider";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { X, Minus, Plus } from "lucide-react";
+import { publicProductImageUrlOrSource } from "@/lib/storage";
 
 function fmt(amount_cents: number, currency: string | null) {
     const c = currency ?? "AUD";
@@ -22,21 +23,6 @@ function fmt(amount_cents: number, currency: string | null) {
     }
 }
 
-function publicImageUrl(path: string) {
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${encodeURIComponent(
-        path
-    )}`;
-}
-
-// 👇 helper to support both storage paths AND full URLs
-function resolveCartImage(src?: string | null): string | null {
-    if (!src) return null;
-    if (src.startsWith("http://") || src.startsWith("https://")) {
-        return src; // already a full URL (like overrideImage from colour)
-    }
-    return publicImageUrl(src); // treat as storage path
-}
-
 export default function MiniCartDrawer() {
     const {
         isOpen,
@@ -49,7 +35,7 @@ export default function MiniCartDrawer() {
         clear,
     } = useCart();
     const pathname = usePathname();
-    const [loading, setLoading] = useState(false);
+    const previousPathnameRef = useRef(pathname);
 
     // Close on ESC
     useEffect(() => {
@@ -63,37 +49,12 @@ export default function MiniCartDrawer() {
 
     // Close on route change
     useEffect(() => {
+        if (previousPathnameRef.current === pathname) return;
+        previousPathnameRef.current = pathname;
         if (isOpen) close();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pathname]);
+    }, [pathname, isOpen, close]);
 
     if (!isOpen) return null;
-
-    async function goToCheckout() {
-        try {
-            setLoading(true);
-            const res = await fetch("/checkout", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    items: items.map((i) => ({
-                        product_id: i.product_id,
-                        sku: i.sku ?? null,
-                        qty: i.qty,
-                    })),
-                }),
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || "Checkout failed");
-            }
-            const { url } = await res.json();
-            window.location.href = url;
-        } catch (e: any) {
-            alert(e.message ?? "Checkout failed");
-            setLoading(false);
-        }
-    }
 
     return (
         <>
@@ -157,7 +118,7 @@ export default function MiniCartDrawer() {
                                 {items.map((item) => {
                                     const lineId = item.sku ?? item.product_id;
                                     const variantLine = item.sku || item.color_label || item.size;
-                                    const resolvedImg = resolveCartImage(item.image_path);
+                                    const resolvedImg = publicProductImageUrlOrSource(item.image_path);
 
                                     return (
                                         <li key={lineId} className="p-4 flex items-center gap-4">

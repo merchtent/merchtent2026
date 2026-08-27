@@ -4,28 +4,52 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import TourDateModal from "./TourDateModal";
 
+type TourDate = {
+    id: string;
+    artist: string;
+    venue: string;
+    city: string;
+    event_date: string;
+    ticket_url: string;
+};
+
 export default function TourDatesSection({
     tourDates,
     artists,
 }: {
-    tourDates: any[];
+    tourDates: TourDate[];
     artists: string[];
 }) {
     const router = useRouter();
 
     const [open, setOpen] = useState(false);
-    const [selected, setSelected] = useState<any>(null);
+    const [selected, setSelected] = useState<TourDate | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<TourDate | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    const deleteDate = async (id: string) => {
-        if (!confirm("Delete this tour date?")) {
-            return;
+    const deleteDate = async () => {
+        if (!pendingDelete) return;
+
+        setIsDeleting(true);
+        setDeleteError(null);
+
+        try {
+            const response = await fetch(`/api/admin/tour-dates/${pendingDelete.id}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) {
+                throw new Error("Delete failed");
+            }
+
+            setPendingDelete(null);
+            router.refresh();
+        } catch {
+            setDeleteError("Could not delete this tour date.");
+        } finally {
+            setIsDeleting(false);
         }
-
-        await fetch(`/api/admin/tour-dates/${id}`, {
-            method: "DELETE",
-        });
-
-        router.refresh();
     };
 
     return (
@@ -182,9 +206,10 @@ export default function TourDatesSection({
                                             </button>
 
                                             <button
-                                                onClick={() =>
-                                                    deleteDate(date.id)
-                                                }
+                                                onClick={() => {
+                                                    setDeleteError(null);
+                                                    setPendingDelete(date);
+                                                }}
                                                 className="
                                     px-3
                                     py-1.5
@@ -233,12 +258,54 @@ export default function TourDatesSection({
             </div>
 
             <TourDateModal
+                key={selected?.id ?? "new-tour-date"}
                 open={open}
                 onClose={() => setOpen(false)}
                 onSaved={() => router.refresh()}
                 tourDate={selected}
                 artists={artists}
             />
+
+            {pendingDelete && (
+                <div
+                    className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="delete-tour-date-title"
+                >
+                    <div className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-950 p-5 shadow-2xl">
+                        <h3 id="delete-tour-date-title" className="text-lg font-bold">
+                            Delete tour date
+                        </h3>
+                        <p className="mt-2 text-sm text-neutral-400">
+                            Remove {pendingDelete.artist} at {pendingDelete.venue}? This cannot be undone.
+                        </p>
+                        {deleteError && (
+                            <p className="mt-3 text-sm text-red-300" role="alert">
+                                {deleteError}
+                            </p>
+                        )}
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPendingDelete(null)}
+                                disabled={isDeleting}
+                                className="rounded-lg bg-neutral-800 px-4 py-2 text-sm font-semibold hover:bg-neutral-700 disabled:opacity-60"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={deleteDate}
+                                disabled={isDeleting}
+                                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500 disabled:opacity-60"
+                            >
+                                {isDeleting ? "Deleting..." : "Delete"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

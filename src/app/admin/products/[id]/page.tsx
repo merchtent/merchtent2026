@@ -4,10 +4,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getServerSupabase } from "@/lib/supabase/server";
+import ProductModerationActions from "./ProductModerationActions";
 
 function money(cents: number) {
     return `$${((cents ?? 0) / 100).toFixed(2)}`;
 }
+
+type ProductOrderItem = {
+    id: string;
+    qty?: number | null;
+    unit_price_cents?: number | null;
+    artist_cut_cents?: number | null;
+};
+
+type ProductColour = {
+    id: string;
+    hex?: string | null;
+    label?: string | null;
+};
 
 export default async function ProductPage({
     params,
@@ -60,14 +74,14 @@ export default async function ProductPage({
 
     const sales =
         product.order_items?.reduce(
-            (sum: number, item: any) =>
+            (sum: number, item: ProductOrderItem) =>
                 sum + (item.qty ?? 0),
             0
         ) ?? 0;
 
     const revenue =
         product.order_items?.reduce(
-            (sum: number, item: any) =>
+            (sum: number, item: ProductOrderItem) =>
                 sum +
                 (
                     (item.unit_price_cents ?? 0) *
@@ -78,7 +92,7 @@ export default async function ProductPage({
 
     const artistEarnings =
         product.order_items?.reduce(
-            (sum: number, item: any) =>
+            (sum: number, item: ProductOrderItem) =>
                 sum +
                 (
                     (item.artist_cut_cents ?? 0) *
@@ -272,6 +286,31 @@ export default async function ProductPage({
                                 </div>
                             </div>
 
+                            <div>
+                                <div className="text-xs text-neutral-500">
+                                    Moderation
+                                </div>
+
+                                <div className="mt-1 capitalize">
+                                    {(product.moderation_status ?? "unknown").replaceAll("_", " ")}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="text-xs text-neutral-500">
+                                    Reviewed
+                                </div>
+
+                                <div className="mt-1">
+                                    {product.moderation_reviewed_at
+                                        ? new Date(product.moderation_reviewed_at).toLocaleString("en-AU", {
+                                            dateStyle: "medium",
+                                            timeStyle: "short",
+                                        })
+                                        : "-"}
+                                </div>
+                            </div>
+
                         </div>
 
                         <div className="mt-6">
@@ -283,6 +322,18 @@ export default async function ProductPage({
                                 {product.description}
                             </div>
                         </div>
+
+                        {product.moderation_notes ? (
+                            <div className="mt-6">
+                                <div className="text-xs text-neutral-500 mb-2">
+                                    Moderation Notes
+                                </div>
+
+                                <div className="text-neutral-300 whitespace-pre-wrap">
+                                    {product.moderation_notes}
+                                </div>
+                            </div>
+                        ) : null}
 
                     </div>
 
@@ -296,7 +347,7 @@ export default async function ProductPage({
 
                         <div className="grid md:grid-cols-2 gap-4">
 
-                            {product.product_colors?.map((colour: any) => (
+                            {product.product_colors?.map((colour: ProductColour) => (
                                 <div
                                     key={colour.id}
                                     className="
@@ -312,7 +363,7 @@ export default async function ProductPage({
                                         <div
                                             className="h-8 w-8 rounded-full border border-white/20"
                                             style={{
-                                                backgroundColor: colour.hex,
+                                                backgroundColor: colour.hex ?? undefined,
                                             }}
                                         />
 
@@ -347,7 +398,7 @@ export default async function ProductPage({
 
                             {product.order_items
                                 ?.slice(0, 20)
-                                .map((item: any) => (
+                                .map((item: ProductOrderItem) => (
                                     <div
                                         key={item.id}
                                         className="
@@ -366,8 +417,8 @@ export default async function ProductPage({
 
                                         <div className="font-semibold">
                                             {money(
-                                                item.unit_price_cents *
-                                                item.qty
+                                                (item.unit_price_cents ?? 0) *
+                                                (item.qty ?? 0)
                                             )}
                                         </div>
 
@@ -387,38 +438,13 @@ export default async function ProductPage({
                     <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
 
                         <h2 className="font-black text-xl mb-4">
-                            Quick Actions
+                            Moderation
                         </h2>
 
-                        <div className="space-y-3">
-
-                            <button
-                                className="
-                                    w-full
-                                    bg-red-600
-                                    hover:bg-red-500
-                                    rounded-xl
-                                    py-3
-                                    font-semibold
-                                "
-                            >
-                                Toggle Featured
-                            </button>
-
-                            <button
-                                className="
-                                    w-full
-                                    bg-neutral-800
-                                    hover:bg-neutral-700
-                                    rounded-xl
-                                    py-3
-                                    font-semibold
-                                "
-                            >
-                                Toggle Published
-                            </button>
-
-                        </div>
+                        <ProductModerationActions
+                            productId={product.id}
+                            currentStatus={product.moderation_status}
+                        />
 
                     </div>
 

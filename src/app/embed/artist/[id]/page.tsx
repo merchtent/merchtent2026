@@ -1,17 +1,24 @@
-import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import ArtistProductsGrid from "@/app/artists/[id]/ArtistProductsGrid";
+import { publicImageUrl, publicStorageUrl } from "@/lib/storage";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
 
 export const revalidate = 60;
 
-function artistImage(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${path}`;
-}
+type ProductImageRow = {
+    path?: string | null;
+    sort_order?: number | null;
+};
 
-function productImage(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
-}
+type ProductRow = {
+    id: string;
+    title?: string | null;
+    price_cents?: number | null;
+    slug?: string | null;
+    created_at?: string | null;
+    product_images?: ProductImageRow[] | null;
+};
 
 export default async function ArtistEmbedPage({
     params,
@@ -20,11 +27,7 @@ export default async function ArtistEmbedPage({
 }) {
     const { id } = await params;
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { persistSession: false } }
-    );
+    const supabase = getPublicServerSupabase();
 
     // 🔥 ARTIST
     const { data: artist } = await supabase
@@ -37,10 +40,10 @@ export default async function ArtistEmbedPage({
         return <div style={{ padding: 20 }}>Artist not found</div>;
     }
 
-    const heroUrl = artistImage(artist.hero_image_path);
+    const heroUrl = publicStorageUrl("artist-images", artist.hero_image_path);
 
     // 🔥 PRODUCTS
-    const { data: productData } = await supabase
+    const { data: productData } = await publicCatalogProductQuery(supabase
         .from("products")
         .select(`
       id,
@@ -50,28 +53,28 @@ export default async function ArtistEmbedPage({
       created_at,
       product_images ( path, sort_order )
     `)
+    )
         .eq("artist_id", artist.id)
-        .eq("is_published", true)
         .order("created_at", { ascending: false });
 
     const products =
-        (productData ?? []).map((p: any) => {
+        ((productData ?? []) as ProductRow[]).map((p) => {
             const imgs = (p.product_images ?? []).sort(
-                (a: any, b: any) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
+                (a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
             );
 
             const primary =
-                productImage(imgs[0]?.path) ??
-                "https://picsum.photos/seed/fallback/800/1200";
+                publicImageUrl(imgs[0]?.path) ??
+                "/merch-placeholder.svg";
 
             return {
                 id: String(p.id),
-                title: p.title,
+                title: p.title ?? "Untitled product",
                 price: (p.price_cents ?? 0) / 100,
                 image: primary,
-                slug: p.slug,
+                slug: p.slug ?? String(p.id),
                 sizes: ["XS", "S", "M", "L", "XL", "XXL", "3XL"],
-                created_at: p.created_at,
+                created_at: p.created_at ?? undefined,
             };
         }) ?? [];
 
@@ -87,13 +90,14 @@ export default async function ArtistEmbedPage({
             {/* 🔥 HERO */}
             <section style={{ position: "relative", height: 320 }}>
                 {heroUrl && (
-                    <img
+                    <Image
                         src={heroUrl}
+                        alt={`${artist.display_name ?? "Artist"} hero`}
+                        fill
+                        sizes="100vw"
                         style={{
                             position: "absolute",
                             inset: 0,
-                            width: "100%",
-                            height: "100%",
                             objectFit: "cover",
                         }}
                     />
@@ -144,6 +148,7 @@ export default async function ArtistEmbedPage({
                 <a
                     href={`https://merchtent.com.au/artists/${artist.slug}`}
                     target="_blank"
+                    rel="noopener noreferrer"
                     style={{
                         display: "inline-block",
                         marginTop: 12,

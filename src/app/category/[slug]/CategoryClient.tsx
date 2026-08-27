@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -8,15 +8,20 @@ type Product = {
     id: string;
     title: string;
     price: number;
-    image: string;
-    hover?: string;
+    image: string | null;
+    hover?: string | null;
     slug: string;
     artist?: string | null;
     artist_image?: string | null;
     created_at?: string;
 };
 
-export default function CategoryClient({ initialProducts }: any) {
+type ArtistFilterOption = {
+    name: string;
+    image?: string | null;
+};
+
+export default function CategoryClient({ initialProducts }: { initialProducts: Product[] }) {
     const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
     const [maxPrice, setMaxPrice] = useState<number>(200);
     const [sort, setSort] = useState("new");
@@ -24,12 +29,8 @@ export default function CategoryClient({ initialProducts }: any) {
     const [page, setPage] = useState(1);
     const PAGE_SIZE = 12;
 
-    useEffect(() => {
-        setPage(1);
-    }, [selectedArtist, maxPrice, sort]);
-
     const artists = useMemo(() => {
-        const map = new Map();
+        const map = new Map<string, ArtistFilterOption>();
 
         initialProducts.forEach((p: Product) => {
             if (p.artist && !map.has(p.artist)) {
@@ -78,31 +79,35 @@ export default function CategoryClient({ initialProducts }: any) {
     function clearFilters() {
         setSelectedArtist(null);
         setMaxPrice(200);
+        setPage(1);
     }
 
     return (
-        <section className="grid lg:grid-cols-[240px_1fr] gap-6">
+        <section className="grid gap-6 lg:grid-cols-[260px_1fr]">
 
             {/* SIDEBAR */}
-            <aside className="space-y-6">
+            <aside className="space-y-6 border border-neutral-800 bg-neutral-950 p-4 lg:sticky lg:top-24 lg:self-start">
 
                 <button
                     onClick={clearFilters}
-                    className="text-xs underline text-neutral-400 hover:text-white"
+                    className="text-xs font-black uppercase tracking-[0.16em] text-red-400 hover:text-white"
                 >
                     Clear filters
                 </button>
 
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex items-center justify-between gap-3">
 
-                    <p className="text-xs text-neutral-400">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-neutral-400">
                         {filtered.length} items
                     </p>
 
                     <select
                         value={sort}
-                        onChange={(e) => setSort(e.target.value)}
-                        className="bg-neutral-900 border border-neutral-700 text-sm px-3 py-2 rounded-lg"
+                        onChange={(e) => {
+                            setSort(e.target.value);
+                            setPage(1);
+                        }}
+                        className="border border-neutral-700 bg-black px-3 py-2 text-sm font-bold text-white"
                     >
                         <option value="new">Newest</option>
                         <option value="plh">Price: Low → High</option>
@@ -113,32 +118,34 @@ export default function CategoryClient({ initialProducts }: any) {
 
                 {/* ARTISTS */}
                 <div>
-                    <p className="text-xs uppercase text-neutral-400 mb-3">
+                    <p className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-red-500">
                         Artists
                     </p>
 
                     <div className="flex flex-col gap-2">
-                        {artists.map((a: any) => (
+                        {artists.map((a) => (
                             <button
                                 key={a.name}
-                                onClick={() =>
+                                onClick={() => {
                                     setSelectedArtist((prev) =>
                                         prev === a.name ? null : a.name
-                                    )
-                                }
-                                className={`flex items-center gap-3 p-2 rounded-xl border ${selectedArtist === a.name
-                                    ? "bg-red-600 border-red-500 text-white"
-                                    : "border-neutral-800 bg-neutral-900 hover:bg-neutral-800"
+                                    );
+                                    setPage(1);
+                                }}
+                                className={`flex items-center gap-3 border p-2 text-left transition ${selectedArtist === a.name
+                                    ? "border-red-500 bg-red-600 text-white"
+                                    : "border-neutral-800 bg-black hover:border-neutral-600"
                                     }`}
                             >
-                                {/* ✅ AVATAR (always works) */}
-                                <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-700 flex items-center justify-center text-xs font-bold">
+                                <div className="flex h-9 w-9 items-center justify-center overflow-hidden bg-neutral-800 text-xs font-black">
 
                                     {a.image ? (
-                                        <img
+                                        <Image
                                             src={a.image}
                                             alt={a.name}
-                                            className="w-full h-full object-cover"
+                                            width={36}
+                                            height={36}
+                                            className="h-full w-full object-cover"
                                         />
                                     ) : (
                                         a.name.charAt(0)
@@ -146,7 +153,7 @@ export default function CategoryClient({ initialProducts }: any) {
 
                                 </div>
 
-                                <span className="text-sm truncate">
+                                <span className="truncate text-sm font-bold">
                                     {a.name}
                                 </span>
                             </button>
@@ -156,7 +163,7 @@ export default function CategoryClient({ initialProducts }: any) {
 
                 {/* PRICE SLIDER */}
                 <div>
-                    <p className="text-xs text-neutral-400 mb-2">
+                    <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-red-500">
                         Max Price: ${maxPrice}
                     </p>
 
@@ -166,7 +173,10 @@ export default function CategoryClient({ initialProducts }: any) {
                         max={200}
                         step={5}
                         value={maxPrice}
-                        onChange={(e) => setMaxPrice(Number(e.target.value))}
+                        onChange={(e) => {
+                            setMaxPrice(Number(e.target.value));
+                            setPage(1);
+                        }}
                         className="w-full accent-red-500"
                     />
                 </div>
@@ -177,28 +187,28 @@ export default function CategoryClient({ initialProducts }: any) {
             <div>
 
                 {filtered.length === 0 ? (
-                    <div className="p-6 text-center border border-neutral-800 bg-neutral-900 rounded-2xl">
-                        <p>No products found.</p>
-                        <Link href="/artists" className="underline mt-2 block">
-                            Browse artists →
+                    <div className="border border-neutral-800 bg-neutral-950 p-8 text-center">
+                        <p className="text-lg font-black uppercase">No products found.</p>
+                        <Link href="/artists" className="mt-2 block text-sm font-bold text-red-400 hover:text-white">
+                            Browse artists
                         </Link>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    <div className="grid grid-cols-2 gap-px bg-neutral-800 sm:grid-cols-3 lg:grid-cols-4">
 
                         {paginated.map((p: Product) => (
                             <Link
                                 key={p.id}
                                 href={`/product/${p.slug}`}
-                                className="group rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 hover:-translate-y-1 transition"
+                                className="group overflow-hidden bg-neutral-950 transition hover:bg-black"
                             >
-                                {/* 🔥 IMAGE SWAP */}
-                                <div className="relative aspect-[3/4] overflow-hidden">
+                                <div className="relative aspect-[3/4] overflow-hidden bg-white">
 
                                     <Image
-                                        src={p.image}
+                                        src={p.image ?? "/merch-placeholder.svg"}
                                         alt={p.title}
                                         fill
+                                        sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
                                         className="object-cover transition-opacity duration-300 group-hover:opacity-0"
                                     />
 
@@ -207,18 +217,24 @@ export default function CategoryClient({ initialProducts }: any) {
                                             src={p.hover}
                                             alt={p.title}
                                             fill
+                                            sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
                                             className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                                         />
                                     )}
 
                                 </div>
 
-                                <div className="p-3">
-                                    <p className="text-sm font-semibold truncate">
+                                <div className="border-t border-neutral-800 p-3">
+                                    {p.artist ? (
+                                        <p className="mb-1 truncate text-[10px] font-black uppercase tracking-[0.16em] text-red-500">
+                                            {p.artist}
+                                        </p>
+                                    ) : null}
+                                    <p className="truncate text-sm font-black">
                                         {p.title}
                                     </p>
 
-                                    <p className="text-sm font-bold mt-1">
+                                    <p className="mt-1 text-sm font-bold text-neutral-400">
                                         ${p.price}
                                     </p>
                                 </div>
@@ -230,13 +246,13 @@ export default function CategoryClient({ initialProducts }: any) {
 
             </div>
             {totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-center gap-2">
+                <div className="mt-6 flex items-center justify-center gap-2 lg:col-start-2">
 
                     {/* PREV */}
                     <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page === 1}
-                        className="px-3 py-2 text-sm border border-neutral-700 rounded disabled:opacity-30"
+                        className="border border-neutral-700 px-3 py-2 text-sm font-bold disabled:opacity-30"
                     >
                         Prev
                     </button>
@@ -249,7 +265,7 @@ export default function CategoryClient({ initialProducts }: any) {
                             <button
                                 key={p}
                                 onClick={() => setPage(p)}
-                                className={`px-3 py-2 text-sm rounded border ${p === page
+                                className={`border px-3 py-2 text-sm font-bold ${p === page
                                     ? "bg-red-600 border-red-500 text-white"
                                     : "border-neutral-700 hover:bg-neutral-800"
                                     }`}
@@ -263,7 +279,7 @@ export default function CategoryClient({ initialProducts }: any) {
                     <button
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page === totalPages}
-                        className="px-3 py-2 text-sm border border-neutral-700 rounded disabled:opacity-30"
+                        className="border border-neutral-700 px-3 py-2 text-sm font-bold disabled:opacity-30"
                     >
                         Next
                     </button>

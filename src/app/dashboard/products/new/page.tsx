@@ -1,39 +1,37 @@
 // app/dashboard/products/new/page.tsx
-import { Card, CardContent } from "@/components/ui/card";
+import { requireArtistPage } from "@/lib/auth/artist";
 import NewProductFormClient from "./NewProductFormClient";
 
-export default function NewProductPage() {
+export default async function NewProductPage() {
+    await requireArtistPage();
+
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* angled banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">
-                                Artist Dashboard
-                            </p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                Add product
-                            </h1>
-                        </div>
-                        <span className="hidden md:inline-block px-2 py-0.5 rounded-full bg-neutral-900 text-white text-xs">
-                            NEW
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 bg-black">
+                <div className="grid lg:grid-cols-[1fr_auto]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
+                            Manual product
+                        </p>
+                        <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            Add product.
+                        </h1>
+                        <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                            Keep the original manual creator for stock, imports, and products that do not start in the designer.
+                        </p>
+                    </div>
+                    <div className="flex items-end p-5 md:p-8">
+                        <span className="bg-red-600 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-white">
+                            Classic flow
                         </span>
                     </div>
                 </div>
             </section>
 
-            {/* form */}
-            <section className="max-w-5xl mx-auto px-4 py-8">
-                <Card
-                    className="bg-neutral-900 border-neutral-800"
-                    style={{ clipPath: "polygon(1% 0,100% 0,99% 100%,0 100%)" }}
-                >
-                    <CardContent className="p-6 md:p-8">
-                        <NewProductFormClient />
-                    </CardContent>
-                </Card>
+            <section className="p-5 md:p-8">
+                <div className="border border-neutral-800 bg-neutral-950 p-6 md:p-8">
+                    <NewProductFormClient />
+                </div>
             </section>
         </main>
     );

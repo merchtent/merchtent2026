@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Artist = {
@@ -34,21 +35,25 @@ export default function FeaturedArtistsSection() {
                 const json = await res.json();
                 if (!res.ok) throw new Error(json?.error || "Failed to load featured artists");
                 if (alive) setArtists(Array.isArray(json.artists) ? json.artists : []);
-            } catch (e: any) {
-                if (alive) setErr(e?.message ?? "Failed to load featured artists");
+            } catch {
+                if (alive) setErr("Could not load featured artists.");
             }
         })();
         return () => { alive = false; };
     }, []);
 
     return (
-        <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-0 md:py-0 mb-7 mt-4">
-            <div className="flex items-end justify-between mb-6">
+        <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-12 mb-2">
+            <div className="flex items-end justify-between gap-4 mb-6">
                 <div>
-                    <h2 className="text-xl md:text-2xl font-semibold">Featured artists</h2>
-                    <p className="text-sm text-neutral-400">Handpicked bands we love</p>
+                    <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-red-400">
+                        <Radio className="h-3.5 w-3.5" />
+                        Tonight&apos;s lineup
+                    </div>
+                    <h2 className="mt-2 text-3xl md:text-5xl font-black leading-none">Featured artists</h2>
+                    <p className="mt-2 text-sm text-neutral-400">Handpicked bands, fresh tents, real drops</p>
                 </div>
-                <Link href="/artists" className="text-sm underline">View all</Link>
+                <Link href="/artists" className="shrink-0 border border-neutral-800 px-4 py-2 text-sm font-bold hover:border-red-500">View all</Link>
             </div>
 
             {/* loading skeleton */}
@@ -84,7 +89,7 @@ export default function FeaturedArtistsSection() {
                     {artists.map((a, i) => (
                         <li
                             key={a.id}
-                            className="group relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition-colors"
+                            className="group relative overflow-hidden border border-neutral-800 bg-neutral-900 hover:border-red-500/70 transition-colors"
                             style={{ clipPath: i % 4 === 0 ? "polygon(1% 0,100% 0,98% 100%,0 100%)" : undefined }}
                         >
                             <Link href={`/artists/${a.slug ?? a.id}`} className="block">
@@ -108,7 +113,10 @@ export default function FeaturedArtistsSection() {
                                         </div>
                                     )}
                                     <div className="absolute top-3 left-3 text-[11px] bg-red-600 text-white px-2 py-0.5 font-bold rounded rotate-[-3deg]">
-                                        Featured
+                                        Slot {String(i + 1).padStart(2, "0")}
+                                    </div>
+                                    <div className="absolute bottom-3 right-3 rounded-full border border-white/20 bg-black/70 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
+                                        Live tent
                                     </div>
                                 </div>
                                 <div className="p-3 md:p-4">

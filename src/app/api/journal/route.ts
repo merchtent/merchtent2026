@@ -1,31 +1,25 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import "server-only";
+import { publicStorageUrl } from "@/lib/storage";
+import { publicApiError, publicApiJson } from "@/lib/api/public-error";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 
-function publicImageUrl(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/journal-images/${encodeURIComponent(path)}`;
-}
+type JournalArtistRow = {
+    display_name?: string | null;
+    hero_image_path?: string | null;
+};
 
-function publicAvatarUrl(path?: string | null) {
-    if (!path) return null;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artist-images/${encodeURIComponent(path)}`;
-}
+type JournalRow = {
+    id: string;
+    slug?: string | null;
+    title?: string | null;
+    excerpt?: string | null;
+    cover_image?: string | null;
+    created_at?: string | null;
+    artists?: JournalArtistRow | null;
+};
 
 export async function GET() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!url || !anon) {
-        return NextResponse.json(
-            { error: "Missing Supabase env vars" },
-            { status: 500 }
-        );
-    }
-
-    const supabase = createClient(url, anon, {
-        auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = getPublicServerSupabase();
 
     const { data, error } = await supabase
         .from("journal")
@@ -46,28 +40,25 @@ export async function GET() {
         .limit(10);
 
     if (error) {
-        return NextResponse.json(
-            { error: error.message },
-            { status: 500 }
-        );
+        return publicApiError("/api/journal", error);
     }
 
     const journal =
-        (data ?? []).map((j: any) => ({
+        ((data ?? []) as JournalRow[]).map((j) => ({
             id: j.id,
-            slug: j.slug,
-            title: j.title,
+            slug: j.slug ?? j.id,
+            title: j.title ?? "Untitled journal",
             description: j.excerpt,
             image:
-                // publicImageUrl(j.cover_image) ??
-                "https://picsum.photos/seed/journal/800/600",
+                publicStorageUrl("journal-images", j.cover_image) ??
+                "/merch-placeholder.svg",
             artist: j.artists?.display_name ?? "Artist",
             avatar:
-                publicAvatarUrl(j.artists?.hero_image_path) ??
+                publicStorageUrl("artist-images", j.artists?.hero_image_path) ??
                 "",
             createdAt: j.created_at,
             tag: "Journal", // optional: you can add a column later
         })) ?? [];
 
-    return NextResponse.json({ journal }, { status: 200 });
+    return publicApiJson({ journal }, { status: 200 });
 }

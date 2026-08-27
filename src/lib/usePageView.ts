@@ -6,12 +6,20 @@ import { useEffect } from "react";
 function getSessionId() {
     if (typeof window === "undefined") return null;
 
-    let id = localStorage.getItem("mt_session_id");
-    if (!id) {
-        id = crypto.randomUUID();
-        localStorage.setItem("mt_session_id", id);
+    try {
+        let id = localStorage.getItem("mt_session_id");
+        if (!id) {
+            if (typeof crypto.randomUUID !== "function") return null;
+            id = crypto.randomUUID();
+            localStorage.setItem("mt_session_id", id);
+        }
+        return id;
+    } catch {
+        if (typeof crypto.randomUUID === "function") {
+            return crypto.randomUUID();
+        }
+        return null;
     }
-    return id;
 }
 
 export function usePageView(userId?: string | null) {

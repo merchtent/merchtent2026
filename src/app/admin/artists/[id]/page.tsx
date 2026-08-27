@@ -8,6 +8,24 @@ function money(cents: number) {
     return `$${(cents / 100).toFixed(2)}`;
 }
 
+type ArtistProduct = {
+    id: string;
+    title?: string | null;
+    price_cents?: number | null;
+    is_published?: boolean | null;
+};
+
+type ArtistOrderItem = {
+    id: string;
+    qty?: number | null;
+    line_total_cents?: number | null;
+    artist_cut_cents?: number | null;
+    unit_price_cents?: number | null;
+    cashed_out?: boolean | null;
+    created_at?: string | null;
+    orders?: { order_number?: string | null; status?: string | null } | null;
+};
+
 export default async function ArtistPage({
     params,
 }: {
@@ -57,25 +75,25 @@ export default async function ArtistPage({
 
     const revenue =
         artist.order_items?.reduce(
-            (sum: number, item: any) =>
-                sum + (item.unit_price_cents * item.qty),
+            (sum: number, item: ArtistOrderItem) =>
+                sum + ((item.unit_price_cents ?? 0) * (item.qty ?? 0)),
             0
         ) ?? 0;
 
     const earnings =
         artist.order_items?.reduce(
-            (sum: number, item: any) =>
-                sum + (item.artist_cut_cents * item.qty),
+            (sum: number, item: ArtistOrderItem) =>
+                sum + ((item.artist_cut_cents ?? 0) * (item.qty ?? 0)),
             0
         ) ?? 0;
 
     const unpaid =
         artist.order_items?.reduce(
-            (sum: number, item: any) =>
+            (sum: number, item: ArtistOrderItem) =>
                 sum +
                 (
                     !item.cashed_out
-                        ? item.artist_cut_cents * item.qty
+                        ? (item.artist_cut_cents ?? 0) * (item.qty ?? 0)
                         : 0
                 ),
             0
@@ -297,7 +315,7 @@ export default async function ArtistPage({
 
                 <div className="space-y-3">
 
-                    {artist.products?.map((product: any) => (
+                    {artist.products?.map((product: ArtistProduct) => (
                         <div
                             key={product.id}
                             className="flex items-center justify-between border border-neutral-800 rounded-xl p-4"
@@ -309,7 +327,7 @@ export default async function ArtistPage({
                                 </div>
 
                                 <div className="text-sm text-neutral-500">
-                                    {money(product.price_cents)}
+                                    {money(product.price_cents ?? 0)}
                                 </div>
 
                             </div>
@@ -345,16 +363,16 @@ export default async function ArtistPage({
 
                     {artist.order_items
                         ?.sort(
-                            (a: any, b: any) =>
+                            (a: ArtistOrderItem, b: ArtistOrderItem) =>
                                 new Date(
-                                    b.created_at
+                                    b.created_at ?? ""
                                 ).getTime() -
                                 new Date(
-                                    a.created_at
+                                    a.created_at ?? ""
                                 ).getTime()
                         )
                         .slice(0, 10)
-                        .map((item: any) => (
+                        .map((item: ArtistOrderItem) => (
                             <div
                                 key={item.id}
                                 className="flex justify-between border border-neutral-800 rounded-xl p-4"

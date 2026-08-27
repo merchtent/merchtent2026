@@ -12,12 +12,10 @@ export default function SuccessPage() {
     const { clear, close } = useCart();
 
     useEffect(() => {
-        // run once after mount
         clear();
         close();
         clearCartStorage();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [clear, close]);
 
     return (
         <main className="min-h-screen bg-neutral-950 text-neutral-100">

@@ -1,67 +1,66 @@
 "use client";
 
+import { BadgeCheck, CreditCard, PackageCheck, ShieldCheck } from "lucide-react";
+
+const items = [
+    {
+        title: "Print partners",
+        text: "Local production paths and order data structured for fulfilment.",
+        icon: PackageCheck,
+    },
+    {
+        title: "Clear order status",
+        text: "Customers should know what happened after they backed the drop.",
+        icon: ShieldCheck,
+    },
+    {
+        title: "Artist earnings",
+        text: "Sales, credits, and payout reporting belong in the same system.",
+        icon: CreditCard,
+    },
+    {
+        title: "Production data",
+        text: "Design placement and product settings stay attached to the order.",
+        icon: BadgeCheck,
+    },
+];
+
 export default function WhyTrustUs() {
-    const items = [
-        {
-            title: "Printed locally",
-            text: "Produced in Australia with trusted local print partners.",
-        },
-        {
-            title: "Quality gear",
-            text: "Soft, durable prints that are made to be worn properly.",
-        },
-        {
-            title: "Made to order",
-            text: "Every item is printed when it’s ordered — no excess, no waste.",
-        },
-        {
-            title: "Artists get paid",
-            text: "Every sale directly supports the artist behind the design.",
-        },
-    ];
-
     return (
-        <section className="py-10 md:py-12 border-y border-neutral-800 bg-neutral-950 text-white">
-
-            <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
-
-                {/* HEADER */}
-                <div className="text-center mb-8">
-                    <p className="text-xs uppercase tracking-widest text-neutral-400">
-                        Why trust us
+        <section className="border-y border-neutral-800 bg-black text-white">
+            <div className="mx-auto max-w-7xl px-4 py-10 md:px-6 md:py-12 lg:px-8">
+                <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            Trust layer
+                        </p>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-6xl">
+                            Built properly, not just loudly.
+                        </h2>
+                    </div>
+                    <p className="max-w-2xl text-sm leading-6 text-neutral-400 md:text-base">
+                        The site can feel like a venue, but the platform needs the grown-up bits underneath:
+                        fulfilment, order visibility, artist records, and customer confidence.
                     </p>
-
-                    <h2 className="text-xl md:text-2xl font-semibold mt-2">
-                        Built properly, from print to delivery
-                    </h2>
                 </div>
+            </div>
 
-                {/* GRID */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid border-t border-neutral-800 sm:grid-cols-2 lg:grid-cols-4">
+                {items.map((item) => {
+                    const Icon = item.icon;
 
-                    {items.map((item, i) => (
-                        <div
-                            key={i}
-                            className="p-4 rounded-2xl border border-neutral-800 bg-neutral-900 text-center"
-                            style={{
-                                clipPath:
-                                    i === 0
-                                        ? "polygon(1% 0,100% 0,98% 100%,0 100%)"
-                                        : undefined,
-                            }}
-                        >
-                            <p className="text-sm font-semibold">
+                    return (
+                        <div key={item.title} className="min-h-[220px] border-b border-r border-neutral-800 bg-neutral-950 p-5 md:p-6">
+                            <Icon className="h-7 w-7 text-red-400" />
+                            <h3 className="mt-8 text-2xl font-black uppercase leading-none">
                                 {item.title}
-                            </p>
-
-                            <p className="text-xs text-neutral-400 mt-1">
+                            </h3>
+                            <p className="mt-4 text-sm leading-6 text-neutral-400">
                                 {item.text}
                             </p>
                         </div>
-                    ))}
-
-                </div>
-
+                    );
+                })}
             </div>
         </section>
     );
