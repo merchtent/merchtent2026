@@ -185,7 +185,7 @@ export default function AccountSettingsClient({
                     icon={<KeyRound className="h-5 w-5" />}
                     kicker="Password"
                     title="Set or change password."
-                    body="Use a strong password for direct email/password sign-in. If you email yourself a setup link, opening it signs you in temporarily and brings you back here."
+                    body="Use a strong password for direct email/password sign-in."
                 />
                 <label htmlFor="password" className="mt-6 block text-xs font-black uppercase text-neutral-400">
                     New password
@@ -199,7 +199,7 @@ export default function AccountSettingsClient({
                     className="mt-2 w-full border border-neutral-700 bg-black px-4 py-3 text-sm text-white outline-none focus:border-red-500"
                 />
                 <InlineFeedback error={passwordError} message={passwordMessage} />
-                <div className="mt-5 flex flex-wrap gap-3">
+                <div className="mt-5">
                     <button
                         type="button"
                         disabled={isPending}
@@ -208,14 +208,17 @@ export default function AccountSettingsClient({
                     >
                         Save password
                     </button>
-                    <button
-                        type="button"
-                        disabled={isPending}
-                        onClick={sendRecoveryLink}
-                        className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black text-white hover:border-red-500 disabled:opacity-60"
-                    >
-                        Email setup link
-                    </button>
+                    <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-neutral-400">
+                        <span>Can&apos;t change it here?</span>
+                        <button
+                            type="button"
+                            disabled={isPending}
+                            onClick={sendRecoveryLink}
+                            className="font-black text-white underline decoration-red-500 underline-offset-4 hover:text-red-400 disabled:opacity-60"
+                        >
+                            Email yourself a secure reset link.
+                        </button>
+                    </div>
                 </div>
             </section>
 
