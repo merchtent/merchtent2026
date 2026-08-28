@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Disc3, Mail, ShieldCheck, Store } from "lucide-react";
 
 type AccountType = "fan" | "artist";
@@ -31,9 +32,12 @@ const proof = [
 ];
 
 export default function SignUpPage() {
+    const searchParams = useSearchParams();
+    const requestedType = searchParams.get("type");
+    const initialType: AccountType = requestedType === "fan" ? "fan" : "artist";
     const [email, setEmail] = useState("");
     const [displayName, setDisplayName] = useState("");
-    const [accountType, setAccountType] = useState<AccountType>("artist");
+    const [accountType, setAccountType] = useState<AccountType>(initialType);
     const [sent, setSent] = useState(false);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
