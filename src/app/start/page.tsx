@@ -88,7 +88,7 @@ const promises = [
     },
     {
         title: "Made after sale",
-        body: "Products are created when ordered, so dead stock is not the business model.",
+        body: "Products are created when ordered, so low-waste printing is built into the model.",
         icon: Truck,
     },
     {

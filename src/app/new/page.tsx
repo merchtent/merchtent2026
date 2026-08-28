@@ -197,7 +197,7 @@ export default async function NewThisWeekPage({
                         </div>
 
                         <div className="mt-8 grid gap-px border border-neutral-800 bg-neutral-800 sm:grid-cols-3">
-                            <HeroMetric icon={<PackageCheck className="h-4 w-4" />} label="No dead stock" value="Made after sale" />
+                            <HeroMetric icon={<PackageCheck className="h-4 w-4" />} label="Low-waste print" value="Made after sale" />
                             <HeroMetric icon={<BadgePercent className="h-4 w-4" />} label="Fan credits" value="Earn on buys" />
                             <HeroMetric icon={<CalendarDays className="h-4 w-4" />} label="Freshness" value={`${count} live picks`} />
                         </div>

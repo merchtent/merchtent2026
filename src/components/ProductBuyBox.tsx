@@ -220,7 +220,7 @@ export default function ProductBuyBox({
             </div>
 
             <div className="mt-4 grid border border-neutral-800 bg-neutral-950 md:grid-cols-3">
-                <SceneSignal icon={<PackageCheck className="h-4 w-4" />} label="No dead stock" body="Made after sale" />
+                <SceneSignal icon={<PackageCheck className="h-4 w-4" />} label="Low-waste print" body="Made after sale" />
                 <SceneSignal icon={<BadgePercent className="h-4 w-4" />} label="Fan credits" body="Earned on buys" />
                 <SceneSignal icon={<ShieldCheck className="h-4 w-4" />} label="Secure checkout" body="Tracked order" />
             </div>

@@ -15,7 +15,7 @@ export default function SustainabilityPage() {
                             <p className="uppercase tracking-[0.25em] text-xs text-red-600">Our impact</p>
                             <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">Sustainability</h1>
                             <p className="mt-2 text-sm md:text-base text-neutral-700 max-w-2xl">
-                                Print-on-Demand lets us make exactly what you order—no dead stock, no bulk waste, and smarter shipping.
+                                Print-on-demand lets us make exactly what you order, with less bulk waste and smarter shipping.
                             </p>
                         </div>
                         <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">

@@ -18,7 +18,7 @@ const comparisons = [
     },
     {
         old: "Stock left under the bed after the tour",
-        new: "No dead stock sitting around after launch week",
+        new: "Low-waste printing after launch week",
     },
 ];
 

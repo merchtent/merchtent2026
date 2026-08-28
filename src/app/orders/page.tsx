@@ -420,7 +420,7 @@ export default async function OrdersPage() {
                     <SupportTile
                         icon={<Package className="h-5 w-5" />}
                         title="Made after sale"
-                        body="Merch Tent avoids dead stock by tracking each order from checkout into fulfilment."
+                        body="Merch Tent supports low-waste printing by tracking each order from checkout into fulfilment."
                     />
                     <SupportTile
                         icon={<Coins className="h-5 w-5" />}

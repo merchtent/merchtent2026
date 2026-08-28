@@ -118,7 +118,7 @@ export default async function CategoryPage({
                         </div>
 
                         <p className="max-w-sm border-l border-neutral-800 pl-4 text-sm text-neutral-300">
-                            Made after sale. No dead stock. Artists paid per order.
+                            Made after sale. Low-waste printing. Artists paid per order.
                         </p>
                     </div>
                 </div>

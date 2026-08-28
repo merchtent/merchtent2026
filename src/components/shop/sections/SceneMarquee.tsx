@@ -30,7 +30,7 @@ const fallbackItems: MarqueeItem[] = [
     { label: "Artists design it here", href: "/start", tone: "artist" },
     { label: "Fans earn merch credits", href: "/dashboard/credits", tone: "scene" },
     { label: "Printed after it sells", href: "/sustainability", tone: "scene" },
-    { label: "No dead stock", href: "/sustainability", tone: "scene" },
+    { label: "Eco-friendly print model", href: "/sustainability", tone: "scene" },
     { label: "Back the band early", href: "/artists", tone: "artist" },
 ];
 
