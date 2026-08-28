@@ -58,6 +58,7 @@ export default async function AccountSettingsPage() {
                 <AccountSettingsClient
                     initialEmail={user.email ?? ""}
                     initialDisplayName={displayName}
+                    accountType={accountType}
                 />
             </section>
         </main>

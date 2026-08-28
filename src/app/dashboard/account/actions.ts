@@ -15,6 +15,10 @@ const closeAccountSchema = z.object({
     reason: z.string().trim().max(1000, "Reason is too long.").optional(),
 });
 
+const artistUpgradeSchema = z.object({
+    artistName: z.string().trim().min(2, "Artist or band name is required.").max(60, "Artist or band name is too long."),
+});
+
 export type AccountActionState = {
     ok?: boolean;
     error?: string;
@@ -115,5 +119,51 @@ export async function requestAccountClosure(_prevState: AccountActionState, form
         return { error: "Could not record the closure request. Please contact support." };
     }
 
+    return { ok: true };
+}
+
+export async function upgradeToArtistAccount(_prevState: AccountActionState, formData: FormData): Promise<AccountActionState> {
+    const { supabase, user } = await requireUser();
+    if (!user) return { error: "Please sign in again before switching account type." };
+
+    const parsed = artistUpgradeSchema.safeParse({
+        artistName: formData.get("artistName"),
+    });
+
+    if (!parsed.success) {
+        return { error: parsed.error.issues[0]?.message ?? "Enter your artist or band name." };
+    }
+
+    const { error } = await supabase.rpc("upgrade_account_to_artist", {
+        p_artist_name: parsed.data.artistName,
+    });
+
+    if (error) {
+        logger.error("Account artist upgrade failed", {
+            user_id: user.id,
+            error: error.message,
+        });
+        return { error: "Could not switch this account to artist mode." };
+    }
+
+    await recordPlatformEvent(
+        {
+            scope: "account",
+            action: "account_upgraded_to_artist",
+            actorUserId: user.id,
+            message: "User switched their account from fan to artist.",
+            metadata: {
+                artist_name: parsed.data.artistName,
+            },
+        },
+        {
+            failureLogMessage: "Account artist upgrade audit failed",
+            failureContext: { actor_user_id: user.id },
+        }
+    );
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/account");
+    revalidatePath("/dashboard/artist");
     return { ok: true };
 }

@@ -2,14 +2,15 @@
 
 import { useActionState, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, KeyRound, LogOut, Mail, ShieldAlert, UserRound } from "lucide-react";
+import { ArrowRight, KeyRound, LogOut, Mail, Megaphone, ShieldAlert, UserRound } from "lucide-react";
 import { passwordResetErrorMessage } from "@/lib/auth/supabase-client-errors";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { requestAccountClosure, updateDisplayName, type AccountActionState } from "./actions";
+import { requestAccountClosure, updateDisplayName, upgradeToArtistAccount, type AccountActionState } from "./actions";
 
 type AccountSettingsClientProps = {
     initialEmail: string;
     initialDisplayName: string;
+    accountType: string;
 };
 
 const initialActionState: AccountActionState = {};
@@ -17,10 +18,12 @@ const initialActionState: AccountActionState = {};
 export default function AccountSettingsClient({
     initialEmail,
     initialDisplayName,
+    accountType,
 }: AccountSettingsClientProps) {
     const router = useRouter();
     const supabase = getBrowserSupabase();
     const [displayNameState, displayNameAction, displayNamePending] = useActionState(updateDisplayName, initialActionState);
+    const [artistUpgradeState, artistUpgradeAction, artistUpgradePending] = useActionState(upgradeToArtistAccount, initialActionState);
     const [closureState, closureAction, closurePending] = useActionState(requestAccountClosure, initialActionState);
     const [email, setEmail] = useState(initialEmail);
     const [password, setPassword] = useState("");
@@ -122,6 +125,65 @@ export default function AccountSettingsClient({
 
     return (
         <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+            <section className="border border-neutral-800 bg-neutral-950 p-5 md:p-6 xl:col-span-2">
+                <AccountPanelHeading
+                    icon={<Megaphone className="h-5 w-5" />}
+                    kicker="Account mode"
+                    title={accountType === "artist" ? "Artist tools are switched on." : "Ready to sell merch too?"}
+                    body={
+                        accountType === "artist"
+                            ? "This account can manage an artist profile, design products, publish drops, view sales, and set up payouts."
+                            : "You can keep everything you have as a fan and add artist tools when you are ready to launch a band, solo project, label, or merch table."
+                    }
+                />
+                {accountType === "artist" ? (
+                    <button
+                        type="button"
+                        onClick={() => router.push("/dashboard/artist")}
+                        className="mt-5 inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                    >
+                        Open artist profile
+                        <ArrowRight className="h-4 w-4" />
+                    </button>
+                ) : (
+                    <form action={artistUpgradeAction} className="mt-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                        <label htmlFor="artistName" className="block">
+                            <span className="block text-xs font-black uppercase text-neutral-400">
+                                Artist, band, label, or project name
+                            </span>
+                            <input
+                                id="artistName"
+                                name="artistName"
+                                minLength={2}
+                                maxLength={60}
+                                placeholder="e.g. The Seaside Riot"
+                                className="mt-2 w-full border border-neutral-700 bg-black px-4 py-3 text-sm text-white outline-none focus:border-red-500"
+                            />
+                        </label>
+                        <button
+                            type="submit"
+                            disabled={artistUpgradePending}
+                            className="inline-flex min-h-12 items-center justify-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500 disabled:opacity-60"
+                        >
+                            {artistUpgradePending ? "Switching..." : "Switch to artist"}
+                            <ArrowRight className="h-4 w-4" />
+                        </button>
+                        <div className="md:col-span-2">
+                            <ActionFeedback state={artistUpgradeState} success="Artist tools are now live. Refreshing your dashboard..." />
+                            {artistUpgradeState.ok ? (
+                                <button
+                                    type="button"
+                                    onClick={() => router.refresh()}
+                                    className="mt-3 text-sm font-black text-white underline decoration-red-500 underline-offset-4 hover:text-red-400"
+                                >
+                                    Refresh dashboard navigation
+                                </button>
+                            ) : null}
+                        </div>
+                    </form>
+                )}
+            </section>
+
             <form action={displayNameAction} className="border border-neutral-800 bg-neutral-950 p-5 md:p-6">
                 <AccountPanelHeading
                     icon={<UserRound className="h-5 w-5" />}
