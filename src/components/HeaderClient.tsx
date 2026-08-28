@@ -160,34 +160,57 @@ export default function HeaderClient({ initialEmail }: Props) {
     return (
         <div className="site-shell-header">
             {/* Announcement / Marquee */}
-            <div className="w-full bg-red-600 text-white text-xs md:text-sm py-4 tracking-wide">
-                <div className="max-w-7xl mx-auto px-4 overflow-hidden">
+            <div className="w-full overflow-hidden border-b border-black bg-red-600 text-xs text-white md:text-sm">
+                <div className="relative overflow-hidden py-3">
+                    <span className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-red-600 to-transparent" />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-red-600 to-transparent" />
                     <motion.div
                         className="flex whitespace-nowrap will-change-transform"
                         animate={{ x: ["0%", "-50%"] }}
-                        transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
+                        transition={{ repeat: Infinity, duration: 26, ease: "linear" }}
                     >
-                        <div className="flex items-center gap-8 pr-8">
-                            <span className="inline-flex items-center gap-2">
-                                <Disc3 className="h-4 w-4" /> New Artists Every Week
+                        <div className="flex items-center gap-10 pr-10 font-black uppercase tracking-[0.16em]">
+                            <span className="inline-flex items-center gap-2 text-black">
+                                <Disc3 className="h-4 w-4 text-white" /> Fresh artist drops
                             </span>
                             <span className="inline-flex items-center gap-2">
-                                <Ticket className="h-4 w-4" /> Launch Sales
+                                <Ticket className="h-4 w-4" /> Built after checkout
                             </span>
-                            <span className="inline-flex items-center gap-2">
-                                <Music2 className="h-4 w-4" /> Print On Demand
+                            <span className="inline-flex items-center gap-2 text-black">
+                                <Music2 className="h-4 w-4 text-white" /> Artist-run storefronts
                             </span>
                             <span className="inline-flex items-center gap-2">
                                 <Star className="h-4 w-4" /> Limited Edition Drops
                             </span>
-                            <span className="inline-flex items-center gap-2">
+                            <span className="inline-flex items-center gap-2 text-black">
                                 <Heart className="h-4 w-4" /> Official Band Merch
                             </span>
                             <span className="inline-flex items-center gap-2">
                                 <Globe className="h-4 w-4" /> Worldwide Shipping
                             </span>
+                            <span className="inline-flex items-center gap-2 text-black">
+                                <Sparkles className="h-4 w-4 text-white" /> Eco friendly print
+                            </span>
                             <span className="inline-flex items-center gap-2">
-                                <Sparkles className="h-4 w-4" /> Sustainable Materials
+                                <Disc3 className="h-4 w-4" /> Fresh artist drops
+                            </span>
+                            <span className="inline-flex items-center gap-2 text-black">
+                                <Ticket className="h-4 w-4 text-white" /> Built after checkout
+                            </span>
+                            <span className="inline-flex items-center gap-2">
+                                <Music2 className="h-4 w-4" /> Artist-run storefronts
+                            </span>
+                            <span className="inline-flex items-center gap-2 text-black">
+                                <Star className="h-4 w-4 text-white" /> Limited Edition Drops
+                            </span>
+                            <span className="inline-flex items-center gap-2">
+                                <Heart className="h-4 w-4" /> Official Band Merch
+                            </span>
+                            <span className="inline-flex items-center gap-2 text-black">
+                                <Globe className="h-4 w-4 text-white" /> Worldwide Shipping
+                            </span>
+                            <span className="inline-flex items-center gap-2">
+                                <Sparkles className="h-4 w-4" /> Eco friendly print
                             </span>
                         </div>
                     </motion.div>
@@ -195,24 +218,26 @@ export default function HeaderClient({ initialEmail }: Props) {
             </div>
 
             {/* Sub-header */}
-            <div className="w-full bg-neutral-950 text-neutral-200 text-xs md:text-sm py-2 border-b border-neutral-200/30">
-                <div className="max-w-7xl mx-auto px-4 grid grid-cols-3 items-center">
+            <div className="w-full border-b border-white/10 bg-[radial-gradient(circle_at_20%_0%,rgba(239,68,68,0.18),transparent_30%),#050505] py-2 text-xs text-neutral-200 md:text-sm">
+                <div className="mx-auto grid max-w-[1500px] grid-cols-[auto_1fr_auto] items-center gap-4 px-3 md:px-5 lg:px-6">
                     <div className="flex items-center gap-3">
                         <a
                             href="https://www.instagram.com/merchtent.au/"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="Instagram"
-                            className="hover:text-white"
+                            className="grid h-8 w-8 place-items-center border border-white/15 bg-black text-red-400 hover:border-red-500 hover:bg-red-600 hover:text-white"
                         >
                             <Instagram className="h-4 w-4" />
                         </a>
                     </div>
-                    <div className="text-center font-medium text-neutral-100">
-                        <b>MERCH FOR LOCAL & UNSIGNED BANDS</b>
+                    <div className="overflow-hidden text-center">
+                        <b className="inline-block max-w-full truncate text-[0.68rem] font-black uppercase tracking-[0.22em] text-white">
+                            Merch for local & unsigned bands
+                        </b>
                     </div>
                     <div className="flex items-center justify-end">
-                        <span className="px-2 py-0.5 rounded border border-neutral-700 text-neutral-200">
+                        <span className="border border-white/15 bg-black px-3 py-1 text-[0.65rem] font-black uppercase tracking-[0.16em] text-white">
                             AUD $
                         </span>
                     </div>
