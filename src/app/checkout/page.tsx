@@ -11,13 +11,21 @@ export default async function CheckoutPage() {
     const {
         data: { user },
     } = await supabase.auth.getUser();
-    const { data: creditBalance } = user
-        ? await supabase
-            .from("merch_credit_balances")
-            .select("points_balance")
-            .eq("user_id", user.id)
-            .maybeSingle()
-        : { data: null };
+    const [{ data: creditBalance }, { data: defaultAddress }] = user
+        ? await Promise.all([
+            supabase
+                .from("merch_credit_balances")
+                .select("points_balance")
+                .eq("user_id", user.id)
+                .maybeSingle(),
+            supabase
+                .from("customer_addresses")
+                .select("first_name, last_name, line1, line2, city, state, postal_code, country, phone")
+                .eq("user_id", user.id)
+                .eq("is_default", true)
+                .maybeSingle(),
+        ])
+        : [{ data: null }, { data: null }];
 
     return (
         <main className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -61,6 +69,7 @@ export default async function CheckoutPage() {
             {/* Pass signed-in email if present; guests can type theirs */}
             <CheckoutShellClient
                 userEmail={user?.email ?? ""}
+                defaultAddress={defaultAddress}
                 merchCreditBalance={creditBalance?.points_balance ?? 0}
                 canUseMerchCredits={Boolean(user)}
             />

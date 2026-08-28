@@ -9,6 +9,17 @@ type Props = {
     userEmail: string;
     merchCreditBalance: number;
     canUseMerchCredits: boolean;
+    defaultAddress?: {
+        first_name?: string | null;
+        last_name?: string | null;
+        line1?: string | null;
+        line2?: string | null;
+        city?: string | null;
+        state?: string | null;
+        postal_code?: string | null;
+        country?: string | null;
+        phone?: string | null;
+    } | null;
 };
 
 const SHIP_KEY = "checkout_ship_v1";
@@ -17,6 +28,7 @@ export default function CheckoutShellClient({
     userEmail,
     merchCreditBalance,
     canUseMerchCredits,
+    defaultAddress,
 }: Props) {
     // shared shipping state
     const [shippingMethod, setShippingMethod] = useState<"standard" | "express">(
@@ -44,6 +56,7 @@ export default function CheckoutShellClient({
         <section className="max-w-5xl mx-auto px-4 pb-10 grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-start">
             <CheckoutFormClient
                 userEmail={userEmail}
+                defaultAddress={defaultAddress}
                 shippingMethod={shippingMethod}
                 setShippingMethod={setShippingMethod}
                 setIsSubmitting={setIsSubmitting}

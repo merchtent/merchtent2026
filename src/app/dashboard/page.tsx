@@ -603,25 +603,25 @@ function FanDashboard({
                 <div className="grid md:grid-cols-2 xl:grid-cols-4">
                     <FanAccountCard
                         title="Saved artists"
-                        body="Wishlist and saved-scene tracking belongs here once favourite buttons are wired across artist and product pages."
-                        action="Browse artists"
-                        href="/artists"
+                        body="Keep the bands you care about in one place, so their next drops are easy to find."
+                        action="View saved artists"
+                        href="/dashboard/saved"
                     />
                     <FanAccountCard
                         title="Wishlist"
-                        body="A fan should be able to hold drops for later, especially before payday or show night."
-                        action="Shop new drops"
-                        href="/new"
+                        body="Save merch you want to come back to before payday, show night, or your next bundle."
+                        action="Open wishlist"
+                        href="/dashboard/saved"
                     />
                     <FanAccountCard
                         title="Addresses"
-                        body="Saved shipping addresses should be added before repeat customer volume grows."
-                        action="Use checkout"
-                        href="/checkout"
+                        body="Set your usual delivery address once, then let checkout load it when you are signed in."
+                        action="Update address"
+                        href="/dashboard/saved#delivery-address"
                     />
                     <FanAccountCard
                         title="Help and preferences"
-                        body="Returns, notification choices, and support should be reachable from the fan account."
+                        body="Get help with orders, rewards, account access, and the updates you want to receive."
                         action="Contact support"
                         href="/contact"
                     />

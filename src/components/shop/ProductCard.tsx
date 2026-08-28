@@ -3,11 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import AddToCartButton from "@/components/AddToCartButton";
+import SavedToggleButton from "@/components/SavedToggleButton";
 
 export type ProductColorVariant = {
     hex: string;
@@ -244,9 +244,12 @@ export function ProductCard({
                         <p className={titleClass}>{p.title}</p>
                         <p className={`text-sm ${priceText}`}>${p.price.toFixed(2)}</p>
                     </div>
-                    <button aria-label="Wishlist" className={`p-1 ${wishColor}`}>
-                        <Heart className="h-4 w-4" />
-                    </button>
+                    <SavedToggleButton
+                        type="product"
+                        id={p.id}
+                        variant="icon"
+                        className={`p-1 ${wishColor}`}
+                    />
                 </div>
 
                 {/* PDP-style colours */}

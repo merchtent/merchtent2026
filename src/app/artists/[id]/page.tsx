@@ -3,6 +3,7 @@ import Image from "next/image";
 import ArtistProductsGrid from "./ArtistProductsGrid";
 import TourSection from "@/components/TourSection";
 import ArtistReviews from "@/components/ArtistReviews";
+import SavedToggleButton from "@/components/SavedToggleButton";
 import { publicImageUrl, publicStorageUrl } from "@/lib/storage";
 import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
@@ -55,6 +56,7 @@ export default async function ArtistPage({
             </main>
         );
     }
+
 
     const heroUrl = publicStorageUrl("artist-images", artist.hero_image_path);
 
@@ -193,6 +195,11 @@ export default async function ArtistPage({
                         >
                             View Tour
                         </a>
+                        <SavedToggleButton
+                            type="artist"
+                            id={artist.id}
+                            variant="ghost"
+                        />
                     </div>
 
                 </div>

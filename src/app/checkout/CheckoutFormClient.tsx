@@ -79,6 +79,7 @@ function saveDraft(d: Draft) {
 
 type CheckoutFormClientProps = {
     userEmail: string;
+    defaultAddress?: Partial<Record<Exclude<keyof Draft, "email" | "voucher">, string | null>> | null;
     shippingMethod: "standard" | "express";
     setShippingMethod: (id: "standard" | "express") => void;
 
@@ -92,6 +93,7 @@ type CheckoutFormClientProps = {
 
 export default function CheckoutFormClient({
     userEmail,
+    defaultAddress,
     shippingMethod,
     setShippingMethod,
     setIsSubmitting,
@@ -108,15 +110,15 @@ export default function CheckoutFormClient({
     const [form, setForm] = React.useState<Draft>(() => {
         const emptyDraft: Draft = {
             email: userEmail || "",
-            first_name: "",
-            last_name: "",
-            line1: "",
-            line2: "",
-            city: "",
-            state: "",
-            postal_code: "",
-            country: "AU",
-            phone: "",
+            first_name: defaultAddress?.first_name || "",
+            last_name: defaultAddress?.last_name || "",
+            line1: defaultAddress?.line1 || "",
+            line2: defaultAddress?.line2 || "",
+            city: defaultAddress?.city || "",
+            state: defaultAddress?.state || "",
+            postal_code: defaultAddress?.postal_code || "",
+            country: defaultAddress?.country || "AU",
+            phone: defaultAddress?.phone || "",
             voucher: "",
         };
         const savedDraft = loadDraft();

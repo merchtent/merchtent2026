@@ -8,8 +8,10 @@ import ProductReviews from "@/components/ProductReviews";
 import { publicStorageUrl } from "@/lib/storage";
 import * as React from "react";
 import { ArrowRight, Disc3 } from "lucide-react";
+import SavedToggleButton from "@/components/SavedToggleButton";
 
 type Artist = {
+    id?: string | null;
     slug?: string | null;
     display_name?: string | null;
     hero_image_path?: string | null;
@@ -50,6 +52,8 @@ type Props = {
     related: RelatedProduct[];
     priceLabel: string;
     split4Label: string;
+    initialWishlisted?: boolean;
+    initialArtistSaved?: boolean;
 };
 
 export default function ProductViewClient({
@@ -59,6 +63,8 @@ export default function ProductViewClient({
     related,
     priceLabel,
     split4Label,
+    initialWishlisted = false,
+    initialArtistSaved = false,
 }: Props) {
     const [selectedColorId, setSelectedColorId] = React.useState(
         colors.length ? colors[0].id : null
@@ -155,6 +161,16 @@ export default function ProductViewClient({
                                 </span>
                                 <ArrowRight className="h-4 w-4 text-red-400 transition group-hover:translate-x-1" />
                             </Link>
+                            {product.artist?.id ? (
+                                <div className="mt-3">
+                                    <SavedToggleButton
+                                        type="artist"
+                                        id={product.artist.id}
+                                        initialSaved={initialArtistSaved}
+                                        variant="ghost"
+                                    />
+                                </div>
+                            ) : null}
 
                             <p className="mt-12 inline-flex bg-red-600 px-3 py-1 text-[11px] font-black uppercase text-white">
                                 Live from the table
@@ -176,6 +192,12 @@ export default function ProductViewClient({
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3">
                                     <p className="text-3xl font-black text-white">{priceLabel}</p>
+                                    <SavedToggleButton
+                                        type="product"
+                                        id={product.id}
+                                        initialSaved={initialWishlisted}
+                                        variant="ghost"
+                                    />
                                 </div>
                             </div>
 
