@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useCart } from "@/components/CartProvider";
 import MiniCartDrawer from "@/components/MiniCartDrawer";
@@ -20,30 +20,33 @@ import {
     Globe,
     Sparkles,
     Instagram,
+    ArrowRight,
+    ShoppingBag,
 } from "lucide-react";
 
 type Props = { initialEmail: string | null };
 
 const nav = [
-    { label: "Tees", href: "/category/tees" },
-    { label: "Hoodies", href: "/category/hoodies" },
-    { label: "Hats", href: "/category/hats" },
-    { label: "Tank Tops", href: "/category/tanks" },
-    { label: "Artists", href: "/artists" },
+    { label: "Tees", href: "/category/tees", meta: "front row" },
+    { label: "Hoodies", href: "/category/hoodies", meta: "cold nights" },
+    { label: "Hats", href: "/category/hats", meta: "top shelf" },
+    { label: "Tank Tops", href: "/category/tanks", meta: "pit ready" },
+    { label: "Artists", href: "/artists", meta: "the scene" },
 ];
 
 const authNav = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Orders", href: "/dashboard/orders" },
+    { label: "Dashboard", href: "/dashboard", meta: "your hub" },
+    { label: "Orders", href: "/dashboard/orders", meta: "tracking" },
 ];
 
 const unAuthNav = [
-    { label: "Sign Up", href: "/auth/sign-up" },
-    { label: "Sign In", href: "/auth/sign-in" },
+    { label: "Sign Up", href: "/auth/sign-up", meta: "early access" },
+    { label: "Sign In", href: "/auth/sign-in", meta: "backstage" },
 ];
 
 export default function HeaderClient({ initialEmail }: Props) {
     const router = useRouter();
+    const pathname = usePathname();
     const supabase = getBrowserSupabase();
     const [email, setEmail] = useState<string | null>(initialEmail);
     const [loadingSignOut, setLoadingSignOut] = useState(false);
@@ -140,6 +143,20 @@ export default function HeaderClient({ initialEmail }: Props) {
         }
     };
 
+    const isActive = (href: string) => {
+        if (href === "/dashboard") return pathname === href;
+        return pathname === href || pathname.startsWith(`${href}/`);
+    };
+
+    const navLinkClass = (href: string) =>
+        [
+            "group relative flex min-h-12 flex-col justify-center border border-white/10 px-3 py-2 text-left uppercase transition",
+            "bg-black/35 hover:-translate-y-0.5 hover:border-red-500 hover:bg-red-600 hover:text-white hover:shadow-[6px_6px_0_rgba(255,255,255,0.08)]",
+            isActive(href)
+                ? "border-red-500 bg-red-600 text-white shadow-[4px_4px_0_rgba(255,255,255,0.12)]"
+                : "text-neutral-100",
+        ].join(" ");
+
     return (
         <div className="site-shell-header">
             {/* Announcement / Marquee */}
@@ -203,77 +220,91 @@ export default function HeaderClient({ initialEmail }: Props) {
             </div>
 
             {/* Header */}
-            <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-neutral-900/70 bg-neutral-900/95 border-b border-neutral-800">
-                <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-                    <div className="h-16 grid grid-cols-3 items-center">
+            <header className="sticky top-0 z-40 border-b border-white/15 bg-black/95 shadow-[0_10px_30px_rgba(0,0,0,0.45)] backdrop-blur supports-[backdrop-filter]:bg-black/82">
+                <div className="mx-auto max-w-[1500px] px-3 md:px-5 lg:px-6">
+                    <div className="grid min-h-[4.35rem] grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
                         {/* Left */}
                         <div className="flex items-center">
                             <button
-                                className="md:hidden p-2"
+                                className="grid h-11 w-11 place-items-center border border-white/20 bg-red-600 text-white shadow-[4px_4px_0_rgba(255,255,255,0.12)] xl:hidden"
                                 aria-label="Toggle menu"
                                 onClick={() => setMobileMenu(true)}
                             >
                                 <Menu className="h-5 w-5" />
                             </button>
-                            <nav className="hidden md:flex gap-6">
+                            <nav className="hidden items-stretch gap-1 xl:flex" aria-label="Shop navigation">
                                 {nav.map((n) => (
                                     <Link
                                         key={n.label}
                                         href={n.href}
-                                        className="text-sm text-neutral-300 hover:text-white transition-colors"
+                                        className={navLinkClass(n.href)}
                                     >
-                                        {n.label}
+                                        <span className="text-[0.7rem] font-black leading-none tracking-[0.14em]">{n.label}</span>
+                                        <span className="mt-1 text-[0.54rem] font-black tracking-[0.2em] text-white/50 group-hover:text-white/80">
+                                            {n.meta}
+                                        </span>
                                     </Link>
                                 ))}
                             </nav>
                         </div>
 
                         {/* Center */}
-                        <div className="relative flex h-16 w-full items-center justify-center overflow-visible text-center">
-                            <BrandLogo className="relative z-10 origin-center scale-[1.18] drop-shadow-[0_10px_22px_rgba(0,0,0,0.55)] md:scale-[1.32]" />
+                        <div className="relative flex min-h-[4.35rem] w-full items-center justify-center overflow-visible text-center">
+                            <span className="absolute inset-x-[-18px] top-1/2 hidden h-px bg-gradient-to-r from-transparent via-red-500/45 to-transparent md:block" />
+                            <BrandLogo className="relative z-10 origin-center scale-[1.1] drop-shadow-[0_10px_22px_rgba(0,0,0,0.55)] md:scale-[1.27]" />
                         </div>
 
                         {/* Right */}
-                        <div className="flex items-center justify-end gap-3">
+                        <div className="flex items-center justify-end gap-2">
                             {email ? (
                                 <>
-                                    <nav className="hidden md:flex gap-6">
+                                    <nav className="hidden items-stretch gap-1 xl:flex" aria-label="Account navigation">
                                         {authNav.map((n) => (
                                             <Link
                                                 key={n.label}
                                                 href={n.href}
-                                                className="text-sm text-neutral-300 hover:text-white transition-colors"
+                                                className={navLinkClass(n.href)}
                                             >
-                                                {n.label}
+                                                <span className="text-[0.7rem] font-black leading-none tracking-[0.14em]">{n.label}</span>
+                                                <span className="mt-1 text-[0.54rem] font-black tracking-[0.2em] text-white/50 group-hover:text-white/80">
+                                                    {n.meta}
+                                                </span>
                                             </Link>
                                         ))}
                                     </nav>
                                     <button
                                         onClick={signOut}
-                                        className="text-sm underline ml-2 hidden md:flex hover:cursor-pointer hover:text-white"
+                                        className="hidden min-h-12 items-center border border-white/10 px-3 text-[0.65rem] font-black uppercase tracking-[0.16em] text-neutral-300 transition hover:border-white hover:bg-white hover:text-black hover:cursor-pointer md:flex"
                                         disabled={loadingSignOut}
                                     >
                                         {loadingSignOut ? "Signing out..." : "Sign out"}
                                     </button>
                                 </>
                             ) : (
-                                <nav className="hidden md:flex gap-6">
+                                <nav className="hidden items-stretch gap-1 md:flex" aria-label="Account navigation">
                                     {unAuthNav.map((n) => (
                                         <Link
                                             key={n.label}
                                             href={n.href}
-                                            className="text-sm text-neutral-300 hover:text-white transition-colors"
+                                            className={n.label === "Sign Up" ? `${navLinkClass(n.href)} border-red-500 bg-red-600 text-white` : navLinkClass(n.href)}
                                         >
-                                            {n.label}
+                                            <span className="text-[0.7rem] font-black leading-none tracking-[0.14em]">{n.label}</span>
+                                            <span className="mt-1 text-[0.54rem] font-black tracking-[0.2em] text-white/50 group-hover:text-white/80">
+                                                {n.meta}
+                                            </span>
                                         </Link>
                                     ))}
                                 </nav>
                             )}
 
-                            <button onClick={toggle} className="relative rounded-xl border px-3 py-1 ml-3">
-                                Cart
+                            <button
+                                onClick={toggle}
+                                className="relative ml-1 inline-flex min-h-12 items-center gap-2 border border-white bg-white px-3 text-[0.72rem] font-black uppercase tracking-[0.12em] text-black transition hover:-translate-y-0.5 hover:bg-red-600 hover:text-white md:px-4"
+                            >
+                                <ShoppingBag className="h-4 w-4" />
+                                <span className="hidden sm:inline">Cart</span>
                                 {count > 0 && (
-                                    <span className="absolute -top-2 -right-2 text-xs bg-black text-white rounded-full px-1.5 py-0.5">
+                                    <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[0.62rem] text-white ring-2 ring-black">
                                         {count}
                                     </span>
                                 )}
@@ -283,40 +314,60 @@ export default function HeaderClient({ initialEmail }: Props) {
                 </div>
 
                 {mobileMenu && (
-                    <div className="md:hidden border-t border-neutral-800 bg-neutral-950">
-                        <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
-                            <button className="ml-auto mb-2 p-2" onClick={() => setMobileMenu(false)}>
+                    <div className="border-t border-white/15 bg-black xl:hidden">
+                        <div className="mx-auto max-w-7xl px-3 py-4">
+                            <div className="mb-4 flex items-center justify-between border border-white/10 bg-neutral-950 p-3">
+                                <div>
+                                    <p className="text-[0.62rem] font-black uppercase tracking-[0.22em] text-red-500">Main menu</p>
+                                    <p className="mt-1 text-xl font-black uppercase leading-none text-white">Shop the scene</p>
+                                </div>
+                                <button className="grid h-10 w-10 place-items-center border border-white/20 text-white" onClick={() => setMobileMenu(false)} aria-label="Close menu">
                                 <X className="h-5 w-5" />
-                            </button>
-                            {nav.map((n) => (
-                                <Link key={n.label} href={n.href} className="block py-2 text-sm" onClick={() => setMobileMenu(false)}>
-                                    {n.label}
-                                </Link>
-                            ))}
-                            <div className="pt-2 border-t border-neutral-800 mt-2">
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {nav.map((n) => (
+                                    <Link key={n.label} href={n.href} className={navLinkClass(n.href)} onClick={() => setMobileMenu(false)}>
+                                        <span className="flex items-center justify-between gap-2">
+                                            <span className="text-sm font-black leading-none tracking-[0.14em]">{n.label}</span>
+                                            <ArrowRight className="h-4 w-4" />
+                                        </span>
+                                        <span className="mt-2 text-[0.6rem] font-black tracking-[0.2em] text-white/50">{n.meta}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                            <div className="mt-3 border-t border-white/15 pt-3">
                                 {email ? (
-                                    <>
+                                    <div className="grid grid-cols-2 gap-2">
                                         {authNav.map((n) => (
-                                            <Link key={n.label} href={n.href} className="block py-2 text-sm" onClick={() => setMobileMenu(false)}>
-                                                {n.label}
+                                            <Link key={n.label} href={n.href} className={navLinkClass(n.href)} onClick={() => setMobileMenu(false)}>
+                                                <span className="flex items-center justify-between gap-2">
+                                                    <span className="text-sm font-black leading-none tracking-[0.14em]">{n.label}</span>
+                                                    <ArrowRight className="h-4 w-4" />
+                                                </span>
+                                                <span className="mt-2 text-[0.6rem] font-black tracking-[0.2em] text-white/50">{n.meta}</span>
                                             </Link>
                                         ))}
                                         <button
                                             onClick={signOut}
-                                            className="mt-2 text-sm underline"
+                                            className="col-span-2 min-h-12 border border-white/20 text-[0.7rem] font-black uppercase tracking-[0.16em] text-neutral-200"
                                             disabled={loadingSignOut}
                                         >
                                             {loadingSignOut ? "Signing out..." : "Sign out"}
                                         </button>
-                                    </>
+                                    </div>
                                 ) : (
-                                    <>
+                                    <div className="grid grid-cols-2 gap-2">
                                         {unAuthNav.map((n) => (
-                                            <Link key={n.label} href={n.href} className="block py-2 text-sm" onClick={() => setMobileMenu(false)}>
-                                                {n.label}
+                                            <Link key={n.label} href={n.href} className={n.label === "Sign Up" ? `${navLinkClass(n.href)} border-red-500 bg-red-600 text-white` : navLinkClass(n.href)} onClick={() => setMobileMenu(false)}>
+                                                <span className="flex items-center justify-between gap-2">
+                                                    <span className="text-sm font-black leading-none tracking-[0.14em]">{n.label}</span>
+                                                    <ArrowRight className="h-4 w-4" />
+                                                </span>
+                                                <span className="mt-2 text-[0.6rem] font-black tracking-[0.2em] text-white/50">{n.meta}</span>
                                             </Link>
                                         ))}
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         </div>
