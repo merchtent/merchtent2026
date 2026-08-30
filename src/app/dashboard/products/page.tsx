@@ -2,7 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Plus, Box, FileClock, AlertTriangle, PenTool, ArrowRight, Shirt } from "lucide-react";
+import { Box, FileClock, AlertTriangle, PenTool, ArrowRight, Shirt } from "lucide-react";
 import { publicImageUrl } from "@/lib/storage";
 import { logger } from "@/lib/logger";
 import { requireArtistPage } from "@/lib/auth/artist";
@@ -109,8 +109,8 @@ export default async function MyProductsPage() {
         return (
             <main className="min-h-screen bg-black text-white">
                 <section className="border-b border-neutral-800 p-5 md:p-8">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist backstage</p>
-                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Products error.</h1>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist dashboard</p>
+                    <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Products error.</h1>
                 </section>
                 <div className="p-5 md:p-8">
                     <div className="border border-neutral-800 bg-neutral-950 p-6 text-red-400 flex items-center gap-2">
@@ -205,7 +205,7 @@ export default async function MyProductsPage() {
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
                         <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Product floor</p>
-                        <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">My products.</h1>
+                        <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">My products.</h1>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
                             Drafts, live drops, generated mockups, moderation state, and production readiness in one place.
                         </p>
@@ -216,12 +216,6 @@ export default async function MyProductsPage() {
                             className="inline-flex items-center justify-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
                         >
                             <PenTool className="h-4 w-4" /> Design product
-                        </Link>
-                        <Link
-                            href="/dashboard/products/new"
-                            className="inline-flex items-center justify-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black hover:border-red-500"
-                        >
-                            <Plus className="h-4 w-4" /> Manual product
                         </Link>
                     </div>
                 </div>
@@ -235,16 +229,13 @@ export default async function MyProductsPage() {
                             <div>
                                 <p className="text-2xl font-black uppercase">No products yet.</p>
                                 <p className="mt-1 text-sm text-neutral-400">
-                                    Start your first drop with the designer, or keep using the manual creator.
+                                    Start your first drop with the designer and publish shop-ready mockups from saved design data.
                                 </p>
                             </div>
                         </div>
                         <div className="mt-6 flex flex-wrap gap-3">
                             <Button asChild>
                                 <Link href="/dashboard/products/designer">Design product</Link>
-                            </Button>
-                            <Button asChild variant="secondary">
-                                <Link href="/dashboard/products/new">Manual product</Link>
                             </Button>
                         </div>
                     </div>

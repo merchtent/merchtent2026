@@ -1,7 +1,7 @@
 // app/dashboard/page.tsx
 import { getServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
-import { ArrowRight, BadgePercent, ClipboardCheck, DollarSign, Gift, Image as ImageIcon, Megaphone, Package, PenTool, Plus, Receipt, Settings, Shirt, ShoppingCart, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, BadgePercent, ClipboardCheck, DollarSign, Gift, Image as ImageIcon, Megaphone, Package, PenTool, Receipt, Settings, ShieldCheck, Shirt, ShoppingCart, Sparkles, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
             <main className="min-h-screen bg-black text-white">
                 <section className="border-b border-neutral-800 p-5 md:p-8">
                     <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Backstage access</p>
-                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Please sign in.</h1>
+                    <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Please sign in.</h1>
                     <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
                         You need to be signed in to access the dashboard.
                     </p>
@@ -65,7 +65,7 @@ export default async function DashboardPage() {
 
     const { data: profile } = await supabase
         .from("profiles")
-        .select("account_type, display_name, onboarding_completed")
+        .select("account_type, display_name, onboarding_completed, role")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -74,7 +74,7 @@ export default async function DashboardPage() {
             <main className="min-h-screen bg-black text-white">
                 <section className="border-b border-neutral-800 p-5 md:p-8">
                     <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Account setup</p>
-                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Finish setup.</h1>
+                    <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Finish setup.</h1>
                     <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
                         Choose whether you want to use Merch Tent as a fan or artist.
                     </p>
@@ -139,6 +139,7 @@ export default async function DashboardPage() {
         return (
             <FanDashboard
                 displayName={profile.display_name ?? user.email ?? "Fan"}
+                isAdmin={profile.role === "admin"}
                 orders={(orders ?? []) as FanOrder[]}
                 balance={balance as MerchCreditBalance | null}
                 balanceUnavailable={Boolean(balanceError)}
@@ -226,14 +227,15 @@ export default async function DashboardPage() {
 
     return (
         <main className="min-h-screen bg-black text-white">
+            {profile.role === "admin" ? <AdminDashboardCallout /> : null}
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
                         <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
-                            Artist backstage
+                            Artist dashboard
                         </p>
-                        <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
-                            {artist.display_name} control room.
+                        <h1 className="mt-4 max-w-4xl text-3xl font-black uppercase leading-tight md:text-5xl">
+                            {artist.display_name} dashboard.
                         </h1>
                         <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-400 md:text-base">
                             Launch products, watch sales, manage payout readiness, and keep the boring operational
@@ -291,7 +293,7 @@ export default async function DashboardPage() {
                     <ActionCard
                         href="/dashboard/products"
                         title="Product floor"
-                        body="Review live, draft, and manual products before fans see the next drop."
+                        body="Review live drops, drafts, generated mockups, and launch readiness before fans see the next product."
                         icon={<Shirt className="h-6 w-6" />}
                         pill="Inventory"
                     />
@@ -325,7 +327,7 @@ export default async function DashboardPage() {
                         <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
                             Next best actions
                         </p>
-                        <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-5xl">
+                        <h2 className="mt-2 text-3xl font-black uppercase leading-tight md:text-4xl">
                             Keep the drop moving.
                         </h2>
                         <p className="mt-4 text-sm leading-6 text-neutral-400">
@@ -334,7 +336,6 @@ export default async function DashboardPage() {
                     </div>
                     <div className="grid md:grid-cols-2">
                         <ChecklistItem href="/dashboard/products/designer" title="Create the next product" body="Open the designer and launch from saved design data." icon={<Sparkles className="h-5 w-5" />} />
-                        <ChecklistItem href="/dashboard/products/new" title="Add a manual product" body="Keep the original creator for stock or imported merch." icon={<Plus className="h-5 w-5" />} />
                         <ChecklistItem href="/dashboard/cash-outs" title="Review payout history" body="Audit what has already been requested or transferred." icon={<Receipt className="h-5 w-5" />} />
                         <ChecklistItem href="/dashboard/artist" title="Tune artist profile" body="Update image, name, and storefront presentation." icon={<UserRound className="h-5 w-5" />} />
                         <ChecklistItem href="/dashboard/images" title="Manage artwork" body="Check product image outputs and mockup assets." icon={<ImageIcon className="h-5 w-5" />} />
@@ -351,7 +352,7 @@ export default async function DashboardPage() {
                             <Megaphone className="h-4 w-4" />
                             Backstage note
                         </p>
-                        <h2 className="mt-3 max-w-4xl text-3xl font-black uppercase leading-none md:text-5xl">
+                        <h2 className="mt-3 max-w-4xl text-3xl font-black uppercase leading-tight md:text-4xl">
                             Great drops need clean artwork and boring follow-through.
                         </h2>
                     </div>
@@ -372,8 +373,41 @@ export default async function DashboardPage() {
 
 /* ---------- UI Bits ---------- */
 
+function AdminDashboardCallout() {
+    return (
+        <section className="border-b border-red-500 bg-red-600 text-white">
+            <div className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center md:p-6">
+                <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-black/20 bg-black text-white">
+                        <ShieldCheck className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-black">
+                            Admin access
+                        </p>
+                        <h2 className="mt-1 text-2xl font-black uppercase leading-tight md:text-3xl">
+                            Open the backstage admin panel.
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-sm font-medium text-white/90">
+                            Manage artists, catalogue imports, orders, fulfilment, operations and platform settings.
+                        </p>
+                    </div>
+                </div>
+                <Link
+                    href="/admin"
+                    className="inline-flex h-12 items-center justify-center gap-2 bg-black px-5 text-sm font-black uppercase text-white hover:bg-neutral-900"
+                >
+                    Go to admin
+                    <ArrowRight className="h-4 w-4" />
+                </Link>
+            </div>
+        </section>
+    );
+}
+
 function FanDashboard({
     displayName,
+    isAdmin,
     orders,
     balance,
     balanceUnavailable,
@@ -381,6 +415,7 @@ function FanDashboard({
     creditReservations,
 }: {
     displayName: string;
+    isAdmin: boolean;
     orders: FanOrder[];
     balance: MerchCreditBalance | null;
     balanceUnavailable: boolean;
@@ -400,14 +435,15 @@ function FanDashboard({
 
     return (
         <main className="min-h-screen bg-black text-white">
+            {isAdmin ? <AdminDashboardCallout /> : null}
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
                         <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
-                            Fan backstage
+                            Fan dashboard
                         </p>
-                        <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
-                            {displayName} merch HQ.
+                        <h1 className="mt-4 max-w-4xl text-3xl font-black uppercase leading-tight md:text-5xl">
+                            {displayName} dashboard.
                         </h1>
                         <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-400 md:text-base">
                             Track orders, watch credits build, and keep close to the artists you backed early.

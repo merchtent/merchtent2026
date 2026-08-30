@@ -118,8 +118,8 @@ export default async function CashOutsPage() {
         return (
             <main className="min-h-screen bg-black text-white">
                 <section className="border-b border-neutral-800 p-5 md:p-8">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist backstage</p>
-                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Payouts error.</h1>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist dashboard</p>
+                    <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Payouts error.</h1>
                 </section>
                 <div className="p-5 md:p-8">
                     <div className="flex items-center gap-2 border border-neutral-800 bg-neutral-950 p-6 text-red-400">
@@ -148,8 +148,8 @@ export default async function CashOutsPage() {
         return (
             <main className="min-h-screen bg-black text-white">
                 <section className="border-b border-neutral-800 p-5 md:p-8">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist backstage</p>
-                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Payouts error.</h1>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist dashboard</p>
+                    <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Payouts error.</h1>
                 </section>
                 <div className="p-5 md:p-8">
                     <div className="flex items-center gap-2 border border-neutral-800 bg-neutral-950 p-6 text-red-400">
@@ -185,7 +185,7 @@ export default async function CashOutsPage() {
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
                         <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Payout ledger</p>
-                        <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                        <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">
                             {artist.display_name} payouts.
                         </h1>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
@@ -325,7 +325,7 @@ function SummaryCard({
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</p>
                 {icon && <div className="text-red-400">{icon}</div>}
             </div>
-            <p className={`mt-5 text-3xl font-black md:text-5xl ${accent ? "text-red-400" : "text-white"}`}>
+            <p className={`mt-5 text-2xl font-black md:text-4xl ${accent ? "text-red-400" : "text-white"}`}>
                 {value}
             </p>
         </div>

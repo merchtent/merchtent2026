@@ -13,6 +13,7 @@ import {
     Type,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { CatalogProduct } from "@/lib/product-catalog";
 import { createDesignedProductAction } from "./actions";
 
 const CANVAS_WIDTH = 900;
@@ -22,6 +23,7 @@ const PRINT_ASSET_HEIGHT = 3200;
 
 type Side = "front" | "back";
 type GarmentKind = "tee" | "hoodie";
+type ToolPanel = "product" | "blank" | "layers" | "selection";
 
 type DesignLayer = {
     id: string;
@@ -47,22 +49,32 @@ type DragState = {
     offsetY: number;
 };
 
-const PRINT_AREAS: Record<Side, { x: number; y: number; width: number; height: number }> = {
-    front: { x: 280, y: 315, width: 340, height: 430 },
-    back: { x: 280, y: 300, width: 340, height: 460 },
-};
-
-const GARMENT_COLORS = [
-    { label: "Black", value: "#111111" },
-    { label: "White", value: "#f7f7f2" },
-    { label: "Grey", value: "#777777" },
-    { label: "Red", value: "#b91c1c" },
-    { label: "Navy", value: "#111827" },
-    { label: "Forest", value: "#14532d" },
-];
-
 function uid() {
     return globalThis.crypto.randomUUID();
+}
+
+function priceWithPrintSides(basePrice: string, hasBackDesign: boolean, additionalPrintSideRetailCents?: number) {
+    const parsed = Number(basePrice);
+    const baseCents = Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+    const extraCents = hasBackDesign ? additionalPrintSideRetailCents ?? 0 : 0;
+    return ((baseCents + extraCents) / 100).toFixed(2);
+}
+
+function formatMoneyFromCents(cents: number) {
+    return (cents / 100).toLocaleString("en-AU", {
+        style: "currency",
+        currency: "AUD",
+    });
+}
+
+function formatPercent(partCents: number, totalCents: number) {
+    return totalCents > 0 ? `${((partCents / totalCents) * 100).toFixed(1)}%` : "0.0%";
+}
+
+function buildLockedProductTitle(artistName: string, title: string) {
+    const suffix = title.trim();
+    const fullTitle = suffix ? `${artistName} ${suffix}` : `${artistName} ...`;
+    return fullTitle.slice(0, 120);
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -192,6 +204,7 @@ async function renderDesign(
     side: Side,
     kind: GarmentKind,
     garmentColor: string,
+    printAreas: CatalogProduct["printAreas"],
     showGuides: boolean
 ) {
     const ctx = canvas.getContext("2d");
@@ -206,7 +219,7 @@ async function renderDesign(
     }
 
     if (showGuides) {
-        const area = PRINT_AREAS[side];
+        const area = printAreas[side];
         ctx.save();
         ctx.strokeStyle = "rgba(248,113,113,0.9)";
         ctx.setLineDash([16, 12]);
@@ -216,9 +229,9 @@ async function renderDesign(
     }
 }
 
-async function renderPrintAsset(layers: DesignLayer[], side: Side) {
+async function renderPrintAsset(layers: DesignLayer[], side: Side, printAreas: CatalogProduct["printAreas"]) {
     const canvas = document.createElement("canvas");
-    const area = PRINT_AREAS[side];
+    const area = printAreas[side];
     const scaleX = PRINT_ASSET_WIDTH / area.width;
     const scaleY = PRINT_ASSET_HEIGHT / area.height;
     const scale = Math.min(scaleX, scaleY);
@@ -247,23 +260,30 @@ async function renderPrintAsset(layers: DesignLayer[], side: Side) {
     return canvas.toDataURL("image/png");
 }
 
-export default function DesignerClient() {
+export default function DesignerClient({
+    catalogProduct,
+    artistName,
+}: {
+    catalogProduct: CatalogProduct;
+    artistName: string;
+}) {
     const frontCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const backCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const dragRef = useRef<DragState | null>(null);
+    const saveModeRef = useRef<"draft" | "publish">("draft");
 
-    const [title, setTitle] = useState("");
+    const [title, setTitle] = useState(catalogProduct.name);
     const [description, setDescription] = useState("");
-    const [price, setPrice] = useState("39.00");
-    const [category, setCategory] = useState("tees");
-    const [publish, setPublish] = useState(false);
+    const category = catalogProduct.category;
     const [activeSide, setActiveSide] = useState<Side>("front");
-    const [garmentKind, setGarmentKind] = useState<GarmentKind>("tee");
-    const [garmentColor, setGarmentColor] = useState("#111111");
+    const [activeToolPanel, setActiveToolPanel] = useState<ToolPanel>("product");
+    const garmentKind = catalogProduct.garmentKind;
+    const [garmentColor, setGarmentColor] = useState(catalogProduct.colors[0]?.value ?? "#111111");
     const [layers, setLayers] = useState<DesignLayer[]>([]);
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
     const [newText, setNewText] = useState("BAND NAME");
     const [isSaving, setIsSaving] = useState(false);
+    const [savingMode, setSavingMode] = useState<"draft" | "publish">("draft");
     const [error, setError] = useState<string | null>(null);
 
     const selectedLayer = useMemo(
@@ -272,16 +292,35 @@ export default function DesignerClient() {
     );
     const activeLayers = layers.filter((layer) => layer.side === activeSide);
     const hasBackDesign = layers.some((layer) => layer.side === "back");
+    const printSideCount = hasBackDesign ? 2 : 1;
+    const additionalPrintSideRetailCents =
+        catalogProduct.production.includedPrintSides && catalogProduct.production.includedPrintSides >= 2
+            ? 0
+            : catalogProduct.production.additionalPrintSideRetailCents ?? catalogProduct.production.additionalPrintSideCents ?? 0;
+    const price = useMemo(
+        () => priceWithPrintSides(catalogProduct.defaultPrice, hasBackDesign, additionalPrintSideRetailCents),
+        [additionalPrintSideRetailCents, catalogProduct.defaultPrice, hasBackDesign]
+    );
+    const singlePriceCents = useMemo(() => {
+        const parsed = Number(catalogProduct.defaultPrice);
+        return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+    }, [catalogProduct.defaultPrice]);
+    const doublePriceCents = singlePriceCents + additionalPrintSideRetailCents;
+    const activePriceCents = hasBackDesign ? doublePriceCents : singlePriceCents;
+    const artistProfitCents = catalogProduct.production.artistProfitCents ?? 0;
+    const productTitlePreview = useMemo(() => {
+        return buildLockedProductTitle(artistName, title);
+    }, [artistName, title]);
 
     useEffect(() => {
         let cancelled = false;
 
         async function render() {
             if (frontCanvasRef.current) {
-                await renderDesign(frontCanvasRef.current, layers, "front", garmentKind, garmentColor, activeSide === "front");
+                await renderDesign(frontCanvasRef.current, layers, "front", garmentKind, garmentColor, catalogProduct.printAreas, activeSide === "front");
             }
             if (backCanvasRef.current) {
-                await renderDesign(backCanvasRef.current, layers, "back", garmentKind, garmentColor, activeSide === "back");
+                await renderDesign(backCanvasRef.current, layers, "back", garmentKind, garmentColor, catalogProduct.printAreas, activeSide === "back");
             }
         }
 
@@ -294,7 +333,7 @@ export default function DesignerClient() {
         return () => {
             cancelled = true;
         };
-    }, [activeSide, garmentColor, garmentKind, layers]);
+    }, [activeSide, catalogProduct.printAreas, garmentColor, garmentKind, layers]);
 
     function updateLayer(id: string, patch: Partial<DesignLayer>) {
         setLayers((current) =>
@@ -411,7 +450,7 @@ export default function DesignerClient() {
 
     async function renderForSave(side: Side) {
         const canvas = document.createElement("canvas");
-        await renderDesign(canvas, layers, side, garmentKind, garmentColor, false);
+        await renderDesign(canvas, layers, side, garmentKind, garmentColor, catalogProduct.printAreas, false);
         return canvas.toDataURL("image/png");
     }
 
@@ -419,18 +458,33 @@ export default function DesignerClient() {
         event.preventDefault();
         if (isSaving) return;
 
+        const shouldPublish = saveModeRef.current === "publish";
+        setSavingMode(saveModeRef.current);
         setIsSaving(true);
         setError(null);
 
         try {
             const frontRender = await renderForSave("front");
             const backRender = hasBackDesign ? await renderForSave("back") : "";
-            const frontPrintAsset = await renderPrintAsset(layers, "front");
-            const backPrintAsset = hasBackDesign ? await renderPrintAsset(layers, "back") : "";
-            const selectedColor = GARMENT_COLORS.find((item) => item.value === garmentColor);
+            const frontPrintAsset = await renderPrintAsset(layers, "front", catalogProduct.printAreas);
+            const backPrintAsset = hasBackDesign ? await renderPrintAsset(layers, "back", catalogProduct.printAreas) : "";
+            const selectedColor = catalogProduct.colors.find((item) => item.value === garmentColor);
             const designPayload = {
                 version: 1,
                 templateKey: `merch-tent-${garmentKind}-v1`,
+                catalogProduct: {
+                    key: catalogProduct.key,
+                    name: catalogProduct.name,
+                    brand: catalogProduct.brand,
+                    model: catalogProduct.model,
+                    category: catalogProduct.category,
+                    supplier: catalogProduct.supplier,
+                    providerOptions: catalogProduct.providerOptions ?? [],
+                    sizes: catalogProduct.sizes,
+                    colors: catalogProduct.colors,
+                    production: catalogProduct.production,
+                },
+                printSideCount,
                 canvas: {
                     width: CANVAS_WIDTH,
                     height: CANVAS_HEIGHT,
@@ -443,13 +497,15 @@ export default function DesignerClient() {
                 garment: {
                     kind: garmentKind,
                     color: garmentColor,
+                    colorLabel: selectedColor?.label ?? "Designed",
+                    supplierColorName: selectedColor?.supplierColorName ?? selectedColor?.label ?? "Designed",
                 },
-                printAreas: PRINT_AREAS,
+                printAreas: catalogProduct.printAreas,
                 layers,
             };
 
             const formData = new FormData();
-            formData.set("title", title);
+            formData.set("title", productTitlePreview);
             formData.set("description", description);
             formData.set("price", price);
             formData.set("category", category);
@@ -460,7 +516,21 @@ export default function DesignerClient() {
             formData.set("back_render", backRender);
             formData.set("front_print_asset", frontPrintAsset);
             formData.set("back_print_asset", backPrintAsset);
-            if (publish) formData.set("publish", "on");
+            formData.set("catalog_product_key", catalogProduct.key);
+            formData.set("supplier_key", catalogProduct.supplier.key);
+            formData.set("supplier_product_id", catalogProduct.supplier.externalProductId);
+            formData.set("supplier_automation_mode", catalogProduct.supplier.automationMode);
+            formData.set("provider_options_json", JSON.stringify(catalogProduct.providerOptions ?? []));
+            if (catalogProduct.supplier.printify) {
+                formData.set("printify_blueprint_id", String(catalogProduct.supplier.printify.blueprintId));
+                if (catalogProduct.supplier.printify.printProviderId) {
+                    formData.set("printify_print_provider_id", String(catalogProduct.supplier.printify.printProviderId));
+                }
+                if (catalogProduct.supplier.printify.variantIds.length) {
+                    formData.set("printify_variant_ids", catalogProduct.supplier.printify.variantIds.join(","));
+                }
+            }
+            if (shouldPublish) formData.set("publish", "on");
 
             await createDesignedProductAction(formData);
         } catch (err: unknown) {
@@ -470,169 +540,188 @@ export default function DesignerClient() {
     }
 
     return (
-        <form onSubmit={handleSave} className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)_320px]">
-            <section className="space-y-4">
-                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-4">
-                    <div className="flex items-center gap-2 text-sm font-bold">
-                        <Shirt className="h-4 w-4 text-red-400" />
-                        Product
-                    </div>
-
-                    <label className="block">
-                        <span className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                            Title
-                        </span>
-                        <input
-                            value={title}
-                            onChange={(event) => setTitle(event.target.value)}
-                            required
-                            disabled={isSaving}
-                            className="h-10 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm"
-                            placeholder="Tour tee"
-                        />
-                    </label>
-
-                    <label className="block">
-                        <span className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                            Description
-                        </span>
-                        <textarea
-                            value={description}
-                            onChange={(event) => setDescription(event.target.value)}
-                            disabled={isSaving}
-                            rows={4}
-                            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-                            placeholder="Drop details"
-                        />
-                    </label>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <label className="block">
-                            <span className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                                Price
-                            </span>
-                            <input
-                                value={price}
-                                onChange={(event) => setPrice(event.target.value)}
-                                required
-                                min="1"
-                                step="0.01"
-                                type="number"
-                                disabled={isSaving}
-                                className="h-10 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm"
-                            />
-                        </label>
-
-                        <label className="block">
-                            <span className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                                Category
-                            </span>
-                            <select
-                                value={category}
-                                onChange={(event) => setCategory(event.target.value)}
-                                disabled={isSaving}
-                                className="h-10 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm"
-                            >
-                                <option value="tees">Tees</option>
-                                <option value="hoodies">Hoodies</option>
-                                <option value="tanks">Tanks</option>
-                                <option value="posters">Posters</option>
-                                <option value="accessories">Accessories</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </label>
-                    </div>
-
-                    <label className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            checked={publish}
-                            disabled={isSaving}
-                            onChange={(event) => setPublish(event.target.checked)}
-                            className="h-4 w-4 accent-red-600"
-                        />
-                        Publish now
-                    </label>
+        <form
+            onSubmit={handleSave}
+            className="grid max-h-[100vh] min-h-[720px] gap-0 overflow-hidden border border-neutral-800 bg-black xl:grid-cols-[360px_minmax(0,1fr)_320px]"
+        >
+            <section className="flex min-h-0 flex-col border-b border-neutral-800 bg-neutral-950 xl:border-b-0 xl:border-r">
+                <div className="grid grid-cols-4 border-b border-neutral-800">
+                    {([
+                        ["product", Shirt, "Product"],
+                        ["blank", AlignCenter, "Blank"],
+                        ["layers", Layers, "Layers"],
+                        ["selection", RotateCw, "Edit"],
+                    ] as const).map(([panel, Icon, label]) => (
+                        <button
+                            key={panel}
+                            type="button"
+                            onClick={() => setActiveToolPanel(panel)}
+                            className={`flex h-16 flex-col items-center justify-center gap-1 border-r border-neutral-800 text-[10px] font-black uppercase tracking-[0.12em] last:border-r-0 ${
+                                activeToolPanel === panel ? "bg-red-600 text-white" : "text-neutral-500 hover:text-white"
+                            }`}
+                        >
+                            <Icon className="h-4 w-4" />
+                            {label}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-4">
-                    <div className="flex items-center gap-2 text-sm font-bold">
-                        <AlignCenter className="h-4 w-4 text-red-400" />
-                        Garment
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                        {(["tee", "hoodie"] as GarmentKind[]).map((kind) => (
-                            <button
-                                key={kind}
-                                type="button"
-                                onClick={() => {
-                                    setGarmentKind(kind);
-                                    setCategory(kind === "hoodie" ? "hoodies" : "tees");
-                                }}
-                                className={`h-10 rounded-lg border text-sm capitalize ${garmentKind === kind
-                                    ? "border-red-500 bg-red-500/15 text-red-100"
-                                    : "border-neutral-700 bg-neutral-900 text-neutral-300"
-                                    }`}
-                            >
-                                {kind}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                        {GARMENT_COLORS.map((item) => (
-                            <button
-                                key={item.value}
-                                type="button"
-                                onClick={() => setGarmentColor(item.value)}
-                                className={`flex h-10 items-center gap-2 rounded-lg border px-2 text-xs ${garmentColor === item.value
-                                    ? "border-red-500 bg-red-500/15"
-                                    : "border-neutral-700 bg-neutral-900"
-                                    }`}
-                            >
-                                <span
-                                    className="h-4 w-4 rounded-full border border-white/20"
-                                    style={{ backgroundColor: item.value }}
+                <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                    {activeToolPanel === "product" ? (
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                                    Product details
+                                </p>
+                                <h2 className="mt-2 text-2xl font-black uppercase">Name the drop.</h2>
+                            </div>
+                            <label className="block">
+                                <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">
+                                    Merch name
+                                </span>
+                                <input
+                                    value={title}
+                                    onChange={(event) => setTitle(event.target.value)}
+                                    required
+                                    disabled={isSaving}
+                                    className="h-11 w-full border border-neutral-700 bg-black px-3 text-sm outline-none"
+                                    placeholder={catalogProduct.name}
                                 />
-                                {item.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-bold">
-                        <Layers className="h-4 w-4 text-red-400" />
-                        Layers
-                    </div>
-
-                    {activeLayers.length === 0 ? (
-                        <p className="text-sm text-neutral-500">No {activeSide} layers yet.</p>
-                    ) : (
-                        <div className="space-y-2">
-                            {activeLayers.map((layer) => (
-                                <button
-                                    key={layer.id}
-                                    type="button"
-                                    onClick={() => setSelectedLayerId(layer.id)}
-                                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm ${selectedLayerId === layer.id
-                                        ? "border-red-500 bg-red-500/10"
-                                        : "border-neutral-800 bg-neutral-900"
-                                        }`}
-                                >
-                                    <span className="truncate">
-                                        {layer.type === "text" ? layer.text || "Text" : "Image"}
+                                <span className="mt-2 block border border-neutral-800 bg-black p-3 text-xs leading-5 text-neutral-400">
+                                    <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
+                                        Shop name preview
                                     </span>
-                                    <span className="text-[11px] uppercase text-neutral-500">{layer.type}</span>
-                                </button>
-                            ))}
+                                    <span className="mt-1 block font-black text-white">{productTitlePreview}</span>
+                                    <span className="mt-1 block">
+                                        Artist name is locked in first. Blank details like {catalogProduct.brand}{" "}
+                                        {catalogProduct.model} stay in product specs, not the shop title.
+                                    </span>
+                                </span>
+                            </label>
+                            <label className="block">
+                                <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">
+                                    Description
+                                </span>
+                                <textarea
+                                    value={description}
+                                    onChange={(event) => setDescription(event.target.value)}
+                                    disabled={isSaving}
+                                    rows={5}
+                                    className="w-full border border-neutral-700 bg-black px-3 py-2 text-sm outline-none"
+                                    placeholder="Drop details"
+                                />
+                            </label>
+                            <div className="border border-neutral-800 bg-black p-3">
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
+                                    Shop category
+                                </p>
+                                <p className="mt-1 text-sm font-black uppercase text-white">{category}</p>
+                                <p className="mt-1 text-xs leading-5 text-neutral-500">
+                                    Locked from the catalogue blank selected before opening the designer.
+                                </p>
+                            </div>
                         </div>
-                    )}
+                    ) : null}
+
+                    {activeToolPanel === "blank" ? (
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                                    Catalogue blank
+                                </p>
+                                <h2 className="mt-2 text-2xl font-black uppercase">{catalogProduct.name}</h2>
+                                <p className="mt-2 text-xs uppercase tracking-[0.18em] text-neutral-500">
+                                    {catalogProduct.brand} {catalogProduct.model} / {catalogProduct.supplier.name}
+                                </p>
+                            </div>
+                            <p className="border border-neutral-800 bg-black p-3 text-xs leading-5 text-neutral-400">
+                                {catalogProduct.production.method} print. Product stays Merch Tent-first, with supplier
+                                data saved for fulfilment on the first sale.
+                            </p>
+                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                                <div className="border border-neutral-800 bg-black p-2">
+                                    <b className="block text-white">{catalogProduct.sizes.length}</b>
+                                    <span className="uppercase tracking-wide text-neutral-500">Sizes</span>
+                                </div>
+                                <div className="border border-neutral-800 bg-black p-2">
+                                    <b className="block text-white">{catalogProduct.colors.length}</b>
+                                    <span className="uppercase tracking-wide text-neutral-500">Colours</span>
+                                </div>
+                                <div className="border border-neutral-800 bg-black p-2">
+                                    <b className="block text-white">Sale</b>
+                                    <span className="uppercase tracking-wide text-neutral-500">Sync</span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {catalogProduct.colors.map((item) => (
+                                    <button
+                                        key={item.value}
+                                        type="button"
+                                        onClick={() => setGarmentColor(item.value)}
+                                        className={`flex h-10 items-center gap-2 border px-2 text-xs ${
+                                            garmentColor === item.value
+                                                ? "border-red-500 bg-red-500/15"
+                                                : "border-neutral-700 bg-black"
+                                        }`}
+                                    >
+                                        <span
+                                            className="h-4 w-4 rounded-full border border-white/20"
+                                            style={{ backgroundColor: item.value }}
+                                        />
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {activeToolPanel === "layers" ? (
+                        <div className="space-y-3">
+                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                                {activeSide} layers
+                            </p>
+                            {activeLayers.length === 0 ? (
+                                <p className="border border-neutral-800 bg-black p-3 text-sm text-neutral-500">
+                                    No {activeSide} layers yet.
+                                </p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {activeLayers.map((layer) => (
+                                        <button
+                                            key={layer.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedLayerId(layer.id);
+                                                setActiveToolPanel("selection");
+                                            }}
+                                            className={`flex w-full items-center justify-between border px-3 py-2 text-left text-sm ${
+                                                selectedLayerId === layer.id
+                                                    ? "border-red-500 bg-red-500/10"
+                                                    : "border-neutral-800 bg-black"
+                                            }`}
+                                        >
+                                            <span className="truncate">
+                                                {layer.type === "text" ? layer.text || "Text" : "Image"}
+                                            </span>
+                                            <span className="text-[11px] uppercase text-neutral-500">{layer.type}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
+
+                    {activeToolPanel === "selection" ? (
+                        <LayerEditor
+                            selectedLayer={selectedLayer}
+                            updateLayer={updateLayer}
+                            removeSelectedLayer={removeSelectedLayer}
+                        />
+                    ) : null}
                 </div>
             </section>
 
-            <section className="min-w-0 space-y-4">
+            <section className="min-h-0 min-w-0 space-y-4 overflow-y-auto p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-950 p-3">
                     <div className="inline-flex rounded-lg border border-neutral-800 bg-neutral-900 p-1">
                         {(["front", "back"] as Side[]).map((side) => (
@@ -666,7 +755,7 @@ export default function DesignerClient() {
                         </label>
                         <Button type="button" onClick={addTextLayer} variant="secondary">
                             <Type className="mr-2 h-4 w-4" />
-                            Text
+                                Text
                         </Button>
                     </div>
                 </div>
@@ -698,98 +787,37 @@ export default function DesignerClient() {
                 </div>
             </section>
 
-            <section className="space-y-4">
-                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-4">
-                    <div className="flex items-center gap-2 text-sm font-bold">
-                        <RotateCw className="h-4 w-4 text-red-400" />
-                        Selection
+            <section className="flex min-h-0 flex-col border-t border-neutral-800 bg-neutral-950 xl:border-l xl:border-t-0">
+                <div className="border-b border-neutral-800 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                        Catalogue pricing
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                        <PriceSummaryCard
+                            label="Single"
+                            priceCents={singlePriceCents}
+                            artistProfitCents={artistProfitCents}
+                        />
+                        <PriceSummaryCard
+                            label="Double"
+                            priceCents={doublePriceCents}
+                            artistProfitCents={artistProfitCents}
+                        />
                     </div>
-
-                    {!selectedLayer ? (
-                        <p className="text-sm text-neutral-500">Select a layer to edit it.</p>
-                    ) : (
-                        <div className="space-y-4">
-                            {selectedLayer.type === "text" ? (
-                                <>
-                                    <label className="block">
-                                        <span className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                                            Text
-                                        </span>
-                                        <textarea
-                                            value={selectedLayer.text ?? ""}
-                                            rows={3}
-                                            onChange={(event) => updateLayer(selectedLayer.id, { text: event.target.value })}
-                                            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-                                        />
-                                    </label>
-                                    <label className="block">
-                                        <span className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                                            Colour
-                                        </span>
-                                        <input
-                                            type="color"
-                                            value={selectedLayer.fill ?? "#ffffff"}
-                                            onChange={(event) => updateLayer(selectedLayer.id, { fill: event.target.value })}
-                                            className="h-10 w-full rounded-lg border border-neutral-700 bg-neutral-900"
-                                        />
-                                    </label>
-                                    <RangeControl
-                                        label="Font size"
-                                        min={24}
-                                        max={160}
-                                        value={selectedLayer.fontSize ?? 76}
-                                        onChange={(value) =>
-                                            updateLayer(selectedLayer.id, {
-                                                fontSize: value,
-                                                height: value * 1.6,
-                                            })
-                                        }
-                                    />
-                                </>
-                            ) : null}
-
-                            <RangeControl
-                                label="Width"
-                                min={80}
-                                max={520}
-                                value={Math.round(selectedLayer.width)}
-                                onChange={(value) => updateLayer(selectedLayer.id, { width: value })}
-                            />
-                            <RangeControl
-                                label="Height"
-                                min={60}
-                                max={520}
-                                value={Math.round(selectedLayer.height)}
-                                onChange={(value) => updateLayer(selectedLayer.id, { height: value })}
-                            />
-                            <RangeControl
-                                label="Rotation"
-                                min={-45}
-                                max={45}
-                                value={Math.round(selectedLayer.rotation)}
-                                onChange={(value) => updateLayer(selectedLayer.id, { rotation: value })}
-                            />
-                            <RangeControl
-                                label="Opacity"
-                                min={10}
-                                max={100}
-                                value={Math.round(selectedLayer.opacity * 100)}
-                                onChange={(value) => updateLayer(selectedLayer.id, { opacity: value / 100 })}
-                            />
-
-                            <button
-                                type="button"
-                                onClick={removeSelectedLayer}
-                                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 text-sm text-red-200 hover:bg-red-500/20"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                                Remove layer
-                            </button>
-                        </div>
-                    )}
+                    <div className="mt-3 border border-neutral-800 bg-black p-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
+                            Current design
+                        </p>
+                        <p className="mt-1 text-2xl font-black text-red-500">
+                            {formatMoneyFromCents(activePriceCents)}
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-400">
+                            {printSideCount === 2 ? "Front + back artwork" : "Front artwork only"}
+                        </p>
+                    </div>
                 </div>
 
-                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-4">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
                     <label className="block">
                         <span className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
                             New text
@@ -809,10 +837,15 @@ export default function DesignerClient() {
 
                     <Button
                         type="submit"
+                        name="save_mode"
+                        value="draft"
+                        onClick={() => {
+                            saveModeRef.current = "draft";
+                        }}
                         disabled={isSaving || !title || layers.length === 0}
-                        className="h-11 w-full bg-red-600 font-black hover:bg-red-500"
+                        className="h-11 w-full border border-neutral-700 bg-black font-black hover:bg-neutral-900"
                     >
-                        {isSaving ? (
+                        {isSaving && savingMode === "draft" ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Saving
@@ -820,13 +853,158 @@ export default function DesignerClient() {
                         ) : (
                             <>
                                 <Save className="mr-2 h-4 w-4" />
-                                Save design
+                                Save draft
+                            </>
+                        )}
+                    </Button>
+
+                    <Button
+                        type="submit"
+                        name="save_mode"
+                        value="publish"
+                        onClick={() => {
+                            saveModeRef.current = "publish";
+                        }}
+                        disabled={isSaving || !title || layers.length === 0}
+                        className="h-11 w-full bg-red-600 font-black hover:bg-red-500"
+                    >
+                        {isSaving && savingMode === "publish" ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Publishing
+                            </>
+                        ) : (
+                            <>
+                                <Save className="mr-2 h-4 w-4" />
+                                Save and publish to shop
                             </>
                         )}
                     </Button>
                 </div>
             </section>
         </form>
+    );
+}
+
+function PriceSummaryCard({
+    label,
+    priceCents,
+    artistProfitCents,
+    note,
+}: {
+    label: string;
+    priceCents: number;
+    artistProfitCents: number;
+    note?: string;
+}) {
+    return (
+        <div className="border border-neutral-800 bg-black p-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</p>
+            <p className="mt-1 text-xl font-black text-white">{formatMoneyFromCents(priceCents)}</p>
+            <p className="mt-2 text-[11px] uppercase tracking-[0.1em] text-neutral-500">
+                Band {formatMoneyFromCents(artistProfitCents)} / {formatPercent(artistProfitCents, priceCents)}
+            </p>
+            {note ? <p className="mt-1 text-[11px] text-red-300">{note}</p> : null}
+        </div>
+    );
+}
+
+function LayerEditor({
+    selectedLayer,
+    updateLayer,
+    removeSelectedLayer,
+}: {
+    selectedLayer: DesignLayer | null;
+    updateLayer: (id: string, patch: Partial<DesignLayer>) => void;
+    removeSelectedLayer: () => void;
+}) {
+    if (!selectedLayer) {
+        return (
+            <div className="space-y-3">
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">Edit layer</p>
+                <p className="border border-neutral-800 bg-black p-3 text-sm text-neutral-500">
+                    Select a layer on the garment to edit size, colour, rotation and opacity.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">Edit layer</p>
+            {selectedLayer.type === "text" ? (
+                <>
+                    <label className="block">
+                        <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">Text</span>
+                        <textarea
+                            value={selectedLayer.text ?? ""}
+                            rows={3}
+                            onChange={(event) => updateLayer(selectedLayer.id, { text: event.target.value })}
+                            className="w-full border border-neutral-700 bg-black px-3 py-2 text-sm outline-none"
+                        />
+                    </label>
+                    <label className="block">
+                        <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">Colour</span>
+                        <input
+                            type="color"
+                            value={selectedLayer.fill ?? "#ffffff"}
+                            onChange={(event) => updateLayer(selectedLayer.id, { fill: event.target.value })}
+                            className="h-10 w-full border border-neutral-700 bg-black"
+                        />
+                    </label>
+                    <RangeControl
+                        label="Font size"
+                        min={24}
+                        max={160}
+                        value={selectedLayer.fontSize ?? 76}
+                        onChange={(value) =>
+                            updateLayer(selectedLayer.id, {
+                                fontSize: value,
+                                height: value * 1.6,
+                            })
+                        }
+                    />
+                </>
+            ) : null}
+
+            <RangeControl
+                label="Width"
+                min={80}
+                max={520}
+                value={Math.round(selectedLayer.width)}
+                onChange={(value) => updateLayer(selectedLayer.id, { width: value })}
+            />
+            <RangeControl
+                label="Height"
+                min={60}
+                max={520}
+                value={Math.round(selectedLayer.height)}
+                onChange={(value) => updateLayer(selectedLayer.id, { height: value })}
+            />
+            <RangeControl
+                label="Rotation"
+                min={-45}
+                max={45}
+                value={Math.round(selectedLayer.rotation)}
+                onChange={(value) => updateLayer(selectedLayer.id, { rotation: value })}
+            />
+            <RangeControl
+                label="Opacity"
+                min={10}
+                max={100}
+                value={Math.round(selectedLayer.opacity * 100)}
+                onChange={(value) => updateLayer(selectedLayer.id, { opacity: value / 100 })}
+            />
+
+            <button
+                type="button"
+                onClick={removeSelectedLayer}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 border border-red-500/40 bg-red-500/10 text-sm text-red-200 hover:bg-red-500/20"
+            >
+                <Trash2 className="h-4 w-4" />
+                Remove layer
+            </button>
+        </div>
     );
 }
 

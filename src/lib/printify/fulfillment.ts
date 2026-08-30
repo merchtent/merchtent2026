@@ -1,8 +1,9 @@
 import "server-only";
 import { getServiceSupabase } from "@/lib/supabase/service";
-import { syncProductToPrintify } from "@/lib/printify/product-sync";
+import { ensurePrintifyProductForRoute, syncProductToPrintify } from "@/lib/printify/product-sync";
 import { submitPrintifyOrder, type PrintifyOrderPayload } from "@/lib/printify/orders";
 import { logger } from "@/lib/logger";
+import { resolveLeastCostSupplierRoute } from "@/lib/supplier-routing";
 
 type OrderRow = {
     id: number | string;
@@ -30,11 +31,18 @@ type OrderItemRow = {
 };
 
 type DesignRow = {
+    id: string;
     product_id: string;
     artist_id: string;
+    printify_blueprint_id: number | null;
     printify_product_id: string | null;
     printify_print_provider_id: number | null;
     printify_status: string | null;
+};
+
+type ProductFulfillmentRow = {
+    id: string;
+    fulfillment_flow: "legacy_manual" | "manual_fulfillment" | "supplier_on_demand" | null;
 };
 
 type VariantRow = {
@@ -115,6 +123,34 @@ function findVariant(item: OrderItemRow, variants: VariantRow[]) {
     }
 
     return null;
+}
+
+async function resolveRoutedLineItem(input: {
+    productId: string;
+    designId: string;
+    supplierProductId: string;
+    item: OrderItemRow;
+}): Promise<PrintifyOrderPayload["line_items"][number] | null> {
+    const route = await resolveLeastCostSupplierRoute({
+        supplier: "printify",
+        supplierProductId: input.supplierProductId,
+        sizeLabel: input.item.size_label,
+        colorLabel: input.item.color_label,
+    });
+
+    if (!route) return null;
+
+    const syncedRoute = await ensurePrintifyProductForRoute({
+        productId: input.productId,
+        route,
+    });
+
+    return {
+        product_id: syncedRoute.printifyProductId,
+        variant_id: Number(route.supplierVariantId),
+        quantity: Math.max(Number(input.item.qty ?? 1), 1),
+        external_id: String(input.item.id),
+    };
 }
 
 async function upsertPrintifyOrderSync(
@@ -316,22 +352,61 @@ export async function attemptPrintifyFulfillmentForOrder(orderId: number | strin
         return;
     }
 
+    const { data: productRows, error: productRowsError } = await supabase
+        .from("products")
+        .select("id, fulfillment_flow")
+        .in("id", productIds);
+
+    if (productRowsError) {
+        await failClaimedPrintifyFulfillment("Printify fulfillment product flow lookup failed", {
+            order_id: orderId,
+            product_ids: productIds,
+            error: productRowsError.message,
+        });
+    }
+
+    const automatedProductIds = new Set(
+        ((productRows ?? []) as ProductFulfillmentRow[])
+            .filter((product) => product.fulfillment_flow === "supplier_on_demand")
+            .map((product) => product.id)
+    );
+
+    if (!automatedProductIds.size) {
+        await upsertPrintifyOrderSync(supabase, {
+            order_id: orderId,
+            status: "skipped",
+            error_message: "Order contains only legacy/manual fulfillment products.",
+            attempted_at: new Date().toISOString(),
+        });
+        logger.info("Printify fulfillment skipped for legacy/manual order", {
+            order_id: orderId,
+            product_ids: productIds,
+        });
+        return;
+    }
+
+    const automatedOrderItems = orderItems.filter(
+        (item) => item.product_id && automatedProductIds.has(item.product_id)
+    );
+    const automatedProductIdList = Array.from(automatedProductIds);
+
     const { data: designs, error: designsError } = await supabase
         .from("product_designs")
-        .select("product_id, artist_id, printify_product_id, printify_print_provider_id, printify_status")
-        .in("product_id", productIds)
+        .select("id, product_id, artist_id, printify_blueprint_id, printify_product_id, printify_print_provider_id, printify_status")
+        .in("product_id", automatedProductIdList)
         .in("printify_status", ["not_synced", "syncing", "synced", "failed"]);
 
     if (designsError) {
         await failClaimedPrintifyFulfillment("Printify fulfillment product designs lookup failed", {
             order_id: orderId,
-            product_ids: productIds,
+            product_ids: automatedProductIdList,
             error: designsError.message,
         });
     }
 
-    const designsToSync = ((designs ?? []) as DesignRow[]).filter(
-        (design) => !design.printify_product_id || design.printify_status !== "synced"
+    const designRows = (designs ?? []) as DesignRow[];
+    const designsToSync = designRows.filter(
+        (design) => !design.printify_blueprint_id && (!design.printify_product_id || design.printify_status !== "synced")
     );
 
     for (const design of designsToSync) {
@@ -356,26 +431,36 @@ export async function attemptPrintifyFulfillmentForOrder(orderId: number | strin
 
     const { data: syncedDesigns, error: syncedDesignsError } = await supabase
         .from("product_designs")
-        .select("product_id, artist_id, printify_product_id, printify_print_provider_id, printify_status")
-        .in("product_id", productIds)
+        .select("id, product_id, artist_id, printify_blueprint_id, printify_product_id, printify_print_provider_id, printify_status")
+        .in("product_id", automatedProductIdList)
         .eq("printify_status", "synced");
 
     if (syncedDesignsError) {
         await failClaimedPrintifyFulfillment("Printify fulfillment synced designs lookup failed", {
             order_id: orderId,
-            product_ids: productIds,
+            product_ids: automatedProductIdList,
             error: syncedDesignsError.message,
         });
     }
 
-    const designByProduct = new Map(
-        ((syncedDesigns ?? []) as DesignRow[]).map((design) => [design.product_id, design])
-    );
-    const eligibleItems = orderItems.filter((item) => item.product_id && designByProduct.has(item.product_id));
+    const designByProduct = new Map(designRows.map((design) => [design.product_id, design]));
+    for (const design of (syncedDesigns ?? []) as DesignRow[]) {
+        designByProduct.set(design.product_id, design);
+    }
+    const eligibleItems = automatedOrderItems.filter((item) => item.product_id && designByProduct.has(item.product_id));
 
     if (!eligibleItems.length) {
-        await recordFailedSync("Order has no synced Printify products after on-demand sync.");
-        throw new Error("Order has no synced Printify products after on-demand sync.");
+        await upsertPrintifyOrderSync(supabase, {
+            order_id: orderId,
+            status: "skipped",
+            error_message: "Order has no automated supplier items ready for Printify fulfillment.",
+            attempted_at: new Date().toISOString(),
+        });
+        logger.warn("Printify fulfillment skipped with no automated supplier items", {
+            order_id: orderId,
+            automated_product_ids: automatedProductIdList,
+        });
+        return;
     }
 
     const { data: variants, error: variantsError } = await supabase
@@ -402,6 +487,21 @@ export async function attemptPrintifyFulfillmentForOrder(orderId: number | strin
     const lineItems: PrintifyOrderPayload["line_items"] = [];
     for (const item of eligibleItems) {
         const productId = item.product_id as string;
+        const design = designByProduct.get(productId);
+        const routedLineItem = design?.printify_blueprint_id
+            ? await resolveRoutedLineItem({
+                productId,
+                designId: design.id,
+                supplierProductId: String(design.printify_blueprint_id),
+                item,
+            })
+            : null;
+
+        if (routedLineItem) {
+            lineItems.push(routedLineItem);
+            continue;
+        }
+
         const variant = findVariant(item, variantsByProduct.get(productId) ?? []);
 
         if (!variant) {

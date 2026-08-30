@@ -3,6 +3,7 @@
 
 import CheckoutFormClient from "./CheckoutFormClient";
 import CheckoutSummaryClient from "./CheckoutSummaryClient";
+import { normaliseShippingMethodId, type ShippingMethodId } from "@/lib/shipping-methods";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -31,11 +32,11 @@ export default function CheckoutShellClient({
     defaultAddress,
 }: Props) {
     // shared shipping state
-    const [shippingMethod, setShippingMethod] = useState<"standard" | "express">(
+    const [shippingMethod, setShippingMethod] = useState<ShippingMethodId>(
         () => {
             try {
                 const raw = localStorage.getItem(SHIP_KEY);
-                return raw === "standard" || raw === "express" ? raw : "standard";
+                return normaliseShippingMethodId(raw);
             } catch {
                 return "standard";
             }

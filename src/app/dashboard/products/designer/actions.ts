@@ -15,6 +15,7 @@ import { requireArtistAction } from "@/lib/auth/artist";
 const ALLOWED_CATEGORIES = [
     "tees",
     "hoodies",
+    "hats",
     "tanks",
     "posters",
     "vinyl",
@@ -49,15 +50,55 @@ type DesignerLayer = {
 type DesignerPayload = {
     version: 1;
     templateKey: string;
+    catalogProduct?: {
+        key: string;
+        name: string;
+        brand: string;
+        model: string;
+        category: string;
+        supplier: {
+            key: string;
+            name: string;
+            externalProductId: string;
+            productUrl?: string;
+            automationMode?: string;
+            printify?: {
+                blueprintId?: number;
+                printProviderId?: number | null;
+                variantIds?: number[];
+            };
+        };
+        providerOptions?: Array<{
+            key: string;
+            supplier: string;
+            supplierProductId: string;
+            supplierProviderId: string | null;
+            supplierProviderName: string | null;
+            location?: {
+                country?: string | null;
+                region?: string | null;
+                city?: string | null;
+            };
+            variantIds: number[];
+            minCostCents: number | null;
+            maxCostCents: number | null;
+            colors: string[];
+            sizes: string[];
+        }>;
+        sizes?: string[];
+        colors?: unknown[];
+        production?: unknown;
+    };
     canvas: {
         width: number;
         height: number;
     };
-    printAsset?: {
-        width: number;
-        height: number;
-        format: string;
-    };
+        printAsset?: {
+            width: number;
+            height: number;
+            format: string;
+        };
+    printSideCount?: 1 | 2;
     garment: {
         kind: string;
         color: string;
@@ -104,6 +145,45 @@ const layerSchema = z.object({
 const designPayloadSchema = z.object({
     version: z.literal(1),
     templateKey: z.string().min(1).max(80).regex(/^merch-tent-(tee|hoodie)-v1$/),
+    catalogProduct: z.object({
+        key: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/),
+        name: z.string().min(1).max(160),
+        brand: z.string().min(1).max(80),
+        model: z.string().min(1).max(80),
+        category: z.enum(ALLOWED_CATEGORIES),
+        supplier: z.object({
+            key: z.enum(["printify", "printful", "local"]),
+            name: z.string().min(1).max(80),
+            externalProductId: z.string().min(1).max(120),
+            productUrl: z.string().url().optional(),
+            automationMode: z.enum(["create_on_sale", "manual_order", "local_fulfilment"]).optional(),
+            printify: z.object({
+                blueprintId: z.number().int().positive().optional(),
+                printProviderId: z.number().int().positive().nullable().optional(),
+                variantIds: z.array(z.number().int().positive()).max(500).optional(),
+            }).optional(),
+        }),
+        providerOptions: z.array(z.object({
+            key: z.string().min(1).max(120),
+            supplier: z.enum(["printify", "printful", "local"]),
+            supplierProductId: z.string().min(1).max(120),
+            supplierProviderId: z.string().max(120).nullable(),
+            supplierProviderName: z.string().max(160).nullable(),
+            location: z.object({
+                country: z.string().max(80).nullable().optional(),
+                region: z.string().max(80).nullable().optional(),
+                city: z.string().max(120).nullable().optional(),
+            }).optional(),
+            variantIds: z.array(z.number().int().positive()).max(500),
+            minCostCents: z.number().int().nonnegative().nullable(),
+            maxCostCents: z.number().int().nonnegative().nullable(),
+            colors: z.array(z.string().max(100)).max(200),
+            sizes: z.array(z.string().max(40)).max(100),
+        })).max(50).optional(),
+        sizes: z.array(z.string().min(1).max(20)).max(80).optional(),
+        colors: z.array(z.unknown()).max(100).optional(),
+        production: z.unknown().optional(),
+    }).optional(),
     canvas: z.object({
         width: z.literal(900),
         height: z.literal(1200),
@@ -113,9 +193,12 @@ const designPayloadSchema = z.object({
         height: z.literal(3200),
         format: z.literal("image/png"),
     }).optional(),
+    printSideCount: z.union([z.literal(1), z.literal(2)]).optional(),
     garment: z.object({
         kind: z.enum(["tee", "hoodie"]),
         color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        colorLabel: z.string().max(80).optional(),
+        supplierColorName: z.string().max(80).optional(),
     }),
     printAreas: z.object({
         front: printAreaSchema,
@@ -135,6 +218,13 @@ const designedProductInputSchema = z.object({
     designRaw: z.string().min(1),
     frontRender: z.string().min(1),
     backRender: z.string().optional().catch(""),
+    catalogProductKey: z.string().trim().max(120).optional().catch(undefined),
+    supplierKey: z.enum(["printify", "printful", "local"]).optional().catch(undefined),
+    supplierProductId: z.string().trim().max(120).optional().catch(undefined),
+    supplierAutomationMode: z.enum(["create_on_sale", "manual_order", "local_fulfilment"]).optional().catch(undefined),
+    printifyBlueprintId: z.coerce.number().int().positive().optional().catch(undefined),
+    printifyPrintProviderId: z.coerce.number().int().positive().optional().catch(undefined),
+    printifyVariantIds: z.string().trim().max(4_000).optional().catch(undefined),
 });
 
 const DESIGNER_PRODUCT_CREATE_LIMIT = 8;
@@ -194,6 +284,16 @@ function normaliseDesignPayload(raw: string): DesignerPayload {
     }
 
     return parsed;
+}
+
+function parsePrintifyVariantIds(raw?: string) {
+    if (!raw) return null;
+    const ids = raw
+        .split(",")
+        .map((item) => Number(item.trim()))
+        .filter((item) => Number.isInteger(item) && item > 0);
+
+    return ids.length ? ids : null;
 }
 
 async function uploadDataUrl(
@@ -424,6 +524,13 @@ export async function createDesignedProductAction(formData: FormData) {
         designRaw: formData.get("design_json"),
         frontRender: formData.get("front_render"),
         backRender: formData.get("back_render") ?? "",
+        catalogProductKey: formData.get("catalog_product_key") ?? undefined,
+        supplierKey: formData.get("supplier_key") ?? undefined,
+        supplierProductId: formData.get("supplier_product_id") ?? undefined,
+        supplierAutomationMode: formData.get("supplier_automation_mode") ?? undefined,
+        printifyBlueprintId: formData.get("printify_blueprint_id") ?? undefined,
+        printifyPrintProviderId: formData.get("printify_print_provider_id") ?? undefined,
+        printifyVariantIds: formData.get("printify_variant_ids") ?? undefined,
     });
     if (!parsedInput.success) {
         throw new Error("Design and front render are required");
@@ -440,9 +547,17 @@ export async function createDesignedProductAction(formData: FormData) {
         designRaw,
         frontRender,
         backRender = "",
+        catalogProductKey,
+        supplierKey,
+        supplierProductId,
+        supplierAutomationMode,
+        printifyBlueprintId,
+        printifyPrintProviderId,
+        printifyVariantIds,
     } = parsedInput.data;
 
     const design = normaliseDesignPayload(designRaw);
+    const parsedVariantIds = parsePrintifyVariantIds(printifyVariantIds);
     const hasBackDesign = design.layers.some((layer) => layer.side === "back");
     const canonicalFrontPrintAsset = await renderServerPrintAsset(design, "front");
     const canonicalBackPrintAsset = hasBackDesign
@@ -465,6 +580,7 @@ export async function createDesignedProductAction(formData: FormData) {
                 price_cents: Math.round(price * 100),
                 currency: "AUD",
                 is_published: false,
+                fulfillment_flow: "supplier_on_demand",
                 production_status: "generating",
                 moderation_status: "draft",
                 readiness_notes: "Designer V1 product generation in progress.",
@@ -540,6 +656,29 @@ export async function createDesignedProductAction(formData: FormData) {
         }
 
         const savedDesign = await replaceLayerAssets(supabase, createdProductId, design);
+        savedDesign.printSideCount = hasBackDesign ? 2 : 1;
+        const savedCatalogProduct = savedDesign.catalogProduct ?? {
+            key: catalogProductKey ?? "unknown",
+            name: title,
+            brand: "Unknown",
+            model: "Unknown",
+            category,
+            supplier: {
+                key: supplierKey ?? "local",
+                name: supplierKey ?? "Local supplier",
+                externalProductId: supplierProductId ?? "unknown",
+                automationMode: supplierAutomationMode ?? "manual_order",
+            },
+        };
+        savedDesign.catalogProduct = {
+            ...savedCatalogProduct,
+            supplier: {
+                ...savedCatalogProduct.supplier,
+                key: savedCatalogProduct.supplier.key ?? supplierKey ?? "local",
+                externalProductId: savedCatalogProduct.supplier.externalProductId ?? supplierProductId ?? "unknown",
+                automationMode: savedCatalogProduct.supplier.automationMode ?? supplierAutomationMode ?? "manual_order",
+            },
+        };
         const designHash = sha256(JSON.stringify(savedDesign));
 
         const { error: colorError } = await supabase.from("product_colors").insert({
@@ -569,6 +708,9 @@ export async function createDesignedProductAction(formData: FormData) {
             rendered_back_path: backPath,
             print_asset_front_path: frontPrintAssetPath,
             print_asset_back_path: backPrintAssetPath,
+            printify_blueprint_id: printifyBlueprintId ?? savedDesign.catalogProduct?.supplier.printify?.blueprintId ?? null,
+            printify_print_provider_id: printifyPrintProviderId ?? savedDesign.catalogProduct?.supplier.printify?.printProviderId ?? null,
+            printify_variant_ids: parsedVariantIds ?? savedDesign.catalogProduct?.supplier.printify?.variantIds ?? null,
             printify_status: "not_synced",
             printify_last_error: null,
             validation_status: "validated",

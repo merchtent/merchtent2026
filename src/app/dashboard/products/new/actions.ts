@@ -15,6 +15,7 @@ import { z } from "zod";
 const ALLOWED_CATEGORIES = [
     "tees",
     "hoodies",
+    "hats",
     "tanks",
     "posters",
     "vinyl",
@@ -241,6 +242,7 @@ export async function createProductAction(formData: FormData) {
                 price_cents: Math.round(price * 100),
                 currency: "AUD",
                 is_published: false,
+                fulfillment_flow: "manual_fulfillment",
                 production_status: "generating",
                 moderation_status: "draft",
                 readiness_notes: "Manual product upload in progress.",

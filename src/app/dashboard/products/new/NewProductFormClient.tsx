@@ -185,6 +185,7 @@ export default function NewProductFormClient() {
                 >
                     <option value="tees">Tees</option>
                     <option value="hoodies">Hoodies</option>
+                    <option value="hats">Hats</option>
                     <option value="tanks">Tanks</option>
                     <option value="posters">Posters</option>
                     <option value="vinyl">Vinyl</option>

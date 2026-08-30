@@ -29,13 +29,6 @@ const aisles = [
     note: string;
 }>;
 
-const fallbackProducts = [
-    { title: "Rack loading", price: 39, image: "/merch-placeholder.svg" },
-    { title: "Drop loading", price: 74, image: "/merch-placeholder.svg" },
-    { title: "Scene loading", price: 29, image: "/merch-placeholder.svg" },
-    { title: "Artist loading", price: 59, image: "/merch-placeholder.svg" },
-];
-
 function pickDiverseProducts(products: Product[], limit: number, maxPerArtist: number) {
     const counts = new Map<string, number>();
     const picked: Product[] = [];
@@ -62,9 +55,7 @@ function pickDiverseProducts(products: Product[], limit: number, maxPerArtist: n
         if (product.id) pickedIds.add(product.id);
     }
 
-    if (picked.length === 0) return picked;
-
-    return Array.from({ length: limit }, (_, index) => picked[index % picked.length]);
+    return picked;
 }
 
 export default function RetailSceneFloor() {
@@ -82,17 +73,7 @@ export default function RetailSceneFloor() {
                 const json = await response.json();
                 const categoryProducts = Array.isArray(json.products) ? (json.products as Product[]) : [];
 
-                if (categoryProducts.length > 0) {
-                    if (mounted) setProducts(categoryProducts.slice(0, 24));
-                    return;
-                }
-
-                const fallbackResponse = await fetch("/api/products", { cache: "no-store" });
-                const fallbackJson = await fallbackResponse.json();
-
-                if (mounted) {
-                    setProducts(Array.isArray(fallbackJson.products) ? fallbackJson.products.slice(0, 24) : []);
-                }
+                if (mounted) setProducts(categoryProducts.slice(0, 24));
             } catch {
                 if (mounted) setProducts([]);
             }
@@ -105,7 +86,7 @@ export default function RetailSceneFloor() {
         };
     }, [activeAisle]);
 
-    const railProducts = products ? pickDiverseProducts(products.length > 0 ? products : fallbackProducts, 16, 2) : [];
+    const railProducts = products ? pickDiverseProducts(products, 16, 2) : [];
     const activeAisleLabel = aisles.find((aisle) => aisle.key === activeAisle)?.label ?? "Tees";
 
     return (
@@ -167,7 +148,7 @@ export default function RetailSceneFloor() {
                             Showing {activeAisleLabel}
                         </p>
                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500">
-                            2 rows {"//"} 16 rack picks
+                            {products === null ? "Loading" : `${railProducts.length} rack ${railProducts.length === 1 ? "pick" : "picks"}`}
                         </p>
                     </div>
 

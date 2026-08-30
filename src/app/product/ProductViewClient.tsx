@@ -45,6 +45,11 @@ type RelatedProduct = {
     primary_image_url: string | null;
 };
 
+type ProductSpec = {
+    label: string;
+    value: string;
+};
+
 type Props = {
     product: Product;
     galleryUrls: string[];
@@ -52,6 +57,7 @@ type Props = {
     related: RelatedProduct[];
     priceLabel: string;
     split4Label: string;
+    specs?: ProductSpec[];
     initialWishlisted?: boolean;
     initialArtistSaved?: boolean;
 };
@@ -63,6 +69,7 @@ export default function ProductViewClient({
     related,
     priceLabel,
     split4Label,
+    specs = [],
     initialWishlisted = false,
     initialArtistSaved = false,
 }: Props) {
@@ -117,26 +124,26 @@ export default function ProductViewClient({
 
     return (
         <main className="bg-black text-neutral-100">
-            <section className="relative overflow-hidden border-b border-neutral-800">
+            <section className="relative overflow-hidden border-b border-neutral-800 px-4 py-8 md:px-8 md:py-14">
                 <div className="absolute inset-0">
                     <Image
                         src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=2200&q=80"
                         alt=""
                         fill
                         sizes="100vw"
-                        className="object-cover opacity-45"
+                        className="object-cover opacity-38"
                         priority
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black via-black/82 to-black/58" />
-                    <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.08)_0_1px,transparent_1px_18px)] opacity-30" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black via-black/88 to-black/62" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_18%,rgba(190,242,100,0.16),transparent_28%),linear-gradient(115deg,rgba(255,255,255,0.08)_0_1px,transparent_1px_18px)] opacity-45" />
                 </div>
 
-                <div className="relative grid lg:grid-cols-[1.05fr_0.95fr]">
-                    <div className="order-2 border-b border-neutral-800 p-5 md:p-8 lg:order-1 lg:border-b-0 lg:border-r">
+                <div className="relative mx-auto grid max-w-[1680px] gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-10">
+                    <div className="order-2 border border-neutral-800 bg-black/72 p-5 shadow-[16px_16px_0_rgba(190,242,100,0.08)] md:p-8 lg:order-1">
                         <div>
                             <Link
                                 href={artistHref}
-                                className="group inline-flex items-center gap-3 border border-neutral-700 bg-black/65 p-2 pr-4 hover:border-red-500"
+                                className="group inline-flex items-center gap-3 border border-neutral-700 bg-black/65 p-2 pr-4 hover:border-lime-300"
                             >
                                 {artistHeroUrl ? (
                                     <Image
@@ -155,11 +162,11 @@ export default function ProductViewClient({
                                     <span className="block text-[11px] font-black uppercase text-red-400">
                                         Artist drop
                                     </span>
-                                    <span className="block text-sm font-black text-white group-hover:text-red-200">
+                                    <span className="block text-sm font-black text-white group-hover:text-lime-300">
                                         {product.artist?.display_name ?? "Merch Tent artist"}
                                     </span>
                                 </span>
-                                <ArrowRight className="h-4 w-4 text-red-400 transition group-hover:translate-x-1" />
+                                <ArrowRight className="h-4 w-4 text-lime-300 transition group-hover:translate-x-1" />
                             </Link>
                             {product.artist?.id ? (
                                 <div className="mt-3">
@@ -172,26 +179,26 @@ export default function ProductViewClient({
                                 </div>
                             ) : null}
 
-                            <p className="mt-12 inline-flex bg-red-600 px-3 py-1 text-[11px] font-black uppercase text-white">
+                            <p className="mt-12 inline-flex bg-lime-300 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-black">
                                 Live from the table
                             </p>
-                            <h1 className="mt-5 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            <h1 className="mt-6 max-w-3xl text-4xl font-black uppercase leading-[0.92] md:text-5xl xl:text-6xl">
                                 {product.title}
                             </h1>
-                            <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-300 md:text-base">
+                            <p className="mt-6 max-w-2xl text-sm leading-7 text-neutral-300 md:text-base">
                                 {product.description ||
                                     `A made-after-sale drop from ${product.artist?.display_name ?? "the artist"}, built for fans backing the scene early.`}
                             </p>
 
-                            <div className="mt-6 grid gap-4 border border-neutral-800 bg-neutral-950/85 p-4 md:grid-cols-[1fr_auto] md:items-center">
+                            <div className="mt-8 grid gap-5 border border-neutral-800 bg-neutral-950/85 p-4 md:grid-cols-[1fr_auto] md:items-center md:p-5">
                                 <div>
-                                    <p className="text-[11px] font-black uppercase text-red-400">Made after sale</p>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-lime-300">Made after sale</p>
                                     <p className="mt-1 text-sm leading-6 text-neutral-400">
                                         Pick your colour and size, earn fan credits, and back the artist directly.
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <p className="text-3xl font-black text-white">{priceLabel}</p>
+                                    <p className="text-4xl font-black text-lime-300">{priceLabel}</p>
                                     <SavedToggleButton
                                         type="product"
                                         id={product.id}
@@ -201,7 +208,7 @@ export default function ProductViewClient({
                                 </div>
                             </div>
 
-                            <div className="mt-4">
+                            <div className="mt-6">
                                 <ProductBuyBox
                                     id={product.id}
                                     title={product.title}
@@ -226,20 +233,21 @@ export default function ProductViewClient({
                         </div>
                     </div>
 
-                    <div className="order-1 grid content-start gap-4 border-b border-neutral-800 p-3 md:p-5 lg:order-2 lg:border-b-0 lg:p-8">
+                    <div className="order-1 grid content-start gap-4 lg:order-2">
                         <div
-                            className="group relative isolate aspect-[4/3] scroll-mt-24 overflow-hidden border border-neutral-800 bg-neutral-950 shadow-[0_26px_80px_rgba(0,0,0,0.55)] sm:aspect-square"
+                            className="group relative isolate aspect-[4/3] scroll-mt-24 overflow-hidden border border-neutral-700 bg-[#f2f0ea] shadow-[0_26px_80px_rgba(0,0,0,0.55)] sm:aspect-square"
                             ref={imageRef}
                         >
                             <Image
-                                src="https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1400&q=80"
+                                src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1600&q=80"
                                 alt=""
                                 fill
                                 sizes="(max-width: 1024px) 100vw, 48vw"
-                                className="object-cover opacity-60"
+                                className="object-cover opacity-75"
                             />
-                            <div className="absolute inset-0 bg-black/20" />
-                            <div className="absolute inset-5 bg-white/90 shadow-[0_24px_48px_rgba(0,0,0,0.5)] sm:inset-8 md:inset-12" />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_45%,rgba(190,242,100,0.22),transparent_32%),linear-gradient(180deg,rgba(0,0,0,0.16),rgba(0,0,0,0.42))]" />
+                            <div className="absolute inset-x-[8%] inset-y-[9%] bg-[#f7f4ec]/95 shadow-[0_24px_48px_rgba(0,0,0,0.5)] [clip-path:polygon(2%_1%,98%_0,100%_96%,1%_100%)]" />
+                            <div className="absolute inset-x-[11%] inset-y-[12%] border border-black/10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.72),rgba(255,255,255,0.24)_52%,transparent_74%)]" />
 
                             {activeImage ? (
                                 <Image
@@ -247,7 +255,7 @@ export default function ProductViewClient({
                                     alt={product.title}
                                     fill
                                     sizes="(max-width: 1024px) 100vw, 48vw"
-                                    className="relative z-10 object-contain p-7 drop-shadow-[0_28px_26px_rgba(0,0,0,0.42)] transition duration-500 group-hover:scale-105 sm:p-10 md:p-14"
+                                    className="relative z-10 object-contain p-7 drop-shadow-[0_28px_26px_rgba(0,0,0,0.42)] transition duration-500 group-hover:scale-105 sm:p-10 md:p-16"
                                     priority
                                 />
                             ) : null}
@@ -265,6 +273,9 @@ export default function ProductViewClient({
                             <span className="absolute left-3 top-3 z-30 bg-red-600 px-3 py-1 text-[11px] font-black uppercase text-white md:left-4 md:top-4">
                                 Counter pick
                             </span>
+                            <span className="absolute bottom-4 right-4 z-30 border border-black/15 bg-lime-300 px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-black">
+                                Artist merch
+                            </span>
                         </div>
 
                         <div className="flex gap-2 md:gap-3">
@@ -273,7 +284,7 @@ export default function ProductViewClient({
                                     key={img}
                                     type="button"
                                     onClick={() => setActiveImageOverride(img)}
-                                    className={`relative h-16 w-16 overflow-hidden border bg-neutral-950 transition hover:border-red-500 md:h-20 md:w-20 ${activeImage === img ? "border-red-500" : "border-neutral-700"}`}
+                                    className={`relative h-16 w-16 overflow-hidden border bg-neutral-950 transition hover:border-lime-300 md:h-20 md:w-20 ${activeImage === img ? "border-lime-300" : "border-neutral-700"}`}
                                     aria-label={`Show product view ${i + 1}`}
                                 >
                                     <Image src={img} alt={`Product view ${i + 1}`} fill sizes="80px" className="object-contain bg-white p-2" />
@@ -308,6 +319,33 @@ export default function ProductViewClient({
                     />
                 </div>
             </section>
+
+            {specs.length ? (
+                <section className="border-b border-neutral-800 bg-neutral-950">
+                    <div className="grid lg:grid-cols-[0.75fr_1.25fr]">
+                        <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                            <p className="text-[11px] font-black uppercase text-red-400">Product specs</p>
+                            <h2 className="mt-3 text-4xl font-black uppercase leading-none">
+                                The blank stays backstage.
+                            </h2>
+                            <p className="mt-4 text-sm leading-6 text-neutral-400">
+                                The shop title stays artist-first. These details are here for fit, print and fulfilment
+                                confidence.
+                            </p>
+                        </div>
+                        <div className="grid sm:grid-cols-2">
+                            {specs.map((spec) => (
+                                <div key={spec.label} className="border-b border-r border-neutral-800 p-5">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
+                                        {spec.label}
+                                    </p>
+                                    <p className="mt-2 text-xl font-black uppercase text-white">{spec.value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            ) : null}
 
             <section className="border-b border-neutral-800 bg-black p-5 md:p-8">
                 <ProductReviews productId={product.id} />
@@ -355,7 +393,7 @@ export default function ProductViewClient({
             <div className="fixed bottom-0 inset-x-0 z-40 flex items-center gap-3 border-t border-neutral-800 bg-neutral-950 p-3 md:hidden">
                 <div className="min-w-0 flex-1">
                     <p className="truncate text-xs">{product.title}</p>
-                    <p className="font-bold text-red-400">{priceLabel}</p>
+                    <p className="font-bold text-lime-300">{priceLabel}</p>
                 </div>
 
                 <AddToCartButton
@@ -367,7 +405,7 @@ export default function ProductViewClient({
                     selectedColorLabel={selectedColor?.label ?? null}
                     selectedSize={selectedSize}
                     overrideImage={frontImage ?? selectedColor?.front_image_url ?? null}
-                    className="flex-shrink-0 whitespace-nowrap bg-red-600 px-5"
+                    className="flex-shrink-0 whitespace-nowrap border border-lime-200 bg-lime-300 px-5 py-3 font-black text-black shadow-lg shadow-lime-900/20"
                 />
             </div>
         </main>
@@ -384,8 +422,8 @@ function InfoBlock({
     body: string;
 }) {
     return (
-        <div className="min-h-[250px] border-b border-r border-neutral-800 bg-black p-5 md:p-6">
-            <p className="text-[11px] font-black uppercase text-red-400">{kicker}</p>
+        <div className="min-h-[250px] border-b border-r border-neutral-800 bg-black p-5 transition hover:bg-neutral-950 md:p-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-lime-300">{kicker}</p>
             <h3 className="mt-4 text-3xl font-black uppercase leading-none">{title}</h3>
             <p className="mt-4 text-sm leading-6 text-neutral-400">{body}</p>
         </div>

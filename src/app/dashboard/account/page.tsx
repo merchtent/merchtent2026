@@ -37,7 +37,7 @@ export default async function AccountSettingsPage() {
                             Back to dashboard
                         </Link>
                         <p className="mt-8 text-[11px] font-black uppercase text-red-400">Account controls</p>
-                        <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                        <h1 className="mt-4 max-w-4xl text-3xl font-black uppercase leading-tight md:text-5xl">
                             Keep your login clean.
                         </h1>
                         <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-400 md:text-base">

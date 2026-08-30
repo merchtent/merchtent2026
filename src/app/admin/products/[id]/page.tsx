@@ -10,6 +10,14 @@ function money(cents: number) {
     return `$${((cents ?? 0) / 100).toFixed(2)}`;
 }
 
+function fulfillmentFlowLabel(value?: string | null) {
+    if (value === "supplier_on_demand") return "Supplier on sale";
+    if (value === "manual_fulfillment") return "Manual fulfillment";
+    if (value === "legacy_manual") return "Legacy manual";
+
+    return "Unknown";
+}
+
 type ProductOrderItem = {
     id: string;
     qty?: number | null;
@@ -293,6 +301,16 @@ export default async function ProductPage({
 
                                 <div className="mt-1 capitalize">
                                     {(product.moderation_status ?? "unknown").replaceAll("_", " ")}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="text-xs text-neutral-500">
+                                    Fulfillment Flow
+                                </div>
+
+                                <div className="mt-1">
+                                    {fulfillmentFlowLabel(product.fulfillment_flow)}
                                 </div>
                             </div>
 

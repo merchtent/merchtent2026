@@ -10,6 +10,7 @@ import { requireArtistAction } from "@/lib/auth/artist";
 const ALLOWED_CATEGORIES = [
     "tees",
     "hoodies",
+    "hats",
     "tanks",
     "posters",
     "vinyl",

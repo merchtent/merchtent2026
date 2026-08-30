@@ -92,14 +92,14 @@ export default function ProductBuyBox({
     };
 
     return (
-        <div className="border border-neutral-800 bg-black p-5">
+        <div className="border border-neutral-800 bg-black p-5 md:p-6">
 
             {showHeader ? (
                 <div className="border-b border-neutral-800 pb-5">
                     <h2 className="text-2xl font-black uppercase leading-none">{title}</h2>
 
                     <div className="mt-4">
-                        <div className="text-4xl font-black text-red-400 leading-none">
+                        <div className="text-4xl font-black leading-none text-lime-300">
                             {priceLabel}
                         </div>
                         <div className="mt-1 text-[11px] text-neutral-500">
@@ -126,13 +126,13 @@ export default function ProductBuyBox({
             </div>
 
             {/* 🔥 WHY BUY (POD positioning) */}
-            <div className="mt-5 border border-neutral-800 bg-neutral-950 p-4 text-[12px] text-neutral-300">
-                <p className="text-red-400 font-semibold">
+            <div className="mt-5 border border-lime-300/25 bg-lime-300/[0.06] p-4 text-[12px] text-neutral-300">
+                <p className="font-black uppercase tracking-[0.16em] text-lime-300">
                     Made only when you order
                 </p>
-                <ul className="space-y-1 text-neutral-400">
-                    <li>No mass production</li>
-                    <li>No wasted stock</li>
+                <ul className="mt-3 space-y-1.5 text-neutral-400">
+                    <li>Eco friendly print model</li>
+                    <li>No bulk stock gamble</li>
                     <li>Directly supports the artist</li>
                 </ul>
             </div>
@@ -140,7 +140,7 @@ export default function ProductBuyBox({
             {/* COLOURS */}
             {colors.length > 0 && (
                 <div className="mt-4 space-y-2">
-                    <p className="text-xs text-neutral-400">Colour</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">Colour</p>
 
                     <div className="flex flex-wrap gap-2">
                         {colors.map((c) => {
@@ -150,10 +150,10 @@ export default function ProductBuyBox({
                                 <button
                                     key={c.id}
                                     onClick={() => handleSelectColor(c.id)}
-                                    className={`h-9 px-3 border text-sm flex items-center gap-2 transition-all
+                                    className={`flex h-10 items-center gap-2 border px-3 text-sm font-bold transition-all
                                         ${active
-                                            ? "border-red-500 bg-red-600 text-white"
-                                            : "border-neutral-700 hover:border-red-500"
+                                            ? "border-lime-300 bg-lime-300 text-black"
+                                            : "border-neutral-700 bg-neutral-950 text-neutral-200 hover:border-lime-300"
                                         }`}
                                 >
                                     <span
@@ -175,8 +175,8 @@ export default function ProductBuyBox({
             )}
 
             {/* SIZE */}
-            <div className="mt-4 space-y-2">
-                <p className="text-xs text-neutral-400">Size</p>
+            <div className="mt-5 space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">Size</p>
 
                 <div className="grid grid-cols-5 gap-2">
                     {["XS", "S", "M", "L", "XL", "2XL", "3XL"].map((s) => {
@@ -188,8 +188,8 @@ export default function ProductBuyBox({
                                 onClick={() => handleSelectSize(s)}
                                 className={`h-10 border text-sm font-black transition-all
                                     ${active
-                                        ? "border-red-500 bg-red-600 text-white"
-                                        : "border-neutral-700 hover:border-red-500"
+                                        ? "border-lime-300 bg-lime-300 text-black"
+                                        : "border-neutral-700 bg-neutral-950 text-neutral-200 hover:border-lime-300"
                                     }`}
                             >
                                 {s}
@@ -212,9 +212,9 @@ export default function ProductBuyBox({
                     selectedSize={size}
                     overrideImage={overrideImage ?? selectedColor?.front_image_url ?? null}
                     className="relative h-11 px-6 font-black tracking-wide 
-                    bg-red-600 hover:bg-red-500
-                    text-white shadow-lg shadow-red-900/40 
-                    border border-red-400 w-full 
+                    bg-lime-300 hover:bg-lime-200
+                    text-black shadow-lg shadow-lime-900/20 
+                    border border-lime-200 w-full 
                     transition-all duration-200 active:scale-[0.98]"
                 />
             </div>
@@ -226,7 +226,7 @@ export default function ProductBuyBox({
             </div>
 
             {/* ⚡ URGENCY */}
-            <p className="text-[11px] text-neutral-500 mt-2">
+            <p className="mt-2 text-[11px] text-neutral-500">
                 This design may not be restocked
             </p>
 
@@ -247,7 +247,7 @@ export default function ProductBuyBox({
             </div>
 
             {/* MICRO TRUST */}
-            <p className="text-[10px] text-neutral-500 mt-3 text-center">
+            <p className="mt-3 text-center text-[10px] text-neutral-500">
                 Secure checkout • Printed locally • Tracked delivery
             </p>
 
@@ -266,7 +266,7 @@ function SceneSignal({
 }) {
     return (
         <div className="border-b border-r border-neutral-800 p-3 last:border-r-0 md:border-b-0">
-            <div className="flex items-center gap-2 text-red-400">
+            <div className="flex items-center gap-2 text-lime-300">
                 {icon}
                 <p className="text-xs font-black text-white">{label}</p>
             </div>

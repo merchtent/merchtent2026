@@ -22,11 +22,14 @@ type DashboardLayoutProps = {
 
 const artistNav = [
     { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Profile", href: "/dashboard/artist", icon: UserRound },
     { label: "Products", href: "/dashboard/products", icon: Shirt },
     { label: "Sales", href: "/dashboard/sales", icon: BarChart3 },
-    { label: "Activity", href: "/dashboard/activity", icon: Activity },
     { label: "Payouts", href: "/dashboard/cash-out", icon: Wallet },
-    { label: "Profile", href: "/dashboard/artist", icon: UserRound },
+    { label: "Orders", href: "/dashboard/orders", icon: Receipt },
+    { label: "Credits", href: "/dashboard/credits", icon: BadgePercent },
+    { label: "Saved", href: "/dashboard/saved", icon: Package },
+    { label: "Activity", href: "/dashboard/activity", icon: Activity },
     { label: "Account", href: "/dashboard/account", icon: Settings },
 ];
 

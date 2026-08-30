@@ -60,6 +60,15 @@ export default async function ArtistPage({
 
     const heroUrl = publicStorageUrl("artist-images", artist.hero_image_path);
 
+    const { data: artistPhotos } = await supabase
+        .from("artist_photos")
+        .select("id, image_path, caption")
+        .eq("artist_id", artist.id)
+        .eq("is_featured", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false })
+        .limit(6);
+
     // 🔥 GET PRODUCTS
     const { data: productData } = await publicCatalogProductQuery(supabase
         .from("products")
@@ -204,6 +213,46 @@ export default async function ArtistPage({
 
                 </div>
             </section>
+
+            {artistPhotos?.length ? (
+                <section className="border-y border-neutral-800 bg-black">
+                    <div className="mx-auto max-w-6xl px-4 py-10">
+                        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-500">
+                                    From the band
+                                </p>
+                                <h2 className="mt-2 text-3xl font-black uppercase leading-none md:text-5xl">
+                                    Real photos. Real room.
+                                </h2>
+                            </div>
+                        </div>
+                        <div className="grid gap-px bg-neutral-800 md:grid-cols-3">
+                            {artistPhotos.map((photo) => {
+                                const photoUrl = publicStorageUrl("artist-images", photo.image_path);
+                                if (!photoUrl) return null;
+
+                                return (
+                                    <article key={photo.id} className="bg-neutral-950">
+                                        <div className="relative aspect-[4/3]">
+                                            <Image
+                                                src={photoUrl}
+                                                alt={photo.caption || `${artist.display_name} photo`}
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, 33vw"
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                        <p className="min-h-16 border-t border-neutral-800 p-3 text-sm leading-5 text-neutral-300">
+                                            {photo.caption || `${artist.display_name} behind the drop.`}
+                                        </p>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+            ) : null}
 
             <section className="max-w-6xl mx-auto px-4 py-6">
 

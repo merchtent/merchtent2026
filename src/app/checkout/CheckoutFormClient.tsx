@@ -4,11 +4,13 @@
 import * as React from "react";
 import { placeOrderAndGoToStripe } from "./actions";
 import { useCart } from "@/components/CartProvider";
+import { SHIPPING_METHOD_OPTIONS, type ShippingMethodId } from "@/lib/shipping-methods";
 
-const SHIPPING_OPTIONS = [
-    { id: "standard", label: "Standard (3-7 days)", amount_cents: 1050 },
-    { id: "express", label: "Express (1-3 days)", amount_cents: 1700 },
-] as const;
+const SHIPPING_OPTIONS = SHIPPING_METHOD_OPTIONS.map((option) => ({
+    ...option,
+    label: `${option.label} (${option.deliveryLabel})`,
+    amount_cents: option.checkoutAmountCents,
+}));
 
 const DRAFT_KEY = "checkout_draft_v1";
 
@@ -80,8 +82,8 @@ function saveDraft(d: Draft) {
 type CheckoutFormClientProps = {
     userEmail: string;
     defaultAddress?: Partial<Record<Exclude<keyof Draft, "email" | "voucher">, string | null>> | null;
-    shippingMethod: "standard" | "express";
-    setShippingMethod: (id: "standard" | "express") => void;
+    shippingMethod: ShippingMethodId;
+    setShippingMethod: (id: ShippingMethodId) => void;
 
     setIsSubmitting: (v: boolean) => void;
     isSubmitting: boolean;
@@ -304,7 +306,7 @@ export default function CheckoutFormClient({
                                 name="shipping"
                                 value={opt.id}
                                 checked={shippingMethod === opt.id}
-                                onChange={() => setShippingMethod(opt.id as "standard" | "express")}
+                                onChange={() => setShippingMethod(opt.id)}
                             />
                             <span>{opt.label}</span>
                             <span className="ml-auto text-xs text-neutral-200">

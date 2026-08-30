@@ -8,6 +8,7 @@ import {
     ClipboardList,
     Activity,
     BarChart3,
+    Database,
 } from "lucide-react";
 
 import { requireAdminPage } from "@/lib/auth/admin";
@@ -92,6 +93,14 @@ export default async function AdminLayout({
                     >
                         <ClipboardList className="h-4 w-4" />
                         Fulfillment
+                    </Link>
+
+                    <Link
+                        href="/admin/supplier-catalog"
+                        className="flex items-center gap-3 rounded-xl border border-neutral-800 px-4 py-3 hover:border-red-500 hover:bg-red-500/10 transition"
+                    >
+                        <Database className="h-4 w-4" />
+                        Supplier Catalog
                     </Link>
 
                     <Link

@@ -3,13 +3,9 @@
 
 import { useCart } from "@/components/CartProvider";
 import { publicProductImageUrlOrSource } from "@/lib/storage";
+import { checkoutShippingAmountCents, type ShippingMethodId } from "@/lib/shipping-methods";
 import Image from "next/image";
 import Link from "next/link";
-
-const SHIPPING_OPTIONS = {
-    standard: 1050,
-    express: 1700,
-} as const;
 
 export default function CheckoutSummaryClient({
     shippingMethod,
@@ -17,14 +13,14 @@ export default function CheckoutSummaryClient({
     useMerchCredits,
     merchCreditBalance,
 }: {
-    shippingMethod: "standard" | "express";
+    shippingMethod: ShippingMethodId;
     isSubmitting: boolean;
     useMerchCredits: boolean;
     merchCreditBalance: number;
 }) {
     const { items, subtotal_cents, currency } = useCart();
 
-    const shippingCents = SHIPPING_OPTIONS[shippingMethod] ?? 0;
+    const shippingCents = checkoutShippingAmountCents(shippingMethod);
     const merchCreditDiscountCents =
         useMerchCredits && merchCreditBalance >= 20 && items.length > 0
             ? Math.min(...items.map((item) => item.price_cents))

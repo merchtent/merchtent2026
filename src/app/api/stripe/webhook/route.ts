@@ -21,6 +21,7 @@ import { stripe } from "@/lib/stripe/client";
 import { logger } from "@/lib/logger";
 import { redeemMerchCreditReservation } from "@/lib/merch-credits/checkout";
 import { recordPlatformEvent, type PlatformEventSeverity } from "@/lib/platform-events";
+import { checkoutShippingAmountCents } from "@/lib/shipping-methods";
 import { NO_STORE_HEADERS, noStoreJson } from "@/lib/api/no-store";
 
 function isUuidLike(s: string | null | undefined): s is string {
@@ -644,9 +645,7 @@ export async function POST(req: NextRequest) {
             const voucher =
                 (session.metadata?.voucher as string | undefined) ?? null;
 
-            let shipping_cents = 0;
-            if (shippingMethod === "standard") shipping_cents = 1050;
-            if (shippingMethod === "express") shipping_cents = 1700;
+            const shipping_cents = checkoutShippingAmountCents(shippingMethod);
 
             const subtotal_incl_shipping = Number(session.amount_subtotal ?? 0);
             const subtotal_cents = Math.max(

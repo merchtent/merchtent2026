@@ -9,6 +9,7 @@ import { serverEnv } from "@/lib/env.server";
 import { publicImageUrl } from "@/lib/storage";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
+import type { SupplierRouteChoice } from "@/lib/supplier-routing";
 
 type ProductRow = {
     id: string;
@@ -30,6 +31,11 @@ type DesignRow = {
     printify_product_id: string | null;
     printify_status: string | null;
     updated_at: string | null;
+};
+
+type DesignWithAssetsRow = DesignRow & {
+    print_asset_front_path: string | null;
+    print_asset_back_path: string | null;
 };
 
 type SyncReason = "artist_manual_sync" | "fulfillment_on_demand";
@@ -479,5 +485,201 @@ export async function syncProductToPrintify(input: {
         });
 
         throw new Error("Could not sync product to Printify.");
+    }
+}
+
+export async function ensurePrintifyProductForRoute(input: {
+    productId: string;
+    route: SupplierRouteChoice;
+}) {
+    if (input.route.supplier !== "printify") {
+        throw new Error("Only Printify route creation is implemented.");
+    }
+    if (!input.route.blueprintId || !input.route.printProviderId || !input.route.allProviderVariantIds.length) {
+        throw new Error("Printify route is missing catalogue configuration.");
+    }
+
+    const serviceSupabase = getServiceSupabase();
+    const { data: product, error: productError } = await serviceSupabase
+        .from("products")
+        .select("id, artist_id, title, description, price_cents")
+        .eq("id", input.productId)
+        .maybeSingle();
+
+    if (productError || !product) {
+        throw new Error(productError?.message ?? "Product not found.");
+    }
+
+    const typedProduct = product as ProductRow;
+    const { data: design, error: designError } = await serviceSupabase
+        .from("product_designs")
+        .select("id, artist_id, product_id, print_asset_front_path, print_asset_back_path, printify_blueprint_id, printify_print_provider_id, printify_variant_ids, printify_product_id, printify_status, updated_at")
+        .eq("product_id", typedProduct.id)
+        .eq("artist_id", typedProduct.artist_id)
+        .maybeSingle();
+
+    if (designError || !design) {
+        throw new Error(designError?.message ?? "This product does not have a saved designer record.");
+    }
+
+    const typedDesign = design as DesignWithAssetsRow;
+    const { data: existingRoute, error: routeLookupError } = await serviceSupabase
+        .from("product_supplier_routes")
+        .select("id, supplier_external_product_id, sync_status")
+        .eq("product_design_id", typedDesign.id)
+        .eq("supplier", "printify")
+        .eq("supplier_provider_id", input.route.supplierProviderId)
+        .maybeSingle();
+
+    if (routeLookupError) {
+        throw new Error(routeLookupError.message);
+    }
+    if (existingRoute?.supplier_external_product_id && existingRoute.sync_status === "synced") {
+        return {
+            productDesignId: typedDesign.id,
+            printifyProductId: String(existingRoute.supplier_external_product_id),
+            alreadySynced: true,
+        };
+    }
+
+    if (!typedDesign.print_asset_front_path) {
+        throw new Error("Printify route sync is missing a front print asset.");
+    }
+
+    const { data: routeClaim, error: routeClaimError } = await serviceSupabase
+        .from("product_supplier_routes")
+        .upsert(
+            {
+                product_id: typedProduct.id,
+                product_design_id: typedDesign.id,
+                artist_id: typedProduct.artist_id,
+                supplier: "printify",
+                supplier_product_id: input.route.supplierProductId,
+                supplier_provider_id: input.route.supplierProviderId,
+                supplier_provider_name: input.route.supplierProviderName,
+                sync_status: "syncing",
+                last_error: null,
+            },
+            { onConflict: "product_design_id,supplier,supplier_provider_id" }
+        )
+        .select("id, supplier_external_product_id")
+        .single();
+
+    if (routeClaimError || !routeClaim) {
+        throw new Error(routeClaimError?.message ?? "Could not claim supplier route sync.");
+    }
+    if (routeClaim.supplier_external_product_id) {
+        return {
+            productDesignId: typedDesign.id,
+            printifyProductId: String(routeClaim.supplier_external_product_id),
+            alreadySynced: true,
+        };
+    }
+
+    try {
+        const frontUpload = await uploadPrintifyImageFromUrl(
+            `${typedProduct.id}-${input.route.supplierProviderId}-front.png`,
+            productImagePublicUrl(typedDesign.print_asset_front_path)
+        );
+        const placeholders = [
+            {
+                position: "front",
+                images: [{ id: frontUpload.id, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
+            },
+        ];
+
+        if (typedDesign.print_asset_back_path) {
+            const backUpload = await uploadPrintifyImageFromUrl(
+                `${typedProduct.id}-${input.route.supplierProviderId}-back.png`,
+                productImagePublicUrl(typedDesign.print_asset_back_path)
+            );
+            placeholders.push({
+                position: "back",
+                images: [{ id: backUpload.id, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
+            });
+        }
+
+        const price = Math.max(Number(typedProduct.price_cents ?? 0), 100);
+        const payload: PrintifyCreateProductPayload = {
+            title: typedProduct.title,
+            description: typedProduct.description || typedProduct.title,
+            blueprint_id: input.route.blueprintId,
+            print_provider_id: input.route.printProviderId,
+            variants: input.route.allProviderVariantIds.map((id) => ({
+                id,
+                price,
+                is_enabled: true,
+            })),
+            print_areas: [
+                {
+                    variant_ids: input.route.allProviderVariantIds,
+                    placeholders,
+                },
+            ],
+        };
+
+        const printifyProduct = await createPrintifyProduct(payload);
+        const { error: updateError } = await serviceSupabase
+            .from("product_supplier_routes")
+            .update({
+                supplier_external_product_id: printifyProduct.id,
+                sync_status: "synced",
+                sync_payload: payload,
+                last_error: null,
+                synced_at: new Date().toISOString(),
+            })
+            .eq("id", routeClaim.id);
+
+        if (updateError) {
+            throw new Error(updateError.message);
+        }
+
+        const variantRows = (printifyProduct.variants ?? []).map((variant) => {
+            const parsed = parseVariantTitle(variant.title);
+
+            return {
+                product_id: typedProduct.id,
+                artist_id: typedProduct.artist_id,
+                printify_product_id: printifyProduct.id,
+                printify_variant_id: variant.id,
+                title: variant.title ?? null,
+                size_label: parsed.sizeLabel,
+                color_label: parsed.colorLabel,
+                sku: variant.sku ?? null,
+                is_enabled: Boolean(variant.is_enabled ?? true),
+                raw_variant: {
+                    ...variant,
+                    supplier_provider_id: input.route.supplierProviderId,
+                    supplier_provider_name: input.route.supplierProviderName,
+                    routing_cost_cents: input.route.costCents,
+                },
+            };
+        });
+
+        if (variantRows.length) {
+            const { error: variantsError } = await serviceSupabase
+                .from("product_printify_variants")
+                .upsert(variantRows, { onConflict: "product_id,printify_variant_id" });
+
+            if (variantsError) {
+                throw new Error(variantsError.message);
+            }
+        }
+
+        return {
+            productDesignId: typedDesign.id,
+            printifyProductId: printifyProduct.id,
+            alreadySynced: false,
+        };
+    } catch (error) {
+        const message = formatPrintifyError(error);
+        await serviceSupabase
+            .from("product_supplier_routes")
+            .update({
+                sync_status: "failed",
+                last_error: message,
+            })
+            .eq("id", routeClaim.id);
+        throw new Error("Could not sync routed Printify product.");
     }
 }

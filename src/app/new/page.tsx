@@ -78,12 +78,13 @@ function removeParamUrl({
 export default async function NewThisWeekPage({
     searchParams,
 }: {
-    searchParams?: Promise<{ min?: string; max?: string; sort?: SortOption }>;
+    searchParams?: Promise<{ min?: string; max?: string; sort?: SortOption; q?: string }>;
 }) {
     const sp = (await searchParams) ?? {};
     const min = sp.min;
     const max = sp.max;
     const sort = (sp.sort as SortOption | undefined) ?? "new";
+    const search = String(sp.q ?? "").trim();
 
     const supabase = getPublicServerSupabase();
 
@@ -122,7 +123,7 @@ export default async function NewThisWeekPage({
         query = query.order("created_at", { ascending: false });
     }
 
-    const { data, error } = await query.limit(24);
+    const { data, error } = await query.limit(search ? 80 : 24);
 
     if (error) {
         logger.error("New products page failed to load products", {
@@ -142,7 +143,7 @@ export default async function NewThisWeekPage({
         );
     }
 
-    const products =
+    const allProducts =
         (data as ProductRow[] | null)?.map((p) => {
             const imgs = Array.isArray(p.product_images)
                 ? [...p.product_images].sort((a, b) => (a?.sort_order ?? 999) - (b?.sort_order ?? 999))
@@ -163,6 +164,14 @@ export default async function NewThisWeekPage({
                 createdAt: p.created_at ?? null,
             };
         }) ?? [];
+    const normalizedSearch = search.toLowerCase();
+    const products = normalizedSearch
+        ? allProducts.filter((product) =>
+            [product.title, product.artist, product.category]
+                .filter(Boolean)
+                .some((value) => value.toLowerCase().includes(normalizedSearch))
+        )
+        : allProducts;
 
     const count = products.length;
     const clearAllUrl = "/new";

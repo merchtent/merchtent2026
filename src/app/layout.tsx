@@ -36,6 +36,10 @@ export const metadata: Metadata = {
     siteName: "Merch Tent",
     type: "website",
   },
+  icons: {
+    icon: [{ url: "/images/merch-tent-logo-badge-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/images/merch-tent-logo-badge-192.png", sizes: "192x192", type: "image/png" }],
+  },
 };
 
 export const dynamic = "force-dynamic";

@@ -7,6 +7,14 @@ function money(cents: number) {
     return `$${(cents / 100).toFixed(2)}`;
 }
 
+function fulfillmentFlowLabel(value?: string | null) {
+    if (value === "supplier_on_demand") return "SUPPLIER ON SALE";
+    if (value === "manual_fulfillment") return "MANUAL";
+    if (value === "legacy_manual") return "LEGACY MANUAL";
+
+    return "UNKNOWN FLOW";
+}
+
 type ProductOrderItem = {
     qty?: number | null;
     unit_price_cents?: number | null;
@@ -432,6 +440,21 @@ export default async function ProductsPage() {
                                                     {String(product.moderation_status).replaceAll("_", " ").toUpperCase()}
                                                 </span>
                                             )}
+
+                                            <span
+                                                className="
+                                                    px-2
+                                                    py-1
+                                                    rounded
+                                                    text-xs
+                                                    bg-neutral-800
+                                                    text-neutral-200
+                                                    border
+                                                    border-neutral-700
+                                                "
+                                            >
+                                                {fulfillmentFlowLabel(product.fulfillment_flow)}
+                                            </span>
 
                                         </div>
 

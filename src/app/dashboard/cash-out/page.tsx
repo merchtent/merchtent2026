@@ -64,8 +64,8 @@ export default async function CashOutPage() {
         return (
             <main className="min-h-screen bg-black text-white">
                 <section className="border-b border-neutral-800 p-5 md:p-8">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist backstage</p>
-                    <h1 className="mt-3 text-5xl font-black uppercase leading-none md:text-7xl">Cash out error.</h1>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist dashboard</p>
+                    <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Cash out error.</h1>
                 </section>
                 <div className="p-5 md:p-8">
                     <div className="border border-neutral-800 bg-neutral-950 p-6 text-red-400 flex items-center gap-2">
@@ -97,7 +97,7 @@ export default async function CashOutPage() {
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
                         <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Payout desk</p>
-                        <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                        <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">
                             {artist.display_name} cash out.
                         </h1>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
@@ -122,7 +122,7 @@ export default async function CashOutPage() {
                             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Available to withdraw</p>
                             <PiggyBank className="h-5 w-5 text-red-400" />
                         </div>
-                        <p className="mt-5 text-5xl font-black text-red-400 md:text-7xl">
+                        <p className="mt-5 text-4xl font-black text-red-400 md:text-5xl">
                             {formatCurrency(total)}
                         </p>
                         <p className="mt-3 text-xs text-neutral-500 inline-flex items-center gap-1">

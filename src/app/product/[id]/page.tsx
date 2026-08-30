@@ -5,6 +5,7 @@ import ProductViewClient from "../ProductViewClient";
 import { logger } from "@/lib/logger";
 import { publicImageUrl } from "@/lib/storage";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
+import { getServiceSupabase } from "@/lib/supabase/service";
 
 export const revalidate = 60;
 
@@ -26,6 +27,23 @@ function formatCurrency(cents: number, currency: string) {
 function looksLikeUUID(str: string) {
     return /^[0-9a-fA-F-]{32,36}$/.test(str);
 }
+
+type ProductSpec = {
+    label: string;
+    value: string;
+};
+
+type DesignerProductSpecPayload = {
+    printSideCount?: unknown;
+    catalogProduct?: {
+        name?: unknown;
+        brand?: unknown;
+        model?: unknown;
+        production?: {
+            method?: unknown;
+        };
+    };
+};
 
 export default async function ProductPage({
     params,
@@ -173,6 +191,8 @@ export default async function ProductPage({
                 : null,
         })) ?? [];
 
+    const specs = await loadPublicProductSpecs(product.id);
+
     const priceLabel = formatCurrency(product.price_cents, product.currency);
     const split4Label = formatCurrency(
         Math.ceil(product.price_cents / 4),
@@ -208,6 +228,56 @@ export default async function ProductPage({
             related={relatedFormatted}
             priceLabel={priceLabel}
             split4Label={split4Label}
+            specs={specs}
         />
     );
+}
+
+async function loadPublicProductSpecs(productId: string): Promise<ProductSpec[]> {
+    try {
+        const { data } = await getServiceSupabase()
+            .from("product_designs")
+            .select("design_data")
+            .eq("product_id", productId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        return specsFromDesignData(data?.design_data);
+    } catch {
+        return [];
+    }
+}
+
+function specsFromDesignData(raw: unknown): ProductSpec[] {
+    if (!raw || typeof raw !== "object") return [];
+
+    const design = raw as DesignerProductSpecPayload;
+    const catalogProduct = design.catalogProduct;
+    if (!catalogProduct) return [];
+
+    const brand = stringValue(catalogProduct.brand);
+    const model = stringValue(catalogProduct.model);
+    const name = stringValue(catalogProduct.name);
+    const method = stringValue(catalogProduct.production?.method);
+    const printSideCount = Number(design.printSideCount) === 2 ? 2 : 1;
+    const specs: ProductSpec[] = [];
+
+    if (brand || model) {
+        specs.push({ label: "Garment", value: [brand, model].filter(Boolean).join(" ") });
+    }
+    if (name) {
+        specs.push({ label: "Fit", value: name });
+    }
+    specs.push({
+        label: "Print",
+        value: `${method || "DTG"} ${printSideCount === 2 ? "front and back" : "front"} print`,
+    });
+    specs.push({ label: "Fulfilment", value: "Printed after checkout" });
+
+    return specs;
+}
+
+function stringValue(value: unknown) {
+    return typeof value === "string" ? value.trim() : "";
 }

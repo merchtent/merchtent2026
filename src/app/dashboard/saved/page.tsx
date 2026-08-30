@@ -124,7 +124,7 @@ export default async function DashboardSavedPage() {
                     <Heart className="h-4 w-4" />
                     Saved scene
                 </p>
-                <h1 className="mt-3 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                <h1 className="mt-3 max-w-4xl text-3xl font-black uppercase leading-tight md:text-5xl">
                     Your favourite bands and drops.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">

@@ -15,6 +15,7 @@ import { logger } from "@/lib/logger";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
 import { checkDurableRateLimit } from "@/lib/rate-limit";
 import { recordPlatformEvent } from "@/lib/platform-events";
+import { checkoutShippingAmountCents, normaliseShippingMethodId } from "@/lib/shipping-methods";
 import { stripe } from "@/lib/stripe/client";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -47,11 +48,6 @@ const checkoutDetailsSchema = z.object({
 });
 
 const checkoutAttemptIdSchema = z.uuid();
-
-const shippingMethods = {
-    standard: 1050,
-    express: 1700,
-} as const;
 
 const CHECKOUT_ATTEMPT_LIMIT = 12;
 const CHECKOUT_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
@@ -125,14 +121,8 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
         return { error: "Cart contents are invalid" };
     }
 
-    const requestedShippingMethod = String(
-        formData.get("shipping_method") || "standard"
-    );
-    const shippingMethod =
-        requestedShippingMethod in shippingMethods
-            ? (requestedShippingMethod as keyof typeof shippingMethods)
-            : "standard";
-    const shippingAmountCents = shippingMethods[shippingMethod];
+    const shippingMethod = normaliseShippingMethodId(formData.get("shipping_method"));
+    const shippingAmountCents = checkoutShippingAmountCents(shippingMethod);
     const voucher = details.voucher ?? "";
 
     const productIds = [...new Set(cartItems.map((item) => item.product_id))];

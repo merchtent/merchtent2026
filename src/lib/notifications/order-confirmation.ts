@@ -11,6 +11,7 @@ import {
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 import { recordPlatformEvent, type PlatformEventSeverity } from "@/lib/platform-events";
+import { checkoutShippingAmountCents } from "@/lib/shipping-methods";
 
 type OrderItemRow = {
     id: string;
@@ -50,9 +51,7 @@ type OrderNotificationRow = {
 };
 
 function shippingCentsForMethod(method: string | null | undefined) {
-    if (method === "standard") return 1050;
-    if (method === "express") return 1700;
-    return 0;
+    return checkoutShippingAmountCents(method);
 }
 
 function formatMoney(cents: number, currency: string) {

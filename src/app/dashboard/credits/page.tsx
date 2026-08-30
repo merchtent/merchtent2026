@@ -101,7 +101,7 @@ export default async function DashboardCreditsPage() {
                     <BadgePercent className="h-4 w-4" />
                     Fan credits
                 </p>
-                <h1 className="mt-3 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                <h1 className="mt-3 max-w-4xl text-3xl font-black uppercase leading-tight md:text-5xl">
                     Back bands. Earn tees.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">

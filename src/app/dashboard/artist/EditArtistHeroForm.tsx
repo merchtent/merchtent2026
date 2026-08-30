@@ -3,6 +3,7 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
+import { ArrowRight, ExternalLink, ImageUp, Instagram, Link as LinkIcon, Music, Save, Upload } from "lucide-react";
 import { updateArtistProfile } from "./actions";
 import { getErrorMessage } from "@/lib/errors";
 import { publicStorageUrl } from "@/lib/storage";
@@ -104,172 +105,158 @@ export default function EditArtistHeroForm({
         }
     }
 
+    const links = [
+        { label: "Website", value: websiteUrl, setValue: setWebsiteUrl, placeholder: "https://example.com", icon: ExternalLink },
+        { label: "Instagram", value: instagramUrl, setValue: setInstagramUrl, placeholder: "https://instagram.com/yourband", icon: Instagram },
+        { label: "Spotify", value: spotifyUrl, setValue: setSpotifyUrl, placeholder: "https://open.spotify.com/artist/...", icon: Music },
+        { label: "Bandcamp", value: bandcampUrl, setValue: setBandcampUrl, placeholder: "https://yourband.bandcamp.com", icon: Music },
+        { label: "Facebook", value: facebookUrl, setValue: setFacebookUrl, placeholder: "https://facebook.com/yourband", icon: LinkIcon },
+    ];
+
     return (
-        <form onSubmit={onSubmit} className="space-y-5">
-            {/* Display name (read-only) */}
-            <div>
-                <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                    Artist name
-                </label>
-                <input
-                    value={displayName}
-                    disabled
-                    className="w-full h-10 rounded-lg bg-neutral-900 border border-neutral-800 px-3 text-sm text-neutral-200"
-                />
-                <p className="text-[11px] text-neutral-500 mt-1">
-                    Display name can’t be edited here.
-                </p>
-            </div>
-
-            {/* upload input */}
-            <div>
-                <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                    Upload new hero
-                </label>
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="block w-full text-sm text-neutral-200 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-500"
-                />
-                <p className="text-[11px] text-neutral-500 mt-1">
-                    JPG / PNG. Stored in <code>artist-images</code>. Landscape works best.
-                </p>
-            </div>
-
-            {/* hero path manual */}
-            {/* <div>
-                <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                    Hero image path
-                </label>
-                <input
-                    value={heroPath}
-                    onChange={(e) => setHeroPath(e.target.value)}
-                    placeholder="artist/{id}/hero.jpg"
-                    className="w-full h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm text-neutral-200"
-                />
-                <p className="text-[11px] text-neutral-500 mt-1">
-                    This is saved to <code>artists.hero_image_path</code>.
-                </p>
-            </div> */}
-
-            {/* bio */}
-            <div>
-                <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                    Bio
-                </label>
-                <textarea
-                    rows={4}
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Tell fans about the band, current releases, shows, etc."
-                    className="w-full rounded-lg bg-neutral-950 border border-neutral-700 px-3 py-2 text-sm text-neutral-200"
-                />
-            </div>
-
-            {/* links */}
-            <div className="grid md:grid-cols-2 gap-3">
-                <div>
-                    <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                        Website
-                    </label>
-                    <input
-                        value={websiteUrl}
-                        onChange={(e) => setWebsiteUrl(e.target.value)}
-                        placeholder="https://example.com"
-                        className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm text-neutral-200"
-                    />
+        <form onSubmit={onSubmit} className="space-y-4">
+            <section className="border border-neutral-800 bg-neutral-950">
+                <div className="border-b border-neutral-800 p-4 md:p-5">
+                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-500">
+                        Storefront details
+                    </p>
+                    <h3 className="mt-2 text-2xl font-black uppercase leading-none text-white md:text-3xl">
+                        Artist profile basics.
+                    </h3>
                 </div>
-                <div>
-                    <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                        Facebook
-                    </label>
-                    <input
-                        value={facebookUrl}
-                        onChange={(e) => setFacebookUrl(e.target.value)}
-                        placeholder="https://facebook.com/yourband"
-                        className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm text-neutral-200"
-                    />
-                </div>
-                <div>
-                    <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                        Instagram
-                    </label>
-                    <input
-                        value={instagramUrl}
-                        onChange={(e) => setInstagramUrl(e.target.value)}
-                        placeholder="https://instagram.com/yourband"
-                        className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm text-neutral-200"
-                    />
-                </div>
-                <div>
-                    <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                        Bandcamp
-                    </label>
-                    <input
-                        value={bandcampUrl}
-                        onChange={(e) => setBandcampUrl(e.target.value)}
-                        placeholder="https://yourband.bandcamp.com"
-                        className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm text-neutral-200"
-                    />
-                </div>
-                <div>
-                    <label className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                        Spotify
-                    </label>
-                    <input
-                        value={spotifyUrl}
-                        onChange={(e) => setSpotifyUrl(e.target.value)}
-                        placeholder="https://open.spotify.com/artist/..."
-                        className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm text-neutral-200"
-                    />
-                </div>
-            </div>
 
-            {/* preview */}
-            <div className="space-y-2">
-                <p className="text-[11px] uppercase tracking-wide text-neutral-400">
-                    Preview
-                </p>
-                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-3 min-h-[140px] grid place-items-center">
-                    {previewUrl ? (
-                        <div className="relative w-full h-40 rounded-lg overflow-hidden">
-                            <Image
-                                src={previewUrl}
-                                alt="Hero image preview"
-                                fill
-                                className="object-cover"
-                            />
+                <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
+                    <div className="space-y-5 p-4 md:p-5">
+                        <div>
+                            <label className="block text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+                                Artist name
+                            </label>
+                            <div className="mt-2 border border-neutral-800 bg-black px-4 py-3">
+                                <p className="text-lg font-black uppercase leading-none text-white">{displayName}</p>
+                                <p className="mt-1 text-xs text-neutral-500">Locked here for now.</p>
+                            </div>
                         </div>
-                    ) : (
-                        <p className="text-xs text-neutral-500">
-                            No image. Upload or enter a path to preview.
+
+                        <div>
+                            <label className="block text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+                                Hero image
+                            </label>
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                                <label className="inline-flex cursor-pointer items-center gap-2 bg-red-600 px-4 py-3 text-sm font-black text-white hover:bg-red-500">
+                                    <Upload className="h-4 w-4" />
+                                    {isUploading ? "Uploading..." : "Choose image"}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleFileChange}
+                                        className="sr-only"
+                                    />
+                                </label>
+                                <span className="text-sm text-neutral-500">Landscape stage, room, artwork, or crowd image.</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+                                Artist story
+                            </label>
+                        <textarea
+                            rows={7}
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value)}
+                            placeholder="Tell fans about the band, current releases, shows, tour energy, and why this drop exists."
+                                className="mt-2 w-full border border-neutral-700 bg-black px-4 py-3 text-sm leading-6 text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-red-500"
+                        />
+                        <p className="mt-2 text-xs text-neutral-500">
+                            Keep it human. A few specific details beat a polished press release.
                         </p>
-                    )}
+                    </div>
+                    </div>
+
+                    <aside className="border-t border-neutral-800 bg-black p-4 lg:border-l lg:border-t-0 md:p-5">
+                        <div className="flex items-center gap-2 text-red-400">
+                            <ImageUp className="h-4 w-4" />
+                            <p className="text-[11px] font-black uppercase tracking-[0.18em]">Preview</p>
+                        </div>
+                        <div className="mt-3 border border-neutral-800 bg-neutral-950 p-2">
+                            {previewUrl ? (
+                                <div className="relative h-52 w-full overflow-hidden">
+                                    <Image
+                                        src={previewUrl}
+                                        alt="Hero image preview"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="grid h-52 place-items-center bg-neutral-900 text-center text-xs font-black uppercase tracking-[0.14em] text-neutral-500">
+                                    No hero image yet
+                                </div>
+                            )}
+                        </div>
+                        <p className="mt-3 text-xs leading-5 text-neutral-500">
+                            This is the image used on the public artist page.
+                        </p>
+                    </aside>
                 </div>
-            </div>
+            </section>
+
+            <section className="border border-neutral-800 bg-neutral-950 p-4 md:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 text-red-400">
+                        <LinkIcon className="h-5 w-5" />
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-[0.18em]">Links</p>
+                            <p className="mt-1 text-sm text-neutral-500">Add the places fans should follow or listen.</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {links.map((link) => {
+                            const Icon = link.icon;
+                            return (
+                            <label key={link.label} className="block">
+                                    <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+                                        <Icon className="h-4 w-4 text-red-400" />
+                                        {link.label}
+                                    </span>
+                                    <input
+                                        value={link.value}
+                                        onChange={(e) => link.setValue(e.target.value)}
+                                        placeholder={link.placeholder}
+                                    className="mt-2 h-11 w-full border border-neutral-700 bg-black px-3 text-sm text-neutral-200 outline-none placeholder:text-neutral-700 focus:border-red-500"
+                                    />
+                                </label>
+                            );
+                        })}
+                </div>
+            </section>
 
             {error ? (
-                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">
+                <p className="border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300">
                     {error}
                 </p>
             ) : null}
             {success ? (
-                <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">
+                <p className="border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-bold text-green-300">
                     {success}
                 </p>
             ) : null}
 
-            <button
-                type="submit"
-                disabled={isPending || isUploading}
-                className="inline-flex items-center gap-2 h-10 rounded-xl bg-red-600 hover:bg-red-500 text-white px-6 text-sm font-semibold disabled:opacity-50"
-            >
-                {isPending ? "Saving…" : "Save profile"}
-            </button>
-            {isUploading ? (
-                <p className="text-[11px] text-neutral-500 mt-1">Uploading…</p>
-            ) : null}
+            <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 border border-neutral-800 bg-black/90 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-neutral-500">
+                    {isUploading ? "Uploading hero image..." : "Save changes before checking the public page."}
+                </p>
+                <button
+                    type="submit"
+                    disabled={isPending || isUploading}
+                    className="inline-flex min-h-12 items-center gap-2 bg-red-600 px-6 text-sm font-black uppercase tracking-[0.08em] text-white hover:bg-red-500 disabled:opacity-50"
+                >
+                    <Save className="h-4 w-4" />
+                    {isPending ? "Saving..." : "Save profile"}
+                    <ArrowRight className="h-4 w-4" />
+                </button>
+            </div>
         </form>
     );
 }
