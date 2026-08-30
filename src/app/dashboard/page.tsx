@@ -230,28 +230,27 @@ export default async function DashboardPage() {
             {profile.role === "admin" ? <AdminDashboardCallout /> : null}
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
-                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
+                    <div className="border-b border-neutral-800 p-5 md:p-10 lg:border-b-0 lg:border-r">
+                        <p className="inline-flex bg-lime-300 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-black">
                             Artist dashboard
                         </p>
-                        <h1 className="mt-4 max-w-4xl text-3xl font-black uppercase leading-tight md:text-5xl">
-                            {artist.display_name} dashboard.
+                        <h1 className="mt-5 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            {artist.display_name} control room.
                         </h1>
-                        <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-400 md:text-base">
-                            Launch products, watch sales, manage payout readiness, and keep the boring operational
-                            pieces close enough that nothing gets missed.
+                        <p className="mt-5 max-w-2xl text-base font-bold leading-7 text-neutral-300 md:text-lg">
+                            Build products, publish drops, see what sold, and keep your artist page ready for fans.
                         </p>
                         <div className="mt-7 flex flex-wrap gap-3">
                             <Link
                                 href="/dashboard/products/designer"
-                                className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                                className="inline-flex items-center gap-2 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200"
                             >
                                 Open designer
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
                             <Link
                                 href="/dashboard/sales"
-                                className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black hover:border-red-500"
+                                className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] hover:border-lime-300 hover:text-lime-300"
                             >
                                 Review sales
                             </Link>
@@ -281,57 +280,57 @@ export default async function DashboardPage() {
                 </div>
             </section>
 
-            <section className="border-b border-neutral-800">
+            <section className="border-b border-neutral-800 bg-[#f3f1e8] text-black">
                 <div className="grid md:grid-cols-2 xl:grid-cols-4">
                     <ActionCard
                         href="/dashboard/products/designer"
                         title="Design product"
-                        body="Use the product designer to create mockups and save production-ready design data."
+                        body="Choose a blank, place your artwork, preview the mockup, then save or publish."
                         icon={<PenTool className="h-6 w-6" />}
                         pill="Best next move"
                     />
                     <ActionCard
                         href="/dashboard/products"
-                        title="Product floor"
-                        body="Review live drops, drafts, generated mockups, and launch readiness before fans see the next product."
+                        title="Your products"
+                        body="See drafts and live drops, then check what is ready for the shop."
                         icon={<Shirt className="h-6 w-6" />}
                         pill="Inventory"
                     />
                     <ActionCard
                         href="/dashboard/sales"
-                        title="Orders and sales"
-                        body="Track what sold, what fans paid, and what needs operational attention."
+                        title="Sales"
+                        body="See what fans bought, quantities sold, and artist earnings."
                         icon={<ShoppingCart className="h-6 w-6" />}
                         pill="Revenue"
                     />
                     <ActionCard
                         href="/dashboard/cash-out"
                         title="Payouts"
-                        body="Connect Stripe, review unpaid sales, and request artist cash-outs."
+                        body="Connect Stripe and manage money ready to be paid out."
                         icon={<DollarSign className="h-6 w-6" />}
                         pill="Money"
                     />
                     <ActionCard
                         href="/dashboard/account"
                         title="Account controls"
-                        body="Change email, set a password, reset sessions, or request account closure."
+                        body="Change login details, password, account mode, and closure settings."
                         icon={<Settings className="h-6 w-6" />}
                         pill="Security"
                     />
                 </div>
             </section>
 
-            <section className="border-b border-neutral-800 bg-neutral-950">
+            <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[0.75fr_1.25fr]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">
                             Next best actions
                         </p>
-                        <h2 className="mt-2 text-3xl font-black uppercase leading-tight md:text-4xl">
-                            Keep the drop moving.
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-[0.9] md:text-5xl">
+                            Keep the drop moving without hunting around.
                         </h2>
                         <p className="mt-4 text-sm leading-6 text-neutral-400">
-                            This is the short list for avoiding surprises: product, orders, payout, profile.
+                            The usual artist jobs are gathered here: design, profile, sales, payouts, account.
                         </p>
                     </div>
                     <div className="grid md:grid-cols-2">
@@ -339,7 +338,7 @@ export default async function DashboardPage() {
                         <ChecklistItem href="/dashboard/cash-outs" title="Review payout history" body="Audit what has already been requested or transferred." icon={<Receipt className="h-5 w-5" />} />
                         <ChecklistItem href="/dashboard/artist" title="Tune artist profile" body="Update image, name, and storefront presentation." icon={<UserRound className="h-5 w-5" />} />
                         <ChecklistItem href="/dashboard/images" title="Manage artwork" body="Check product image outputs and mockup assets." icon={<ImageIcon className="h-5 w-5" />} />
-                        <ChecklistItem href="/dashboard/sales" title="Check fulfilment pressure" body="Review recent orders before they become support tickets." icon={<ClipboardCheck className="h-5 w-5" />} />
+                        <ChecklistItem href="/dashboard/sales" title="Review recent sales" body="See what sold, how many units moved, and what fans are backing." icon={<ClipboardCheck className="h-5 w-5" />} />
                         <ChecklistItem href="/dashboard/account" title="Secure account access" body="Manage email, password, sessions, and closure requests." icon={<Settings className="h-5 w-5" />} />
                     </div>
                 </div>
@@ -350,10 +349,10 @@ export default async function DashboardPage() {
                     <div className="border-b border-black/20 p-5 md:p-7 lg:border-b-0 lg:border-r">
                         <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-black">
                             <Megaphone className="h-4 w-4" />
-                            Backstage note
+                            Artist note
                         </p>
                         <h2 className="mt-3 max-w-4xl text-3xl font-black uppercase leading-tight md:text-4xl">
-                            Great drops need clean artwork and boring follow-through.
+                            Start small, keep the product clean, and make the next drop better.
                         </h2>
                     </div>
                     <div className="flex items-center p-5 md:p-7">
@@ -378,7 +377,7 @@ function AdminDashboardCallout() {
         <section className="border-b border-red-500 bg-red-600 text-white">
             <div className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center md:p-6">
                 <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-black/20 bg-black text-white">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-black/20 bg-black text-lime-300">
                         <ShieldCheck className="h-6 w-6" />
                     </div>
                     <div>
@@ -395,7 +394,7 @@ function AdminDashboardCallout() {
                 </div>
                 <Link
                     href="/admin"
-                    className="inline-flex h-12 items-center justify-center gap-2 bg-black px-5 text-sm font-black uppercase text-white hover:bg-neutral-900"
+                    className="inline-flex h-12 items-center justify-center gap-2 bg-lime-300 px-5 text-sm font-black uppercase text-black hover:bg-lime-200"
                 >
                     Go to admin
                     <ArrowRight className="h-4 w-4" />
@@ -438,27 +437,27 @@ function FanDashboard({
             {isAdmin ? <AdminDashboardCallout /> : null}
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
-                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
+                    <div className="border-b border-neutral-800 p-5 md:p-10 lg:border-b-0 lg:border-r">
+                        <p className="inline-flex bg-lime-300 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-black">
                             Fan dashboard
                         </p>
-                        <h1 className="mt-4 max-w-4xl text-3xl font-black uppercase leading-tight md:text-5xl">
-                            {displayName} dashboard.
+                        <h1 className="mt-5 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            {displayName} merch hub.
                         </h1>
-                        <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-400 md:text-base">
+                        <p className="mt-5 max-w-2xl text-base font-bold leading-7 text-neutral-300 md:text-lg">
                             Track orders, watch credits build, and keep close to the artists you backed early.
                         </p>
                         <div className="mt-7 flex flex-wrap gap-3">
                             <Link
                                 href="/new"
-                                className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                                className="inline-flex items-center gap-2 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200"
                             >
                                 Shop new drops
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
                             <Link
                                 href="/artists"
-                                className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black hover:border-red-500"
+                                className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] hover:border-lime-300 hover:text-lime-300"
                             >
                                 Browse artists
                             </Link>
@@ -488,35 +487,35 @@ function FanDashboard({
                 </div>
             </section>
 
-            <section className="border-b border-neutral-800">
+            <section className="border-b border-neutral-800 bg-[#f3f1e8] text-black">
                 <div className="grid lg:grid-cols-[1.25fr_0.75fr]">
-                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                    <div className="border-b border-neutral-300 p-5 md:p-8 lg:border-b-0 lg:border-r">
                         <div className="flex items-center justify-between gap-4">
                             <div>
-                                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-600">
                                     Order history
                                 </p>
                                 <h2 className="mt-2 text-4xl font-black uppercase leading-none">
                                     Recent purchases.
                                 </h2>
                             </div>
-                            <Link href="/dashboard/orders" className="text-sm font-black text-red-400 hover:text-red-300">
+                            <Link href="/dashboard/orders" className="text-sm font-black text-red-600 hover:text-black">
                             View all
                         </Link>
                         </div>
                         {!orders.length ? (
-                            <div className="mt-6 border border-neutral-800 bg-neutral-950 p-6">
-                                <p className="text-sm text-neutral-400">
+                            <div className="mt-6 border border-neutral-300 bg-white p-6">
+                                <p className="text-sm text-neutral-600">
                                     No orders yet. Find a new favourite artist and start earning credits.
                                 </p>
                             </div>
                         ) : (
-                            <div className="mt-6 border border-neutral-800">
+                            <div className="mt-6 border border-neutral-300">
                                 {orders.map((order) => (
                                     <Link
                                         key={order.id}
                                         href={`/dashboard/orders/${order.id}`}
-                                        className="grid gap-3 border-b border-neutral-800 bg-neutral-950 p-4 last:border-b-0 md:grid-cols-[1fr_auto]"
+                                        className="grid gap-3 border-b border-neutral-300 bg-white p-4 last:border-b-0 hover:bg-lime-50 md:grid-cols-[1fr_auto]"
                                     >
                                         <div>
                                             <p className="font-black">Order {order.id.slice(0, 8)}</p>
@@ -528,7 +527,7 @@ function FanDashboard({
                                             <p className="font-black">
                                                 {fmtMoney(order.total_cents ?? 0, order.currency ?? "AUD")}
                                             </p>
-                                            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-red-400">
+                                            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-red-600">
                                                 {order.status ?? "paid"}
                                             </p>
                                         </div>
@@ -538,8 +537,8 @@ function FanDashboard({
                         )}
                     </div>
 
-                    <div className="bg-neutral-950 p-5 md:p-8">
-                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                    <div className="bg-black p-5 text-white md:p-8">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">
                             Merch credits
                         </p>
                         <h2 className="mt-2 text-4xl font-black uppercase leading-none">
@@ -547,7 +546,7 @@ function FanDashboard({
                         </h2>
                         <div className="mt-6 h-3 overflow-hidden bg-neutral-800">
                             <div
-                                className="h-full bg-red-600"
+                                className="h-full bg-lime-300"
                                 style={{ width: `${balanceUnavailable ? 0 : (freeTeeProgress / 20) * 100}%` }}
                             />
                         </div>
@@ -556,7 +555,7 @@ function FanDashboard({
                                 ? "Your orders are available, but the credit balance could not be loaded right now."
                                 : "Earn 3 points for every tee purchased. Every 20 points can be reserved at checkout for a free tee discount."}
                         </p>
-                        <Button asChild className="mt-5 w-full bg-red-600 hover:bg-red-500">
+                        <Button asChild className="mt-5 w-full bg-lime-300 font-black text-black hover:bg-lime-200">
                             <Link href="/artists">Browse artists</Link>
                         </Button>
                     </div>
@@ -635,7 +634,7 @@ function FanDashboard({
                 </div>
             </section>
 
-            <section id="saved-scene" className="border-b border-neutral-800 bg-neutral-950">
+            <section id="saved-scene" className="border-b border-neutral-800 bg-[#f3f1e8] text-black">
                 <div className="grid md:grid-cols-2 xl:grid-cols-4">
                     <FanAccountCard
                         title="Saved artists"
@@ -664,10 +663,10 @@ function FanDashboard({
                 </div>
             </section>
 
-            <section className="border-b border-neutral-800 bg-neutral-950 p-5 md:p-8">
+            <section className="border-b border-neutral-800 bg-black p-5 md:p-8">
                 <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">
                             Account controls
                         </p>
                         <h2 className="mt-2 text-4xl font-black uppercase leading-none">
@@ -679,7 +678,7 @@ function FanDashboard({
                     </div>
                     <Link
                         href="/dashboard/account"
-                        className="inline-flex items-center justify-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black text-white hover:border-red-500"
+                        className="inline-flex items-center justify-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black text-white hover:border-lime-300 hover:text-lime-300"
                     >
                         Open account settings
                         <ArrowRight className="h-4 w-4" />
@@ -702,10 +701,10 @@ function FanAccountCard({
     href: string;
 }) {
     return (
-        <div className="border-b border-r border-neutral-800 p-5 md:p-6">
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">{title}</p>
-            <p className="mt-4 min-h-[4.5rem] text-sm leading-6 text-neutral-400">{body}</p>
-            <Link href={href} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-white hover:text-red-300">
+        <div className="border-b border-r border-neutral-300 p-5 md:p-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-600">{title}</p>
+            <p className="mt-4 min-h-[4.5rem] text-sm leading-6 text-neutral-700">{body}</p>
+            <Link href={href} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-black hover:text-red-600">
                 {action}
                 <ArrowRight className="h-4 w-4" />
             </Link>
@@ -729,22 +728,22 @@ function ActionCard({
     return (
         <Link
             href={href}
-            className="group block min-h-[270px] border-b border-r border-neutral-800 bg-neutral-950 p-5 transition hover:bg-neutral-900 md:p-6"
+            className="group block min-h-[270px] border-b border-r border-neutral-300 bg-[#f3f1e8] p-5 text-black transition hover:bg-white md:p-6"
         >
             <div className="flex h-full flex-col justify-between">
                 <div>
                     <div className="flex items-center justify-between gap-4">
                         {pill && (
-                            <span className="bg-red-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white">
+                            <span className="bg-lime-300 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-black">
                                 {pill}
                             </span>
                         )}
-                        <span className="text-red-400">{icon}</span>
+                        <span className="text-red-600">{icon}</span>
                     </div>
                     <h3 className="mt-8 text-3xl font-black uppercase leading-none">{title}</h3>
-                    <p className="mt-4 text-sm leading-6 text-neutral-400">{body}</p>
+                    <p className="mt-4 text-sm leading-6 text-neutral-700">{body}</p>
                 </div>
-                <span className="mt-8 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-red-400">
+                <span className="mt-8 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-red-600">
                     Open
                     <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </span>
@@ -765,10 +764,10 @@ function ChecklistItem({
     icon: React.ReactNode;
 }) {
     return (
-        <Link href={href} className="group border-b border-r border-neutral-800 bg-black p-5 transition hover:bg-neutral-950">
+        <Link href={href} className="group border-b border-r border-neutral-800 bg-neutral-950 p-5 transition hover:bg-black">
             <div className="flex items-start justify-between gap-4">
-                <div className="text-red-400">{icon}</div>
-                <ArrowRight className="h-4 w-4 text-neutral-600 transition group-hover:translate-x-1 group-hover:text-red-400" />
+                <div className="text-lime-300">{icon}</div>
+                <ArrowRight className="h-4 w-4 text-neutral-600 transition group-hover:translate-x-1 group-hover:text-lime-300" />
             </div>
             <h3 className="mt-7 text-xl font-black uppercase leading-none">{title}</h3>
             <p className="mt-3 text-sm leading-6 text-neutral-400">{body}</p>
@@ -788,10 +787,10 @@ function StatCard({
     icon?: React.ReactNode;
 }) {
     return (
-        <div className="border-b border-r border-neutral-800 bg-neutral-950 p-4 md:p-6">
+        <div className="border-b border-r border-neutral-800 bg-[#f3f1e8] p-4 text-black md:p-6">
             <div className="flex items-center justify-between gap-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</p>
-                {icon && <div className="text-red-400">{icon}</div>}
+                {icon && <div className="text-red-600">{icon}</div>}
             </div>
             <p className="mt-5 text-2xl font-black md:text-4xl">{value}</p>
             {sub && <p className="mt-2 text-xs leading-5 text-neutral-500">{sub}</p>}

@@ -28,7 +28,7 @@ export default function PrintifySyncButton({ productId }: { productId: string })
                 type="button"
                 onClick={handleClick}
                 disabled={isPending}
-                className="inline-flex items-center gap-1 rounded-md border border-sky-500/40 px-2 py-1 text-xs text-sky-200 hover:bg-sky-500/10 disabled:opacity-50"
+                className="inline-flex items-center gap-1 border border-lime-300/50 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-lime-200 hover:bg-lime-300/10 disabled:opacity-50"
             >
                 <RefreshCw className={`h-3.5 w-3.5 ${isPending ? "animate-spin" : ""}`} />
                 {isPending ? "Syncing" : "Sync Printify"}

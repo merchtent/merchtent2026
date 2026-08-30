@@ -61,26 +61,26 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     const displayName = profile?.display_name ?? user?.email ?? "Guest";
 
     return (
-        <div className="min-h-screen bg-black text-white lg:grid lg:grid-cols-[260px_1fr]">
-            <aside className="border-b border-neutral-800 bg-neutral-950 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
-                <div className="border-b border-neutral-800 p-4 md:p-5">
-                    <p className="text-[10px] font-black uppercase text-red-400">Dashboard</p>
-                    <h2 className="mt-2 text-2xl font-black uppercase leading-none">
+        <div className="min-h-screen bg-black text-white lg:grid lg:grid-cols-[280px_1fr]">
+            <aside className="border-b border-neutral-800 bg-black lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
+                <div className="border-b border-neutral-800 p-4 md:p-6">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-lime-300">Dashboard</p>
+                    <h2 className="mt-2 text-3xl font-black uppercase leading-[0.9]">
                         {isArtist ? "Artist control" : "Fan account"}
                     </h2>
                     <p className="mt-2 truncate text-xs text-neutral-500">{displayName}</p>
                 </div>
 
-                <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-2 lg:overflow-visible">
+                <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-2 lg:overflow-visible lg:p-4">
                     {nav.map((item) => {
                         const Icon = item.icon;
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className="inline-flex shrink-0 items-center gap-3 border border-neutral-800 bg-black px-4 py-3 text-sm font-black text-neutral-200 transition hover:border-red-500 hover:bg-red-600/10 hover:text-white lg:flex"
+                                className="inline-flex shrink-0 items-center gap-3 border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm font-black text-neutral-200 transition hover:border-lime-300 hover:bg-lime-300 hover:text-black lg:flex"
                             >
-                                <Icon className="h-4 w-4 text-red-400" />
+                                <Icon className="h-4 w-4 text-red-500" />
                                 {item.label}
                             </Link>
                         );
@@ -90,7 +90,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                 <div className="hidden border-t border-neutral-800 p-4 lg:block">
                     <Link
                         href="/"
-                        className="inline-flex w-full items-center justify-center border border-neutral-800 px-4 py-3 text-sm font-black text-neutral-300 hover:border-red-500 hover:text-white"
+                        className="inline-flex w-full items-center justify-center border border-neutral-800 bg-[#f3f1e8] px-4 py-3 text-sm font-black text-black hover:bg-lime-300"
                     >
                         View storefront
                     </Link>

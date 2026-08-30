@@ -22,16 +22,25 @@ export default async function EditArtistPage({
     }
 
     return (
-        <div className="max-w-4xl py-6 px-6">
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">Artist editor</p>
 
-            <h1 className="text-4xl font-black mb-8">
-                Edit Artist
-            </h1>
+                <h1 className="mt-2 text-5xl font-black uppercase leading-[0.88] md:text-7xl">
+                    Edit artist.
+                </h1>
 
-            <ArtistEditForm
-                artist={artist}
-            />
+                <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                    Update the public artist profile, socials and store-facing artist metadata.
+                </p>
+            </section>
 
-        </div>
+            <section className="max-w-5xl p-5 md:p-8">
+                <ArtistEditForm
+                    artist={artist}
+                />
+            </section>
+
+        </main>
     );
 }

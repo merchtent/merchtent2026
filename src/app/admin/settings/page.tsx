@@ -57,63 +57,71 @@ export default async function SettingsPage() {
         });
 
     return (
-        <div className="space-y-8 py-6 px-6">
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
 
             {/* HEADER */}
 
             <div>
 
-                <h1 className="text-4xl font-black">
-                    Settings
+                <p className="text-xs font-black uppercase tracking-[0.32em] text-[#b7ff3c]">
+                    Platform settings
+                </p>
+
+                <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.9] tracking-tight md:text-7xl">
+                    Settings desk.
                 </h1>
 
-                <p className="text-neutral-400 mt-2">
-                    Store configuration and platform management.
+                <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                    Store content, scene modules, fan proof, mailing list health and platform-wide controls.
                 </p>
 
             </div>
+            </section>
 
             {/* PLATFORM HEALTH */}
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <section className="grid border-b border-neutral-800 md:grid-cols-3">
 
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div className="border-b border-neutral-800 p-5 md:border-b-0 md:border-r">
 
-                    <div className="text-sm text-neutral-500">
+                    <div className="text-xs font-black uppercase tracking-[0.24em] text-neutral-500">
                         Artists
                     </div>
 
-                    <div className="text-3xl font-black mt-2">
+                    <div className="mt-2 text-4xl font-black text-[#b7ff3c]">
                         {artists?.length ?? 0}
                     </div>
 
                 </div>
 
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div className="border-b border-neutral-800 p-5 md:border-b-0 md:border-r">
 
-                    <div className="text-sm text-neutral-500">
+                    <div className="text-xs font-black uppercase tracking-[0.24em] text-neutral-500">
                         Products
                     </div>
 
-                    <div className="text-3xl font-black mt-2">
+                    <div className="mt-2 text-4xl font-black text-[#b7ff3c]">
                         {products?.length ?? 0}
                     </div>
 
                 </div>
 
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div className="p-5">
 
-                    <div className="text-sm text-neutral-500">
+                    <div className="text-xs font-black uppercase tracking-[0.24em] text-neutral-500">
                         Orders
-                    </div>``
+                    </div>
 
-                    <div className="text-3xl font-black mt-2">
+                    <div className="mt-2 text-4xl font-black text-[#b7ff3c]">
                         {orders?.length ?? 0}
                     </div>
 
                 </div>
 
-            </div>
+            </section>
+
+            <section className="space-y-8 p-5 md:p-8">
 
             <TourDatesSection
                 tourDates={tourDates ?? []}
@@ -132,13 +140,13 @@ export default async function SettingsPage() {
 
             {/* FAN SHOUTS */}
 
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+            <div className="border border-neutral-800 bg-neutral-950 p-5 md:p-6">
 
                 <div className="flex items-center justify-between mb-6">
 
                     <div>
 
-                        <h2 className="text-xl font-black">
+                        <h2 className="text-2xl font-black uppercase tracking-tight">
                             Fan Shouts
                         </h2>
 
@@ -167,9 +175,9 @@ export default async function SettingsPage() {
 
                 </div>
 
-                <div className="grid md:grid-cols-4 gap-4 mb-6">
+                <div className="mb-6 grid gap-px bg-neutral-800 p-px md:grid-cols-4">
 
-                    <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+                    <div className="bg-black p-4">
 
                         <div className="text-xs text-neutral-500">
                             Published
@@ -185,7 +193,7 @@ export default async function SettingsPage() {
 
                     </div>
 
-                    <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+                    <div className="bg-black p-4">
 
                         <div className="text-xs text-neutral-500">
                             Hidden
@@ -201,7 +209,7 @@ export default async function SettingsPage() {
 
                     </div>
 
-                    <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+                    <div className="bg-black p-4">
 
                         <div className="text-xs text-neutral-500">
                             Average Rating
@@ -224,7 +232,7 @@ export default async function SettingsPage() {
 
                     </div>
 
-                    <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+                    <div className="bg-black p-4">
 
                         <div className="text-xs text-neutral-500">
                             5 Star Reviews
@@ -381,13 +389,13 @@ export default async function SettingsPage() {
 
             {/* NEWSLETTER */}
 
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+            <div className="border border-neutral-800 bg-neutral-950 p-5 md:p-6">
 
                 <div className="flex items-center justify-between mb-6">
 
                     <div>
 
-                        <h2 className="text-xl font-black">
+                        <h2 className="text-2xl font-black uppercase tracking-tight">
                             Newsletter Subscribers
                         </h2>
 
@@ -420,9 +428,9 @@ export default async function SettingsPage() {
 
                 </div>
 
-                <div className="grid md:grid-cols-4 gap-4 mb-6">
+                <div className="mb-6 grid gap-px bg-neutral-800 p-px md:grid-cols-4">
 
-                    <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+                    <div className="bg-black p-4">
 
                         <div className="text-xs text-neutral-500">
                             Total Subscribers
@@ -434,7 +442,7 @@ export default async function SettingsPage() {
 
                     </div>
 
-                    <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+                    <div className="bg-black p-4">
 
                         <div className="text-xs text-neutral-500">
                             Subscribed
@@ -450,7 +458,7 @@ export default async function SettingsPage() {
 
                     </div>
 
-                    <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+                    <div className="bg-black p-4">
 
                         <div className="text-xs text-neutral-500">
                             Unsubscribed
@@ -466,7 +474,7 @@ export default async function SettingsPage() {
 
                     </div>
 
-                    <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+                    <div className="bg-black p-4">
 
                         <div className="text-xs text-neutral-500">
                             Bounced
@@ -484,7 +492,7 @@ export default async function SettingsPage() {
 
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-neutral-800">
+                <div className="overflow-x-auto border border-neutral-800">
 
                     <table className="w-full">
 
@@ -606,5 +614,6 @@ export default async function SettingsPage() {
 
             </div>
 
-        </div>);
+            </section>
+        </main>);
 }

@@ -142,7 +142,7 @@ export default function EditArtistHeroForm({
                                 Hero image
                             </label>
                             <div className="mt-2 flex flex-wrap items-center gap-3">
-                                <label className="inline-flex cursor-pointer items-center gap-2 bg-red-600 px-4 py-3 text-sm font-black text-white hover:bg-red-500">
+                                <label className="inline-flex cursor-pointer items-center gap-2 bg-lime-300 px-4 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200">
                                     <Upload className="h-4 w-4" />
                                     {isUploading ? "Uploading..." : "Choose image"}
                                     <input
@@ -165,7 +165,7 @@ export default function EditArtistHeroForm({
                             value={bio}
                             onChange={(e) => setBio(e.target.value)}
                             placeholder="Tell fans about the band, current releases, shows, tour energy, and why this drop exists."
-                                className="mt-2 w-full border border-neutral-700 bg-black px-4 py-3 text-sm leading-6 text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-red-500"
+                                className="mt-2 w-full border border-neutral-700 bg-black px-4 py-3 text-sm leading-6 text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-lime-300"
                         />
                         <p className="mt-2 text-xs text-neutral-500">
                             Keep it human. A few specific details beat a polished press release.
@@ -174,7 +174,7 @@ export default function EditArtistHeroForm({
                     </div>
 
                     <aside className="border-t border-neutral-800 bg-black p-4 lg:border-l lg:border-t-0 md:p-5">
-                        <div className="flex items-center gap-2 text-red-400">
+                        <div className="flex items-center gap-2 text-[#b7ff3c]">
                             <ImageUp className="h-4 w-4" />
                             <p className="text-[11px] font-black uppercase tracking-[0.18em]">Preview</p>
                         </div>
@@ -203,7 +203,7 @@ export default function EditArtistHeroForm({
 
             <section className="border border-neutral-800 bg-neutral-950 p-4 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 text-red-400">
+                    <div className="flex items-center gap-3 text-[#b7ff3c]">
                         <LinkIcon className="h-5 w-5" />
                         <div>
                             <p className="text-[11px] font-black uppercase tracking-[0.18em]">Links</p>
@@ -217,14 +217,14 @@ export default function EditArtistHeroForm({
                             return (
                             <label key={link.label} className="block">
                                     <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
-                                        <Icon className="h-4 w-4 text-red-400" />
+                                        <Icon className="h-4 w-4 text-[#b7ff3c]" />
                                         {link.label}
                                     </span>
                                     <input
                                         value={link.value}
                                         onChange={(e) => link.setValue(e.target.value)}
                                         placeholder={link.placeholder}
-                                    className="mt-2 h-11 w-full border border-neutral-700 bg-black px-3 text-sm text-neutral-200 outline-none placeholder:text-neutral-700 focus:border-red-500"
+                                    className="mt-2 h-11 w-full border border-neutral-700 bg-black px-3 text-sm text-neutral-200 outline-none placeholder:text-neutral-700 focus:border-lime-300"
                                     />
                                 </label>
                             );
@@ -250,7 +250,7 @@ export default function EditArtistHeroForm({
                 <button
                     type="submit"
                     disabled={isPending || isUploading}
-                    className="inline-flex min-h-12 items-center gap-2 bg-red-600 px-6 text-sm font-black uppercase tracking-[0.08em] text-white hover:bg-red-500 disabled:opacity-50"
+                    className="inline-flex min-h-12 items-center gap-2 bg-lime-300 px-6 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200 disabled:opacity-50"
                 >
                     <Save className="h-4 w-4" />
                     {isPending ? "Saving..." : "Save profile"}

@@ -96,7 +96,7 @@ export default async function CashOutPage() {
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Payout desk</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Payout desk</p>
                         <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">
                             {artist.display_name} cash out.
                         </h1>
@@ -120,9 +120,9 @@ export default async function CashOutPage() {
                     <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5 md:p-8">
                         <div className="flex items-center justify-between">
                             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Available to withdraw</p>
-                            <PiggyBank className="h-5 w-5 text-red-400" />
+                            <PiggyBank className="h-5 w-5 text-[#b7ff3c]" />
                         </div>
-                        <p className="mt-5 text-4xl font-black text-red-400 md:text-5xl">
+                        <p className="mt-5 text-4xl font-black text-[#b7ff3c] md:text-5xl">
                             {formatCurrency(total)}
                         </p>
                         <p className="mt-3 text-xs text-neutral-500 inline-flex items-center gap-1">
@@ -146,7 +146,7 @@ export default async function CashOutPage() {
                         <div>
                             <div className="flex items-center gap-2">
                                 <CreditCard className="h-4 w-4 text-neutral-300" />
-                                <h2 className="text-lg font-black">Stripe payout account</h2>
+                            <h2 className="text-lg font-black uppercase tracking-tight">Stripe payout account</h2>
                             </div>
                             <p className="mt-2 text-sm text-neutral-400">
                                 {payoutsReady
@@ -175,7 +175,7 @@ export default async function CashOutPage() {
                 {cashOutItems.length ? (
                     <div className="overflow-hidden border border-neutral-800">
                         <div className="border-b border-neutral-800 bg-neutral-950 px-4 py-4">
-                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">Unpaid items</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#b7ff3c]">Unpaid items</p>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">

@@ -93,7 +93,7 @@ function StatusPill({ status }: { status?: string | null }) {
                     ? "bg-red-500/15 text-red-300 border-red-500/30"
                 : "bg-neutral-500/10 text-neutral-300 border-neutral-700";
     return (
-        <span className={`px-2 py-0.5 text-[11px] rounded-full border ${styles}`}>
+        <span className={`border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.08em] ${styles}`}>
             {status ? status.charAt(0).toUpperCase() + status.slice(1) : "—"}
         </span>
     );
@@ -184,7 +184,7 @@ export default async function CashOutsPage() {
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Payout ledger</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Payout ledger</p>
                         <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">
                             {artist.display_name} payouts.
                         </h1>
@@ -195,7 +195,7 @@ export default async function CashOutsPage() {
                     <div className="flex items-end p-5 md:p-8">
                         <Link
                             href="/dashboard/cash-out"
-                            className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                            className="inline-flex items-center gap-2 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200"
                         >
                             Request cash out <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -232,7 +232,7 @@ export default async function CashOutsPage() {
                 ) : (
                     <div className="overflow-hidden border border-neutral-800">
                         <div className="border-b border-neutral-800 bg-neutral-950 px-4 py-4">
-                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">Payout history</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#b7ff3c]">Payout history</p>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
@@ -323,9 +323,9 @@ function SummaryCard({
         <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5 md:p-6">
             <div className="flex items-center justify-between">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</p>
-                {icon && <div className="text-red-400">{icon}</div>}
+                {icon && <div className="text-[#b7ff3c]">{icon}</div>}
             </div>
-            <p className={`mt-5 text-2xl font-black md:text-4xl ${accent ? "text-red-400" : "text-white"}`}>
+            <p className={`mt-5 text-2xl font-black md:text-4xl ${accent ? "text-[#b7ff3c]" : "text-white"}`}>
                 {value}
             </p>
         </div>

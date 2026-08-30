@@ -120,7 +120,7 @@ export default async function DashboardSavedPage() {
     return (
         <main className="min-h-screen bg-black text-white">
             <section className="border-b border-neutral-800 bg-black p-5 md:p-8">
-                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-[#b7ff3c]">
                     <Heart className="h-4 w-4" />
                     Saved scene
                 </p>
@@ -167,12 +167,12 @@ export default async function DashboardSavedPage() {
                 <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
                     <div className="flex items-end justify-between gap-4">
                         <div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#b7ff3c]">
                                 Saved artists
                             </p>
                             <h2 className="mt-2 text-4xl font-black uppercase leading-none">Bands you&apos;re backing.</h2>
                         </div>
-                        <Link href="/artists" className="hidden text-sm font-black text-red-400 hover:text-red-300 md:inline-flex">
+                        <Link href="/artists" className="hidden text-sm font-black text-[#b7ff3c] hover:text-lime-200 md:inline-flex">
                             Find more
                         </Link>
                     </div>
@@ -222,12 +222,12 @@ export default async function DashboardSavedPage() {
                 <div className="p-5 md:p-8">
                     <div className="flex items-end justify-between gap-4">
                         <div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#b7ff3c]">
                                 Wishlist
                             </p>
                             <h2 className="mt-2 text-4xl font-black uppercase leading-none">Drops for later.</h2>
                         </div>
-                        <Link href="/new" className="hidden text-sm font-black text-red-400 hover:text-red-300 md:inline-flex">
+                        <Link href="/new" className="hidden text-sm font-black text-[#b7ff3c] hover:text-lime-200 md:inline-flex">
                             Shop more
                         </Link>
                     </div>
@@ -255,7 +255,7 @@ export default async function DashboardSavedPage() {
                                             </div>
                                         </div>
                                         <div className="border-t border-neutral-800 p-4">
-                                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">
+                                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#b7ff3c]">
                                                 {artist?.display_name ?? "Artist drop"}
                                             </p>
                                             <h3 className="mt-2 line-clamp-2 min-h-11 font-black leading-tight">
@@ -288,7 +288,7 @@ export default async function DashboardSavedPage() {
 
             <section className="grid gap-5 p-5 md:grid-cols-[1fr_auto] md:items-center md:p-8">
                 <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#b7ff3c]">
                         Need a hand?
                     </p>
                     <h2 className="mt-2 text-4xl font-black uppercase leading-none">Orders, credits, or account help.</h2>
@@ -298,7 +298,7 @@ export default async function DashboardSavedPage() {
                 </div>
                 <Link
                     href="/contact"
-                    className="inline-flex items-center justify-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                    className="inline-flex items-center justify-center gap-2 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200"
                 >
                     Contact support <Search className="h-4 w-4" />
                 </Link>
@@ -322,10 +322,10 @@ function SavedCard({
 }) {
     return (
         <div className="border-b border-neutral-800 bg-neutral-950 p-5 md:p-6 xl:border-b-0 xl:border-r xl:last:border-r-0">
-            <div className="text-red-400">{icon}</div>
+            <div className="text-[#b7ff3c]">{icon}</div>
             <h2 className="mt-5 text-3xl font-black uppercase leading-none">{title}</h2>
             <p className="mt-4 min-h-24 text-sm leading-6 text-neutral-400">{body}</p>
-            <Link href={href} className="mt-6 inline-flex items-center gap-2 text-sm font-black text-red-400 hover:text-red-300">
+            <Link href={href} className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[#b7ff3c] hover:text-lime-200">
                 {action} <ArrowRight className="h-4 w-4" />
             </Link>
         </div>
@@ -347,7 +347,7 @@ function EmptyPanel({
         <div className="border border-neutral-800 bg-black p-5">
             <p className="text-xl font-black uppercase">{title}</p>
             <p className="mt-2 text-sm leading-6 text-neutral-400">{body}</p>
-            <Link href={href} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-red-400 hover:text-red-300">
+            <Link href={href} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-[#b7ff3c] hover:text-lime-200">
                 {action} <ArrowRight className="h-4 w-4" />
             </Link>
         </div>

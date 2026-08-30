@@ -222,7 +222,7 @@ function StatusPill({ status }: { status?: string | null }) {
                 : "border-yellow-500/30 bg-yellow-500/15 text-yellow-200";
 
     return (
-        <span className={`rounded-full border px-2 py-0.5 text-[11px] ${styles}`}>
+        <span className={`border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${styles}`}>
             {normalized.replaceAll("_", " ")}
         </span>
     );
@@ -238,10 +238,10 @@ function Panel({
     children: React.ReactNode;
 }) {
     return (
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900">
+        <section className="border border-neutral-800 bg-neutral-950">
             <div className="flex items-center gap-2 border-b border-neutral-800 px-5 py-4">
                 <span className="text-red-400">{icon}</span>
-                <h2 className="font-black">{title}</h2>
+                <h2 className="font-black uppercase">{title}</h2>
             </div>
             <div className="p-5">{children}</div>
         </section>
@@ -421,28 +421,30 @@ export default async function AdminOperationsPage() {
         queryFailures.length;
 
     return (
-        <main className="min-h-screen bg-neutral-950 px-6 py-8 text-neutral-100">
-            <div className="mb-6 flex items-center justify-between gap-4">
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.25em] text-red-500">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">
                         Operations
                     </p>
-                    <h1 className="mt-1 text-3xl font-black">Production Health</h1>
-                    <p className="mt-1 text-neutral-400">
+                    <h1 className="mt-2 text-5xl font-black uppercase leading-[0.88] md:text-7xl">Production health.</h1>
+                    <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
                         Failed or stale operations, webhook state, notifications, and audit events.
                     </p>
                 </div>
-                <div className="rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm">
+                <div className="border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm font-black uppercase tracking-[0.08em]">
                     {attentionCount === 0 ? (
-                        <CheckCircle2 className="mr-2 inline h-4 w-4 text-green-400" />
+                        <CheckCircle2 className="mr-2 inline h-4 w-4 text-lime-300" />
                     ) : (
                         <AlertTriangle className="mr-2 inline h-4 w-4 text-red-400" />
                     )}
                     {attentionCount} need attention
                 </div>
             </div>
+            </section>
 
-            <div className="grid gap-4 md:grid-cols-10">
+            <section className="grid border-b border-neutral-800 md:grid-cols-3 xl:grid-cols-6">
                 <Metric label="Order exceptions" value={exceptions.length} />
                 <Metric label="Fulfillment SLA" value={fulfillmentExceptions.length} />
                 <Metric label="Printify sync" value={printifyOrderSyncExceptions.length} />
@@ -455,9 +457,9 @@ export default async function AdminOperationsPage() {
                 <Metric label="Severe events" value={severePlatformEventCount} />
                 <Metric label="Recent events" value={platformEvents.length} />
                 <Metric label="Dashboard query errors" value={queryFailures.length} />
-            </div>
+            </section>
 
-            <div className="mt-8 grid gap-6 xl:grid-cols-2">
+            <section className="grid gap-px bg-neutral-800 p-px xl:grid-cols-2">
                 {queryFailures.length > 0 ? (
                     <Panel title="Dashboard Data Issues" icon={<AlertTriangle className="h-4 w-4" />}>
                         <div className="space-y-3">
@@ -922,16 +924,16 @@ export default async function AdminOperationsPage() {
                         </div>
                     )}
                 </Panel>
-            </div>
+            </section>
         </main>
     );
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
     return (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">{label}</div>
-            <div className="mt-2 text-3xl font-black">{value}</div>
+        <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</div>
+            <div className="mt-3 text-3xl font-black text-lime-300">{value}</div>
         </div>
     );
 }

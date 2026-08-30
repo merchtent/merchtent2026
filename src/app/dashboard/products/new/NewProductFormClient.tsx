@@ -127,7 +127,7 @@ export default function NewProductFormClient() {
             className="space-y-6"
         >
             {submitError ? (
-                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <p className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-bold text-red-200">
                     {submitError}
                 </p>
             ) : null}
@@ -146,7 +146,7 @@ export default function NewProductFormClient() {
                     required
                     disabled={isSubmitting}
                     placeholder="e.g. Tour Tee — Melbourne"
-                    className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-700 px-3 text-sm text-neutral-100 placeholder:text-neutral-500 disabled:opacity-70"
+                    className="h-12 w-full border border-neutral-700 bg-black px-4 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:border-lime-300 disabled:opacity-70"
                 />
             </div>
 
@@ -164,7 +164,7 @@ export default function NewProductFormClient() {
                     rows={4}
                     disabled={isSubmitting}
                     placeholder="Fabric, fit, print style, any disclaimers, etc."
-                    className="w-full rounded-xl bg-neutral-950 border border-neutral-700 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 disabled:opacity-70"
+                    className="w-full border border-neutral-700 bg-black px-4 py-3 text-sm leading-6 text-neutral-100 outline-none placeholder:text-neutral-500 focus:border-lime-300 disabled:opacity-70"
                 />
                 <p className="mt-1 text-[11px] text-neutral-500">
                     Tip: keep it short; details like care/shipping can live in accordions
@@ -181,7 +181,7 @@ export default function NewProductFormClient() {
                     name="category"
                     disabled={isSubmitting}
                     defaultValue={"tees"}
-                    className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-700 px-3 text-sm text-neutral-100"
+                    className="h-12 w-full border border-neutral-700 bg-black px-4 text-sm text-neutral-100 outline-none focus:border-lime-300"
                 >
                     <option value="tees">Tees</option>
                     <option value="hoodies">Hoodies</option>
@@ -212,7 +212,7 @@ export default function NewProductFormClient() {
                         required
                         disabled={isSubmitting}
                         placeholder="39.00"
-                        className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-700 px-3 text-sm text-neutral-100 placeholder:text-neutral-500 disabled:opacity-70"
+                        className="h-12 w-full border border-neutral-700 bg-black px-4 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:border-lime-300 disabled:opacity-70"
                     />
                 </div>
                 <div className="flex items-end">
@@ -225,7 +225,7 @@ export default function NewProductFormClient() {
                             type="checkbox"
                             name="publish"
                             disabled={isSubmitting}
-                            className="h-4 w-4 rounded border-neutral-600 bg-neutral-950 accent-red-500"
+                            className="h-4 w-4 border-neutral-600 bg-neutral-950 accent-lime-300"
                         />
                         <span className="text-sm">Publish now</span>
                     </label>
@@ -257,14 +257,14 @@ export default function NewProductFormClient() {
                             setPrimaryPreview(null);
                         }
                     }}
-                    className="block text-sm text-neutral-100 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-neutral-800 file:text-neutral-100 file:hover:bg-neutral-700 file:cursor-pointer disabled:opacity-70"
+                    className="block text-sm text-neutral-100 file:mr-3 file:border-0 file:bg-lime-300 file:px-3 file:py-2 file:font-black file:text-black file:hover:bg-lime-200 file:cursor-pointer disabled:opacity-70"
                 />
                 <p className="mt-1 text-[11px] text-neutral-500">
                     Recommended: 1200×1500 JPG/PNG, under 2MB.
                 </p>
 
                 {primaryPreview ? (
-                    <div className="mt-3 inline-block relative rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 w-40 h-40">
+                    <div className="relative mt-3 inline-block h-40 w-40 overflow-hidden border border-neutral-700 bg-black">
                         <Image
                             src={primaryPreview}
                             alt="Primary preview"
@@ -284,7 +284,7 @@ export default function NewProductFormClient() {
                                 ) as HTMLInputElement | null;
                                 if (input) input.value = "";
                             }}
-                            className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/70 grid place-items-center text-white"
+                            className="absolute right-1 top-1 grid h-6 w-6 place-items-center bg-black/70 text-white"
                         >
                             <X className="h-3 w-3" />
                         </button>
@@ -316,14 +316,14 @@ export default function NewProductFormClient() {
                             setBackPreview(null);
                         }
                     }}
-                    className="block text-sm text-neutral-100 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-neutral-800 file:text-neutral-100 file:hover:bg-neutral-700 file:cursor-pointer disabled:opacity-70"
+                    className="block text-sm text-neutral-100 file:mr-3 file:border-0 file:bg-lime-300 file:px-3 file:py-2 file:font-black file:text-black file:hover:bg-lime-200 file:cursor-pointer disabled:opacity-70"
                 />
                 <p className="mt-1 text-[11px] text-neutral-500">
                     If supplied, your product card will hover-swap to this image.
                 </p>
 
                 {backPreview ? (
-                    <div className="mt-3 inline-block relative rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 w-40 h-40">
+                    <div className="relative mt-3 inline-block h-40 w-40 overflow-hidden border border-neutral-700 bg-black">
                         <Image
                             src={backPreview}
                             alt="Back preview"
@@ -342,7 +342,7 @@ export default function NewProductFormClient() {
                                 ) as HTMLInputElement | null;
                                 if (input) input.value = "";
                             }}
-                            className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/70 grid place-items-center text-white"
+                            className="absolute right-1 top-1 grid h-6 w-6 place-items-center bg-black/70 text-white"
                         >
                             <X className="h-3 w-3" />
                         </button>
@@ -351,7 +351,7 @@ export default function NewProductFormClient() {
             </div>
 
             {/* Colours (dynamic) */}
-            <div className="rounded-xl border border-neutral-800 bg-neutral-950/30 p-4 space-y-3">
+            <div className="space-y-3 border border-neutral-800 bg-black p-4">
                 <div className="flex items-center justify-between gap-2">
                     <p className="text-xs uppercase tracking-wide text-neutral-400">
                         Colours (optional)
@@ -360,7 +360,7 @@ export default function NewProductFormClient() {
                         type="button"
                         onClick={addColorRow}
                         disabled={isSubmitting}
-                        className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1 rounded-lg disabled:opacity-70"
+                        className="bg-neutral-900 px-3 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-neutral-800 disabled:opacity-70"
                     >
                         + Add colour
                     </button>
@@ -369,7 +369,7 @@ export default function NewProductFormClient() {
                 {colors.map((c, idx) => (
                     <div
                         key={idx}
-                        className="grid md:grid-cols-5 gap-3 items-start rounded-lg bg-neutral-950/40 p-3"
+                        className="grid items-start gap-3 border border-neutral-800 bg-neutral-950 p-3 md:grid-cols-5"
                     >
                         {/* hex */}
                         <div>
@@ -381,7 +381,7 @@ export default function NewProductFormClient() {
                                 defaultValue={c.hex}
                                 disabled={isSubmitting}
                                 placeholder="#111111"
-                                className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm disabled:opacity-70 text-white"
+                                className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm text-white outline-none focus:border-lime-300 disabled:opacity-70"
                             />
                         </div>
                         {/* label */}
@@ -394,7 +394,7 @@ export default function NewProductFormClient() {
                                 defaultValue={c.label}
                                 disabled={isSubmitting}
                                 placeholder="Black"
-                                className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm disabled:opacity-70 text-white"
+                                className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm text-white outline-none focus:border-lime-300 disabled:opacity-70"
                             />
                         </div>
 
@@ -406,7 +406,7 @@ export default function NewProductFormClient() {
 
                             <label
                                 htmlFor={`color_${idx}_front`}
-                                className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white cursor-pointer ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                                className={`inline-flex cursor-pointer items-center gap-2 bg-neutral-900 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-white hover:bg-neutral-800 ${isSubmitting ? "cursor-not-allowed opacity-70" : ""
                                     }`}
                             >
                                 <ImageIcon className="h-3.5 w-3.5" />
@@ -427,7 +427,7 @@ export default function NewProductFormClient() {
                             />
 
                             {c.frontPreview ? (
-                                <div className="mt-2 w-20 h-20 rounded-md overflow-hidden border border-neutral-700 relative bg-neutral-900">
+                                <div className="relative mt-2 h-20 w-20 overflow-hidden border border-neutral-700 bg-black">
                                     <Image
                                         src={c.frontPreview}
                                         alt={`${c.label ?? "colour"} front`}
@@ -439,7 +439,7 @@ export default function NewProductFormClient() {
                                     <button
                                         type="button"
                                         onClick={() => handleColorFileChange(idx, "front", null)}
-                                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/70 text-white grid place-items-center"
+                                        className="absolute right-1 top-1 grid h-5 w-5 place-items-center bg-black/70 text-white"
                                     >
                                         <X className="h-3 w-3" />
                                     </button>
@@ -455,7 +455,7 @@ export default function NewProductFormClient() {
 
                             <label
                                 htmlFor={`color_${idx}_back`}
-                                className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white cursor-pointer ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                                className={`inline-flex cursor-pointer items-center gap-2 bg-neutral-900 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-white hover:bg-neutral-800 ${isSubmitting ? "cursor-not-allowed opacity-70" : ""
                                     }`}
                             >
                                 <ImageIcon className="h-3.5 w-3.5" />
@@ -476,7 +476,7 @@ export default function NewProductFormClient() {
                             />
 
                             {c.backPreview ? (
-                                <div className="mt-2 w-20 h-20 rounded-md overflow-hidden border border-neutral-700 relative bg-neutral-900">
+                                <div className="relative mt-2 h-20 w-20 overflow-hidden border border-neutral-700 bg-black">
                                     <Image
                                         src={c.backPreview}
                                         alt={`${c.label ?? "colour"} back`}
@@ -488,7 +488,7 @@ export default function NewProductFormClient() {
                                     <button
                                         type="button"
                                         onClick={() => handleColorFileChange(idx, "back", null)}
-                                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/70 text-white grid place-items-center"
+                                        className="absolute right-1 top-1 grid h-5 w-5 place-items-center bg-black/70 text-white"
                                     >
                                         <X className="h-3 w-3" />
                                     </button>
@@ -538,8 +538,7 @@ export default function NewProductFormClient() {
                 <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="relative h-11 px-6 font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                    style={{ clipPath: "polygon(1% 0,100% 0,99% 100%,0 100%)" }}
+                    className="h-12 border border-lime-300 bg-lime-300 px-6 font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isSubmitting ? (
                         <>

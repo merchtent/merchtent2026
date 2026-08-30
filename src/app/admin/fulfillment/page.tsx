@@ -57,7 +57,7 @@ function StatusPill({ status }: { status: string }) {
                 : "border-yellow-500/30 bg-yellow-500/15 text-yellow-200";
 
     return (
-        <span className={`rounded-full border px-2 py-0.5 text-[11px] ${styles}`}>
+        <span className={`border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${styles}`}>
             {status.replace("_", " ")}
         </span>
     );
@@ -129,43 +129,46 @@ export default async function AdminFulfillmentPage() {
     }
 
     return (
-        <main className="min-h-screen bg-neutral-950 px-6 py-8 text-neutral-100">
-            <div className="mb-6 flex items-center justify-between gap-4">
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.25em] text-red-500">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">
                         Operations
                     </p>
-                    <h1 className="mt-1 text-3xl font-black">Fulfillment</h1>
-                    <p className="mt-1 text-neutral-400">
-                        Internal Merch Tent production queue.
+                    <h1 className="mt-2 text-5xl font-black uppercase leading-[0.88] md:text-7xl">Fulfilment</h1>
+                    <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                        Internal Merch Tent production queue, supplier handoff state and exception handling.
                     </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <Link
                         href="/api/admin/fulfillment/export"
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-700 px-4 py-3 text-sm font-semibold text-neutral-100 transition hover:border-red-500 hover:text-red-200"
+                        className="inline-flex items-center justify-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-neutral-100 transition hover:border-lime-300 hover:text-lime-300"
                     >
                         <Download className="h-4 w-4" />
                         Export CSV
                     </Link>
-                    <div className="rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm">
+                    <div className="border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm font-black uppercase tracking-[0.08em]">
                         <ClipboardList className="mr-2 inline h-4 w-4 text-red-400" />
                         {rows.filter((job) => job.status !== "completed" && job.status !== "cancelled").length} open
                     </div>
                 </div>
             </div>
+            </section>
 
             {error ? (
-                <div className="flex items-center gap-2 rounded-xl border border-red-900 bg-red-950/20 p-6 text-red-300">
+                <div className="m-5 flex items-center gap-2 border border-red-900 bg-red-950/20 p-6 text-red-300 md:m-8">
                     <AlertTriangle className="h-4 w-4" />
                     Could not load fulfillment jobs. Check platform logs for details.
                 </div>
             ) : rows.length === 0 ? (
-                <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
+                <div className="m-5 border border-neutral-800 bg-neutral-950 p-6 text-neutral-300 md:m-8">
                     No fulfillment jobs yet.
                 </div>
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900">
+                <section className="p-5 md:p-8">
+                <div className="overflow-x-auto border border-neutral-800 bg-neutral-950">
                     {printifySyncError ? (
                         <div className="flex items-center gap-2 border-b border-red-900 bg-red-950/20 px-4 py-3 text-sm text-red-300">
                             <AlertTriangle className="h-4 w-4" />
@@ -173,7 +176,7 @@ export default async function AdminFulfillmentPage() {
                         </div>
                     ) : null}
                     <table className="w-full text-sm">
-                        <thead className="bg-neutral-950 text-left text-neutral-400">
+                        <thead className="bg-black text-left text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
                             <tr>
                                 <th className="p-4">Order</th>
                                 <th className="p-4">Customer</th>
@@ -194,11 +197,11 @@ export default async function AdminFulfillmentPage() {
                                 const printifyError = truncateOperationalMessage(printifySync?.error_message);
 
                                 return (
-                                    <tr key={job.id} className="border-t border-neutral-800">
+                                    <tr key={job.id} className="border-t border-neutral-800 transition hover:bg-neutral-900">
                                         <td className="p-4">
                                             <Link
                                                 href={`/admin/orders/${job.order_id}`}
-                                                className="font-semibold text-red-300 underline"
+                                                className="font-black text-lime-300 hover:text-white"
                                             >
                                                 {job.orders?.order_number ?? job.order_id}
                                             </Link>
@@ -247,6 +250,7 @@ export default async function AdminFulfillmentPage() {
                         </tbody>
                     </table>
                 </div>
+                </section>
             )}
         </main>
     );

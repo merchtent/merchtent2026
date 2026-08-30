@@ -93,7 +93,7 @@ export default async function SalesPage({
         return (
             <main className="min-h-screen bg-black text-white">
                 <section className="border-b border-neutral-800 p-5 md:p-8">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist dashboard</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Artist dashboard</p>
                     <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Sales error.</h1>
                 </section>
                 <div className="p-5 md:p-8">
@@ -129,7 +129,7 @@ export default async function SalesPage({
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Sales board</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Sales board</p>
                         <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">
                             {artist.display_name} sales.
                         </h1>
@@ -172,7 +172,7 @@ export default async function SalesPage({
                 ) : (
                     <div className="overflow-hidden border border-neutral-800">
                         <div className="border-b border-neutral-800 bg-neutral-950 px-4 py-4">
-                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">Recent sales</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#b7ff3c]">Recent sales</p>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
@@ -268,9 +268,9 @@ function SummaryCard({
         <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5 md:p-6">
             <div className="flex items-center justify-between">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</p>
-                {icon && <div className="text-red-400">{icon}</div>}
+                {icon && <div className="text-[#b7ff3c]">{icon}</div>}
             </div>
-            <p className={`mt-5 text-2xl font-black md:text-4xl ${accent ? "text-red-400" : "text-white"}`}>
+            <p className={`mt-5 text-2xl font-black md:text-4xl ${accent ? "text-[#b7ff3c]" : "text-white"}`}>
                 {value}
             </p>
         </div>

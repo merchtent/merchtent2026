@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
     ArrowRight,
     BadgePercent,
@@ -180,10 +181,23 @@ export default async function NewThisWeekPage({
 
     return (
         <main className="min-h-screen bg-black text-white">
-            <section className="border-b border-neutral-800 bg-[radial-gradient(circle_at_15%_20%,rgba(239,68,68,0.22),transparent_30%),linear-gradient(135deg,#050505,#111_55%,#030303)]">
-                <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-[1fr_0.88fr] md:px-6 md:py-14 lg:px-8">
+            <section className="relative overflow-hidden border-b border-neutral-800 bg-black">
+                <div className="absolute inset-0">
+                    <Image
+                        src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=2200&q=80"
+                        alt=""
+                        fill
+                        sizes="100vw"
+                        priority
+                        className="object-cover opacity-48"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black via-black/82 to-black/45" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_20%,rgba(190,242,100,0.18),transparent_24%),radial-gradient(circle_at_20%_25%,rgba(239,0,0,0.22),transparent_28%),linear-gradient(115deg,rgba(255,255,255,0.06)_0_1px,transparent_1px_28px)] opacity-60" />
+                </div>
+
+                <div className="relative mx-auto grid max-w-[1680px] gap-8 px-4 py-12 md:grid-cols-[1fr_0.9fr] md:px-8 md:py-16">
                     <div className="flex flex-col justify-between">
-                        <nav className="text-xs font-black uppercase tracking-[0.18em] text-neutral-500">
+                        <nav className="text-xs font-black uppercase tracking-[0.18em] text-neutral-400">
                             <Link href="/" className="hover:text-white">
                                 Home
                             </Link>
@@ -192,41 +206,41 @@ export default async function NewThisWeekPage({
                         </nav>
 
                         <div className="mt-10">
-                            <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.32em] text-red-400">
+                            <p className="inline-flex items-center gap-2 bg-lime-300 px-3 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-black">
                                 <Flame className="h-4 w-4" />
                                 Fresh from the table
                             </p>
-                            <h1 className="mt-4 max-w-4xl text-6xl font-black uppercase leading-[0.84] tracking-normal md:text-8xl">
+                            <h1 className="mt-5 max-w-5xl text-6xl font-black uppercase leading-[0.86] tracking-tight md:text-8xl xl:text-9xl">
                                 New drops live now.
                             </h1>
-                            <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-300 md:text-base">
+                            <p className="mt-6 max-w-2xl text-base leading-7 text-neutral-200 md:text-lg">
                                 The newest tees, hoodies, vinyl, posters and scene pieces from artists building their table
                                 on Merch Tent.
                             </p>
                         </div>
 
-                        <div className="mt-8 grid gap-px border border-neutral-800 bg-neutral-800 sm:grid-cols-3">
+                        <div className="mt-8 grid gap-px bg-neutral-800 sm:grid-cols-3">
                             <HeroMetric icon={<PackageCheck className="h-4 w-4" />} label="Low-waste print" value="Made after sale" />
                             <HeroMetric icon={<BadgePercent className="h-4 w-4" />} label="Fan credits" value="Earn on buys" />
                             <HeroMetric icon={<CalendarDays className="h-4 w-4" />} label="Freshness" value={`${count} live picks`} />
                         </div>
                     </div>
 
-                    <div className="border border-neutral-800 bg-black p-3">
-                        <div className="border border-neutral-800 bg-neutral-950 p-4">
+                    <div className="border border-neutral-800 bg-black/75 p-3 shadow-[18px_18px_0_rgba(190,242,100,0.08)] backdrop-blur">
+                        <div className="bg-[#f2f0ea] p-5 text-black">
                             <div className="flex items-center justify-between gap-4">
-                                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-600">
                                     Counter picks
                                 </p>
-                                <span className="bg-red-600 px-2 py-1 text-[10px] font-black uppercase text-white">
+                                <span className="bg-lime-300 px-2 py-1 text-[10px] font-black uppercase text-black">
                                     New
                                 </span>
                             </div>
-                            <div className="mt-4 grid grid-cols-3 gap-2">
+                            <div className="mt-4 grid grid-cols-3 gap-px bg-black/15">
                                 {heroProducts.length ? (
                                     heroProducts.map((product) => (
-                                        <Link key={product.id} href={`/product/${product.slug}`} className="group block">
-                                            <div className="relative aspect-[3/4] overflow-hidden bg-white">
+                                        <Link key={product.id} href={`/product/${product.slug}`} className="group block bg-white p-2">
+                                            <div className="relative aspect-[3/4] overflow-hidden bg-[#f7f4ec]">
                                                 <Image
                                                     src={product.image}
                                                     alt={product.title}
@@ -235,10 +249,10 @@ export default async function NewThisWeekPage({
                                                     className="object-contain p-3 transition-transform duration-500 group-hover:scale-105"
                                                 />
                                             </div>
-                                            <p className="mt-2 line-clamp-2 text-xs font-black leading-tight">
+                                            <p className="mt-2 line-clamp-2 text-xs font-black leading-tight text-black">
                                                 {product.title}
                                             </p>
-                                            <p className="mt-1 text-xs text-red-400">{product.price}</p>
+                                            <p className="mt-1 text-xs font-black text-lime-700">{product.price}</p>
                                         </Link>
                                     ))
                                 ) : (
@@ -252,9 +266,10 @@ export default async function NewThisWeekPage({
                 </div>
             </section>
 
-            <section className="border-b border-neutral-800 bg-neutral-950">
-                <div className="mx-auto max-w-7xl px-4 py-5 md:px-6 lg:px-8">
-                    <form method="GET" action="/new" className="grid gap-3 md:grid-cols-[1fr_1fr_1.2fr_auto] md:items-end">
+            <section className="border-b border-black/15 bg-[#f2f0ea] text-black">
+                <div className="mx-auto max-w-[1680px] px-4 py-8 md:px-8 md:py-10">
+                    <form method="GET" action="/new" className="grid gap-3 border border-black/15 bg-white p-4 md:grid-cols-[1fr_1fr_1.2fr_auto] md:items-end">
+                        {search ? <input type="hidden" name="q" value={search} /> : null}
                         <FilterField label="Min price">
                             <input
                                 name="min"
@@ -262,7 +277,7 @@ export default async function NewThisWeekPage({
                                 pattern="[0-9]*"
                                 defaultValue={min ?? ""}
                                 placeholder="0"
-                                className="w-full border border-neutral-700 bg-black px-3 py-3 text-sm text-white outline-none placeholder:text-neutral-600 focus:border-red-500"
+                                className="w-full border border-black/20 bg-[#f2f0ea] px-3 py-3 text-sm font-black text-black outline-none placeholder:text-neutral-400 focus:border-lime-500"
                             />
                         </FilterField>
                         <FilterField label="Max price">
@@ -272,14 +287,14 @@ export default async function NewThisWeekPage({
                                 pattern="[0-9]*"
                                 defaultValue={max ?? ""}
                                 placeholder="200"
-                                className="w-full border border-neutral-700 bg-black px-3 py-3 text-sm text-white outline-none placeholder:text-neutral-600 focus:border-red-500"
+                                className="w-full border border-black/20 bg-[#f2f0ea] px-3 py-3 text-sm font-black text-black outline-none placeholder:text-neutral-400 focus:border-lime-500"
                             />
                         </FilterField>
                         <FilterField label="Sort">
                             <select
                                 name="sort"
                                 defaultValue={sort}
-                                className="w-full border border-neutral-700 bg-black px-3 py-3 text-sm text-white outline-none focus:border-red-500"
+                                className="w-full border border-black/20 bg-[#f2f0ea] px-3 py-3 text-sm font-black text-black outline-none focus:border-lime-500"
                             >
                                 <option value="new">Newest first</option>
                                 <option value="plh">Price: Low to high</option>
@@ -289,14 +304,14 @@ export default async function NewThisWeekPage({
                         <div className="flex gap-2">
                             <button
                                 type="submit"
-                                className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black uppercase tracking-wide text-white hover:bg-red-500"
+                                className="inline-flex items-center gap-2 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-wide text-black hover:bg-lime-200"
                             >
                                 Apply <SlidersHorizontal className="h-4 w-4" />
                             </button>
                             {hasFilters ? (
                                 <Link
                                     href={clearAllUrl}
-                                    className="inline-flex items-center border border-neutral-700 px-4 py-3 text-sm font-black uppercase tracking-wide text-white hover:border-red-500"
+                                    className="inline-flex items-center border border-black/20 px-4 py-3 text-sm font-black uppercase tracking-wide text-black hover:border-red-600 hover:text-red-600"
                                 >
                                     Clear
                                 </Link>
@@ -305,10 +320,11 @@ export default async function NewThisWeekPage({
                     </form>
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 border border-neutral-800 bg-black px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-neutral-300">
-                            <Filter className="h-3.5 w-3.5 text-red-400" />
+                        <span className="inline-flex items-center gap-2 border border-black/15 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-neutral-700">
+                            <Filter className="h-3.5 w-3.5 text-red-600" />
                             {count} result{count === 1 ? "" : "s"}
                         </span>
+                        {search ? <FilterChip href="/new">Search: {search}</FilterChip> : null}
                         {min ? <FilterChip href={removeParamUrl({ key: "min", min, max, sort })}>Min ${Number(min)}</FilterChip> : null}
                         {max ? <FilterChip href={removeParamUrl({ key: "max", min, max, sort })}>Max ${Number(max)}</FilterChip> : null}
                         {sort !== "new" ? (
@@ -320,51 +336,54 @@ export default async function NewThisWeekPage({
                 </div>
             </section>
 
-            <section className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
-                <div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <section className="bg-[#f2f0ea] px-4 py-12 text-black md:px-8 md:py-16">
+                <div className="mx-auto max-w-[1680px]">
+                <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.32em] text-red-400">
+                        <p className="text-[11px] font-black uppercase tracking-[0.32em] text-red-600">
                             Latest drop
                         </p>
-                        <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-6xl">
+                        <h2 className="mt-2 text-5xl font-black uppercase leading-none md:text-7xl">
                             Just hit the rack.
                         </h2>
                     </div>
                     <Link
                         href="/artists"
-                        className="inline-flex items-center gap-2 self-start border border-neutral-700 px-5 py-3 text-sm font-black uppercase tracking-wide text-white hover:border-red-500 hover:text-red-400"
+                        className="inline-flex items-center gap-2 self-start border border-black/20 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-black hover:bg-lime-300"
                     >
                         View artists <ArrowRight className="h-4 w-4" />
                     </Link>
                 </div>
 
                 {!products.length ? (
-                    <div className="border border-neutral-800 bg-neutral-950 p-6">
-                        <p className="text-neutral-300">No new products yet.</p>
+                    <div className="border border-black/15 bg-white p-8">
+                        <p className="text-3xl font-black uppercase leading-none">No new products yet.</p>
+                        <p className="mt-3 text-sm text-neutral-600">The rack is empty for this search/filter combo.</p>
                     </div>
                 ) : (
-                    <div className="grid gap-px border border-neutral-800 bg-neutral-800 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-px border border-black/15 bg-black/20 sm:grid-cols-2 lg:grid-cols-4">
                         {products.map((product, index) => (
                             <ProductTile key={product.id} product={product} index={index} />
                         ))}
                     </div>
                 )}
+                </div>
             </section>
         </main>
     );
 }
 
-function HeroMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function HeroMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
     return (
         <div className="bg-black p-4">
-            <div className="text-red-400">{icon}</div>
+            <div className="text-lime-300">{icon}</div>
             <p className="mt-3 text-sm font-black text-white">{label}</p>
             <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-neutral-500">{value}</p>
         </div>
     );
 }
 
-function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+function FilterField({ label, children }: { label: string; children: ReactNode }) {
     return (
         <label className="block">
             <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.18em] text-neutral-500">
@@ -375,11 +394,11 @@ function FilterField({ label, children }: { label: string; children: React.React
     );
 }
 
-function FilterChip({ href, children }: { href: string; children: React.ReactNode }) {
+function FilterChip({ href, children }: { href: string; children: ReactNode }) {
     return (
         <Link
             href={href}
-            className="border border-neutral-700 bg-black px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-white hover:border-red-500 hover:text-red-400"
+            className="border border-black/15 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-black hover:bg-red-600 hover:text-white"
         >
             {children} x
         </Link>
@@ -407,15 +426,15 @@ function ProductTile({
     const featured = index === 0;
 
     return (
-        <Link href={`/product/${product.slug}`} className="group block bg-black">
+        <Link href={`/product/${product.slug}`} className="group block bg-white text-black">
             <article className="grid h-full grid-rows-[auto_1fr]">
-                <div className="relative aspect-[4/5] overflow-hidden bg-white">
+                <div className="relative aspect-[4/5] overflow-hidden bg-[#f7f4ec]">
                     {featured ? (
                         <span className="absolute left-3 top-3 z-20 bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
                             Counter pick
                         </span>
                     ) : null}
-                    <span className="absolute right-3 top-3 z-20 border border-black/15 bg-white/85 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-black">
+                    <span className="absolute right-3 top-3 z-20 border border-black/15 bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-black">
                         {formatDropDate(product.createdAt)}
                     </span>
                     <Image
@@ -433,27 +452,27 @@ function ProductTile({
                         className="object-contain p-8 opacity-0 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100"
                     />
                 </div>
-                <div className="border-t border-neutral-800 p-4">
+                <div className="border-t border-black/15 p-4">
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">
+                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-600">
                                 {product.artist}
                             </p>
-                            <h3 className="mt-2 line-clamp-2 min-h-11 text-base font-black leading-tight text-white">
+                            <h3 className="mt-2 line-clamp-2 min-h-11 text-base font-black leading-tight text-black">
                                 {product.title}
                             </h3>
                         </div>
-                        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-red-500 transition-transform group-hover:translate-x-1" />
+                        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-red-600 transition-transform group-hover:translate-x-1 group-hover:text-lime-700" />
                     </div>
                     <div className="mt-4 flex items-end justify-between gap-3">
                         <div>
-                            <p className="text-lg font-black text-white">{product.price}</p>
+                            <p className="text-lg font-black text-lime-700">{product.price}</p>
                             <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-neutral-500">
                                 {product.category}
                             </p>
                         </div>
                         {product.artistSlug ? (
-                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-neutral-400">
+                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-neutral-500">
                                 Artist drop
                             </span>
                         ) : null}

@@ -97,7 +97,7 @@ export default async function DashboardCreditsPage() {
     return (
         <main className="min-h-screen bg-black text-white">
             <section className="border-b border-neutral-800 bg-black p-5 md:p-8">
-                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-[#b7ff3c]">
                     <BadgePercent className="h-4 w-4" />
                     Fan credits
                 </p>
@@ -118,14 +118,14 @@ export default async function DashboardCreditsPage() {
                     </div>
                     <div className="mt-6 border border-neutral-800 bg-neutral-950 p-5">
                         <div className="h-3 bg-neutral-800">
-                            <div className="h-full bg-red-600" style={{ width: `${(progress / 20) * 100}%` }} />
+                            <div className="h-full bg-lime-300" style={{ width: `${(progress / 20) * 100}%` }} />
                         </div>
                         <p className="mt-4 text-sm leading-6 text-neutral-400">
                             Earn 3 points for every tee purchased. Every 20 points can be reserved at checkout for a free tee discount.
                         </p>
                         <Link
                             href="/artists"
-                            className="mt-5 inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                            className="mt-5 inline-flex items-center gap-2 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200"
                         >
                             Browse artists <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -133,7 +133,7 @@ export default async function DashboardCreditsPage() {
                 </div>
 
                 <div className="bg-neutral-950 p-5 md:p-8">
-                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#b7ff3c]">
                         Reward reservations
                     </p>
                     <h2 className="mt-2 text-4xl font-black uppercase leading-none">Redemption history.</h2>
@@ -148,7 +148,7 @@ export default async function DashboardCreditsPage() {
                                                 {reservation.status ?? "pending"}
                                             </p>
                                         </div>
-                                        <p className="font-black text-red-400">
+                                        <p className="font-black text-[#b7ff3c]">
                                             {fmtMoney(reservation.discount_cents ?? 0, reservation.currency ?? "AUD")}
                                         </p>
                                     </div>
@@ -169,7 +169,7 @@ export default async function DashboardCreditsPage() {
             </section>
 
             <section className="p-5 md:p-8">
-                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-[#b7ff3c]">
                     <Receipt className="h-4 w-4" />
                     Credit ledger
                 </p>
@@ -202,7 +202,7 @@ function CreditStat({ label, value, icon }: { label: string; value: string; icon
         <div className="bg-black p-5">
             <div className="flex items-center justify-between gap-4">
                 <p className="text-[11px] font-black uppercase tracking-[0.2em] text-neutral-500">{label}</p>
-                <div className="text-red-400">{icon}</div>
+                <div className="text-[#b7ff3c]">{icon}</div>
             </div>
             <p className="mt-3 text-3xl font-black uppercase leading-none">{value}</p>
         </div>

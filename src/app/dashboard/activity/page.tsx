@@ -90,7 +90,7 @@ export default async function DashboardActivityPage() {
     return (
         <main className="min-h-screen bg-black text-white">
             <section className="border-b border-neutral-800 bg-black p-5 md:p-8">
-                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase text-red-400">
+                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase text-[#b7ff3c]">
                     <Activity className="h-4 w-4" />
                     Activity feed
                 </p>
@@ -301,7 +301,7 @@ function FeedRow({ item }: { item: FeedItem }) {
             </div>
             <div className="flex items-center gap-3 text-xs uppercase text-neutral-500">
                 {formatDate(item.createdAt)}
-                {item.href ? <ArrowRight className="h-4 w-4 text-red-400" /> : null}
+                {item.href ? <ArrowRight className="h-4 w-4 text-[#b7ff3c]" /> : null}
             </div>
         </div>
     );

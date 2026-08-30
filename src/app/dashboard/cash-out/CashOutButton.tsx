@@ -30,7 +30,7 @@ export default function CashOutButton({ disabled }: { disabled: boolean }) {
             <button
                 onClick={handleCashOut}
                 disabled={disabled || isPending}
-                className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-50"
+                className="w-full border border-lime-300 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
                 {isPending ? "Processing..." : "Request Cash Out"}
             </button>

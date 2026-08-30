@@ -132,7 +132,7 @@ export default async function EditProductPage({
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">
                             Product editor
                         </p>
                         <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">
@@ -171,7 +171,7 @@ export default async function EditProductPage({
 
                 {productImages && productImages.length > 0 ? (
                     <div className="mt-8 border border-neutral-800 bg-neutral-950 p-5">
-                        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-red-400">
+                        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-[#b7ff3c]">
                             Current gallery images
                         </p>
                         <div className="flex gap-3 flex-wrap">
@@ -181,7 +181,7 @@ export default async function EditProductPage({
                                 return (
                                     <div
                                         key={`${img.path}-${img.side ?? "none"}`}
-                                        className="w-20 h-20 rounded-lg overflow-hidden border border-neutral-800 bg-neutral-950 text-[10px] text-neutral-500 grid place-items-center relative"
+                                        className="relative grid h-20 w-20 place-items-center overflow-hidden border border-neutral-800 bg-black text-[10px] text-neutral-500"
                                     >
                                         {imageUrl ? (
                                             <Image
@@ -195,7 +195,7 @@ export default async function EditProductPage({
                                             <span>no img</span>
                                         )}
                                         {img.side ? (
-                                            <span className="absolute bottom-0 left-0 bg-neutral-900/80 text-[9px] px-1 py-0.5 rounded-tr">
+                                            <span className="absolute bottom-0 left-0 bg-neutral-900/80 px-1 py-0.5 text-[9px]">
                                                 {img.side}
                                             </span>
                                         ) : null}

@@ -50,7 +50,7 @@ export default function StripeConnectButton({
                 type="button"
                 onClick={handleConnect}
                 disabled={isLoading}
-                className="w-full rounded-lg bg-white px-4 py-2 text-sm font-black text-neutral-950 disabled:opacity-50"
+                className="w-full border border-white bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.08em] text-neutral-950 hover:bg-lime-300 hover:border-lime-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
                 {isLoading ? "Opening Stripe..." : connected ? "Update Stripe payout account" : "Connect Stripe payouts"}
             </button>

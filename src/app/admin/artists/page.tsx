@@ -48,26 +48,28 @@ export default async function ArtistsPage() {
 
     if (error) {
         return (
-            <div className="p-8">
+            <div className="m-6 border border-red-900 bg-red-950/20 p-6 text-red-200">
                 Failed to load artists
             </div>
         );
     }
 
     return (
-        <div className="space-y-8 px-6 py-6">
+        <main className="min-h-screen bg-black text-white">
 
             {/* HEADER */}
 
-            <div className="flex items-center justify-between">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
 
                 <div>
-                    <h1 className="text-4xl font-black">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">Scene roster</p>
+                    <h1 className="mt-2 text-5xl font-black uppercase leading-[0.88] md:text-7xl">
                         Artists
                     </h1>
 
-                    <p className="mt-2 text-neutral-400">
-                        Manage artist storefronts, profiles and merch.
+                    <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                        Manage artist storefronts, featured placement, visibility, products and payout signals.
                     </p>
                 </div>
 
@@ -77,12 +79,14 @@ export default async function ArtistsPage() {
                         inline-flex
                         items-center
                         gap-2
-                        bg-red-600
-                        hover:bg-red-500
-                        px-4
+                        bg-lime-300
+                        hover:bg-lime-200
+                        px-5
                         py-3
-                        rounded-xl
-                        font-semibold
+                        font-black
+                        uppercase
+                        tracking-[0.08em]
+                        text-black
                         transition
                     "
                 >
@@ -91,27 +95,28 @@ export default async function ArtistsPage() {
                 </Link>
 
             </div>
+            </section>
 
             {/* STATS */}
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <section className="grid border-b border-neutral-800 md:grid-cols-3">
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                    <div className="text-neutral-500 text-sm">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Total Artists
                     </div>
 
-                    <div className="mt-2 text-3xl font-black">
+                    <div className="mt-4 text-4xl font-black">
                         {artists?.length ?? 0}
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                    <div className="text-neutral-500 text-sm">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Public Artists
                     </div>
 
-                    <div className="mt-2 text-3xl font-black">
+                    <div className="mt-4 text-4xl font-black text-lime-300">
                         {
                             artists?.filter(
                                 a => a.is_public
@@ -120,12 +125,12 @@ export default async function ArtistsPage() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                    <div className="text-neutral-500 text-sm">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Featured Artists
                     </div>
 
-                    <div className="mt-2 text-3xl font-black">
+                    <div className="mt-4 text-4xl font-black text-red-400">
                         {
                             artists?.filter(
                                 a => a.featured
@@ -134,11 +139,11 @@ export default async function ArtistsPage() {
                     </div>
                 </div>
 
-            </div>
+            </section>
 
             {/* GRID */}
 
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <section className="grid gap-px bg-neutral-800 p-px md:grid-cols-2 xl:grid-cols-3">
 
                 {artists?.map((artist) => {
 
@@ -182,13 +187,7 @@ export default async function ArtistsPage() {
                     return (
                         <div
                             key={artist.id}
-                            className="
-                                rounded-2xl
-                                overflow-hidden
-                                border
-                                border-neutral-800
-                                bg-neutral-900
-                            "
+                            className="overflow-hidden bg-black"
                         >
 
                             {/* HERO */}
@@ -227,7 +226,8 @@ export default async function ArtistsPage() {
                                         text-white
                                         px-2
                                         py-1
-                                        rounded-lg
+                                        border
+                                        border-red-600
                                         text-xs
                                         font-bold
                                         flex
@@ -271,10 +271,10 @@ export default async function ArtistsPage() {
 
                                 </div>
 
-                                <div className="mt-5 grid grid-cols-2 gap-3">
+                                <div className="mt-5 grid grid-cols-2 gap-px bg-neutral-800">
 
-                                    <div className="rounded-lg bg-neutral-800 p-3">
-                                        <div className="text-xs text-neutral-500">
+                                    <div className="bg-neutral-950 p-3">
+                                        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
                                             Products
                                         </div>
 
@@ -283,8 +283,8 @@ export default async function ArtistsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="rounded-lg bg-neutral-800 p-3">
-                                        <div className="text-xs text-neutral-500">
+                                    <div className="bg-neutral-950 p-3">
+                                        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
                                             Sales
                                         </div>
 
@@ -293,8 +293,8 @@ export default async function ArtistsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="rounded-lg bg-neutral-800 p-3">
-                                        <div className="text-xs text-neutral-500">
+                                    <div className="bg-neutral-950 p-3">
+                                        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
                                             Revenue
                                         </div>
 
@@ -303,12 +303,12 @@ export default async function ArtistsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="rounded-lg bg-neutral-800 p-3">
-                                        <div className="text-xs text-neutral-500">
+                                    <div className="bg-neutral-950 p-3">
+                                        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
                                             Earnings
                                         </div>
 
-                                        <div className="text-lg font-black text-green-400">
+                                        <div className="text-lg font-black text-lime-300">
                                             ${(artistEarnings / 100).toFixed(2)}
                                         </div>
                                     </div>
@@ -318,7 +318,6 @@ export default async function ArtistsPage() {
                                 {unpaidPayouts > 0 && (
                                     <div className="
         mt-4
-        rounded-lg
         border
         border-yellow-600/30
         bg-yellow-500/10
@@ -343,12 +342,13 @@ export default async function ArtistsPage() {
                                         className="
                                             flex-1
                                             text-center
-                                            rounded-xl
                                             bg-red-600
                                             hover:bg-red-500
                                             px-4
                                             py-2
-                                            font-semibold
+                                            font-black
+                                            uppercase
+                                            tracking-[0.08em]
                                             transition
                                         "
                                     >
@@ -363,7 +363,6 @@ export default async function ArtistsPage() {
                                             inline-flex
                                             items-center
                                             justify-center
-                                            rounded-xl
                                             border
                                             border-neutral-700
                                             px-3
@@ -381,8 +380,8 @@ export default async function ArtistsPage() {
                     );
                 })}
 
-            </div>
+            </section>
 
-        </div>
+        </main>
     );
 }

@@ -110,22 +110,23 @@ export default async function ProductPage({
         ) ?? 0;
 
     return (
-        <div className="p-6 space-y-8">
+        <main className="min-h-screen bg-black text-white">
 
             {/* HEADER */}
 
-            <div className="flex items-start justify-between">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
 
                 <div>
 
                     <Link
                         href="/admin/products"
-                        className="text-neutral-400 hover:text-white text-sm"
+                        className="text-sm font-black uppercase tracking-[0.12em] text-lime-300 hover:text-white"
                     >
                         ← Back to Products
                     </Link>
 
-                    <h1 className="text-5xl font-black mt-3">
+                    <h1 className="mt-4 max-w-5xl text-5xl font-black uppercase leading-[0.88] md:text-7xl">
                         {product.title}
                     </h1>
 
@@ -168,12 +169,14 @@ export default async function ProductPage({
                 <Link
                     href={`/admin/products/${product.id}/edit`}
                     className="
-                        bg-red-600
-                        hover:bg-red-500
+                        bg-lime-300
+                        hover:bg-lime-200
                         px-5
                         py-3
-                        rounded-xl
-                        font-semibold
+                        font-black
+                        uppercase
+                        tracking-[0.08em]
+                        text-black
                         transition
                     "
                 >
@@ -181,13 +184,14 @@ export default async function ProductPage({
                 </Link>
 
             </div>
+            </section>
 
             {/* STATS */}
 
-            <div className="grid md:grid-cols-5 gap-4">
+            <section className="grid border-b border-neutral-800 md:grid-cols-5">
 
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
-                    <div className="text-neutral-500 text-sm">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Revenue
                     </div>
 
@@ -196,8 +200,8 @@ export default async function ProductPage({
                     </div>
                 </div>
 
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
-                    <div className="text-neutral-500 text-sm">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Sales
                     </div>
 
@@ -206,8 +210,8 @@ export default async function ProductPage({
                     </div>
                 </div>
 
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
-                    <div className="text-neutral-500 text-sm">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Colours
                     </div>
 
@@ -216,8 +220,8 @@ export default async function ProductPage({
                     </div>
                 </div>
 
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
-                    <div className="text-neutral-500 text-sm">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Images
                     </div>
 
@@ -226,29 +230,29 @@ export default async function ProductPage({
                     </div>
                 </div>
 
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
-                    <div className="text-neutral-500 text-sm">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Artist Earnings
                     </div>
 
-                    <div className="text-3xl font-black mt-2 text-green-400">
+                    <div className="text-3xl font-black mt-2 text-lime-300">
                         {money(artistEarnings)}
                     </div>
                 </div>
 
-            </div>
+            </section>
 
-            <div className="grid lg:grid-cols-3 gap-6">
+            <section className="grid gap-px bg-neutral-800 p-px lg:grid-cols-3">
 
                 {/* MAIN */}
 
-                <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-px bg-neutral-800 lg:col-span-2">
 
                     {/* DETAILS */}
 
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                    <div className="bg-black p-5 md:p-6">
 
-                        <h2 className="text-xl font-black mb-5">
+                        <h2 className="mb-5 text-2xl font-black uppercase tracking-tight">
                             Product Details
                         </h2>
 
@@ -357,9 +361,9 @@ export default async function ProductPage({
 
                     {/* COLOURS */}
 
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                    <div className="bg-black p-5 md:p-6">
 
-                        <h2 className="text-xl font-black mb-5">
+                        <h2 className="mb-5 text-2xl font-black uppercase tracking-tight">
                             Colours
                         </h2>
 
@@ -406,9 +410,9 @@ export default async function ProductPage({
 
                     {/* SALES */}
 
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                    <div className="bg-black p-5 md:p-6">
 
-                        <h2 className="text-xl font-black mb-5">
+                        <h2 className="mb-5 text-2xl font-black uppercase tracking-tight">
                             Recent Sales
                         </h2>
 
@@ -453,9 +457,9 @@ export default async function ProductPage({
 
                 <div className="space-y-6">
 
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                    <div className="bg-black p-5 md:p-6">
 
-                        <h2 className="font-black text-xl mb-4">
+                        <h2 className="mb-4 text-2xl font-black uppercase tracking-tight">
                             Moderation
                         </h2>
 
@@ -468,8 +472,8 @@ export default async function ProductPage({
 
                 </div>
 
-            </div>
+            </section>
 
-        </div>
+        </main>
     );
 }

@@ -149,7 +149,7 @@ export default function EditProductFormClient({
             className="space-y-6"
         >
             {submitError ? (
-                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <p className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-bold text-red-200">
                     {submitError}
                 </p>
             ) : null}
@@ -163,7 +163,7 @@ export default function EditProductFormClient({
                     name="title"
                     defaultValue={initialProduct.title}
                     required
-                    className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-700 px-3 text-sm text-neutral-100"
+                    className="h-12 w-full border border-neutral-700 bg-black px-4 text-sm text-neutral-100 outline-none focus:border-lime-300"
                 />
             </div>
 
@@ -176,7 +176,7 @@ export default function EditProductFormClient({
                     name="description"
                     defaultValue={initialProduct.description ?? ""}
                     rows={4}
-                    className="w-full rounded-xl bg-neutral-950 border border-neutral-700 px-3 py-2 text-sm text-neutral-100"
+                    className="w-full border border-neutral-700 bg-black px-4 py-3 text-sm leading-6 text-neutral-100 outline-none focus:border-lime-300"
                 />
             </div>
 
@@ -188,7 +188,7 @@ export default function EditProductFormClient({
                 <select
                     name="category"
                     defaultValue={initialProduct.category || "tees"}
-                    className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-700 px-3 text-sm text-neutral-100"
+                    className="h-12 w-full border border-neutral-700 bg-black px-4 text-sm text-neutral-100 outline-none focus:border-lime-300"
                 >
                     <option value="tees">Tees</option>
                     <option value="hoodies">Hoodies</option>
@@ -213,7 +213,7 @@ export default function EditProductFormClient({
                         min="1"
                         step="0.01"
                         defaultValue={price.toFixed(2)}
-                        className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-700 px-3 text-sm text-neutral-100"
+                        className="h-12 w-full border border-neutral-700 bg-black px-4 text-sm text-neutral-100 outline-none focus:border-lime-300"
                     />
                 </div>
                 <div className="flex items-end gap-3">
@@ -222,7 +222,7 @@ export default function EditProductFormClient({
                             type="checkbox"
                             name="publish"
                             defaultChecked={initialProduct.is_published}
-                            className="h-4 w-4 rounded border-neutral-600 bg-neutral-950 accent-red-500"
+                            className="h-4 w-4 border-neutral-600 bg-neutral-950 accent-lime-300"
                         />
                         <span className="text-sm">Publish</span>
                     </label>
@@ -246,7 +246,7 @@ export default function EditProductFormClient({
                                 setFrontPreview(url);
                             }
                         }}
-                        className="text-sm text-neutral-100 file:bg-neutral-800 file:text-neutral-100 file:rounded file:px-3 file:py-1"
+                        className="text-sm text-neutral-100 file:border-0 file:bg-lime-300 file:px-3 file:py-2 file:font-black file:text-black file:hover:bg-lime-200"
                         disabled={isSubmitting}
                     />
                     {frontPreview ? (
@@ -258,7 +258,7 @@ export default function EditProductFormClient({
                                 width={80}
                                 height={80}
                                 unoptimized
-                                className="h-20 w-20 rounded-lg object-cover border border-neutral-700 bg-neutral-900"
+                                className="h-20 w-20 border border-neutral-700 bg-black object-cover"
                             />
                         </div>
                     ) : (
@@ -282,7 +282,7 @@ export default function EditProductFormClient({
                                 setBackPreview(url);
                             }
                         }}
-                        className="text-sm text-neutral-100 file:bg-neutral-800 file:text-neutral-100 file:rounded file:px-3 file:py-1"
+                        className="text-sm text-neutral-100 file:border-0 file:bg-lime-300 file:px-3 file:py-2 file:font-black file:text-black file:hover:bg-lime-200"
                         disabled={isSubmitting}
                     />
                     {backPreview ? (
@@ -294,7 +294,7 @@ export default function EditProductFormClient({
                                 width={80}
                                 height={80}
                                 unoptimized
-                                className="h-20 w-20 rounded-lg object-cover border border-neutral-700 bg-neutral-900"
+                                className="h-20 w-20 border border-neutral-700 bg-black object-cover"
                             />
                         </div>
                     ) : (
@@ -306,7 +306,7 @@ export default function EditProductFormClient({
             </div>
 
             {/* colours */}
-            <div className="rounded-xl border border-neutral-800 bg-neutral-950/30 p-4 space-y-3">
+            <div className="space-y-3 border border-neutral-800 bg-black p-4">
                 <div className="flex items-center justify-between gap-2">
                     <p className="text-xs uppercase tracking-wide text-neutral-400">
                         Colours
@@ -314,7 +314,7 @@ export default function EditProductFormClient({
                     <button
                         type="button"
                         onClick={addColor}
-                        className="inline-flex items-center gap-1 text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1 rounded-lg"
+                        className="inline-flex items-center gap-1 bg-neutral-900 px-3 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-neutral-800"
                         disabled={isSubmitting}
                     >
                         <Plus className="h-3.5 w-3.5" /> Add colour
@@ -329,7 +329,7 @@ export default function EditProductFormClient({
                     colors.map((c, idx) => (
                         <div
                             key={idx}
-                            className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] gap-3 items-center bg-neutral-950/30 rounded-lg p-3"
+                            className="grid items-center gap-3 border border-neutral-800 bg-neutral-950 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto]"
                         >
                             {/* mode + id */}
                             <input
@@ -348,7 +348,7 @@ export default function EditProductFormClient({
                                 <input
                                     name={`color_${idx}_hex`}
                                     defaultValue={c.hex}
-                                    className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm"
+                                    className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm outline-none focus:border-lime-300"
                                 />
                             </div>
 
@@ -359,7 +359,7 @@ export default function EditProductFormClient({
                                 <input
                                     name={`color_${idx}_label`}
                                     defaultValue={c.label}
-                                    className="w-full h-9 rounded-lg bg-neutral-950 border border-neutral-700 px-2 text-sm"
+                                    className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm outline-none focus:border-lime-300"
                                 />
                             </div>
 
@@ -410,7 +410,7 @@ export default function EditProductFormClient({
                                         width={56}
                                         height={56}
                                         unoptimized={Boolean(c.frontPreview)}
-                                        className="mt-2 h-14 w-14 rounded object-cover border border-neutral-800"
+                                        className="mt-2 h-14 w-14 border border-neutral-800 object-cover"
                                     />
                                 )}
                             </div>
@@ -461,7 +461,7 @@ export default function EditProductFormClient({
                                         width={56}
                                         height={56}
                                         unoptimized={Boolean(c.backPreview)}
-                                        className="mt-2 h-14 w-14 rounded object-cover border border-neutral-800"
+                                        className="mt-2 h-14 w-14 border border-neutral-800 object-cover"
                                     />
                                 )}
                             </div>
@@ -488,8 +488,7 @@ export default function EditProductFormClient({
                 <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="relative h-11 px-6 font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                    style={{ clipPath: "polygon(1% 0,100% 0,99% 100%,0 100%)" }}
+                    className="h-12 border border-lime-300 bg-lime-300 px-6 font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isSubmitting ? (
                         <>

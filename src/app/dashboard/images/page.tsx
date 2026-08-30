@@ -36,7 +36,7 @@ function ErrorPage({ message }: { message: string }) {
     return (
         <main className="min-h-screen bg-black text-white">
             <section className="border-b border-neutral-800 p-5 md:p-8">
-                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Artist dashboard</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Artist dashboard</p>
                 <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Images error.</h1>
             </section>
             <div className="p-5 md:p-8">
@@ -81,7 +81,7 @@ export default async function MyImagesPage() {
                         <p className="text-neutral-300">No products yet. Images appear here after a product exists.</p>
                         <Link
                             href="/dashboard/products/designer"
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-black text-red-400 hover:text-red-300"
+                            className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#b7ff3c] hover:text-lime-200"
                         >
                             Design product <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -119,7 +119,7 @@ export default async function MyImagesPage() {
                         <p className="text-neutral-300">No images yet.</p>
                         <Link
                             href="/dashboard/products/designer"
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-black text-red-400 hover:text-red-300"
+                            className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#b7ff3c] hover:text-lime-200"
                         >
                             Design product <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -164,7 +164,7 @@ export default async function MyImagesPage() {
                                                 </p>
                                             </div>
                                             {product?.id ? (
-                                                <Link href={`/product/${product.id}`} className="shrink-0 text-sm font-black text-red-400">
+                                                <Link href={`/product/${product.id}`} className="shrink-0 text-sm font-black text-[#b7ff3c]">
                                                     View
                                                 </Link>
                                             ) : null}
@@ -195,7 +195,7 @@ function AssetHeader({ total }: { total: number }) {
         <section className="border-b border-neutral-800 bg-black">
             <div className="grid lg:grid-cols-[1fr_auto]">
                 <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Asset wall</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Asset wall</p>
                     <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">My images.</h1>
                     <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
                         Product mockups, uploaded artwork, and generated storefront images.

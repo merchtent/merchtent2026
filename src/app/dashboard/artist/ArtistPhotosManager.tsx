@@ -154,7 +154,7 @@ export default function ArtistPhotosManager({ initialPhotos }: Props) {
                                             type="button"
                                             onClick={() => deletePhoto(photo.id)}
                                             disabled={deletingId === photo.id}
-                                            className="grid h-9 w-9 shrink-0 place-items-center border border-neutral-700 text-red-400 hover:border-red-500 disabled:opacity-50"
+                                            className="grid h-9 w-9 shrink-0 place-items-center border border-neutral-700 text-[#b7ff3c] hover:border-lime-300 disabled:opacity-50"
                                             aria-label="Remove band photo"
                                         >
                                             <Trash2 className="h-4 w-4" />

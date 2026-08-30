@@ -100,22 +100,23 @@ export default async function ArtistPage({
         ) ?? 0;
 
     return (
-        <div className="space-y-8 py-6 px-6">
+        <main className="min-h-screen bg-black text-white">
 
             {/* HEADER */}
 
-            <div className="flex items-start justify-between">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
 
                 <div>
 
                     <Link
                         href="/admin/artists"
-                        className="text-neutral-400 hover:text-white text-sm"
+                        className="text-sm font-black uppercase tracking-[0.12em] text-lime-300 hover:text-white"
                     >
                         ← Back to Artists
                     </Link>
 
-                    <h1 className="mt-3 text-4xl font-black">
+                    <h1 className="mt-4 text-5xl font-black uppercase leading-[0.88] md:text-7xl">
                         {artist.display_name}
                     </h1>
 
@@ -133,8 +134,9 @@ export default async function ArtistPage({
         hover:bg-red-500
         px-4
         py-2
-        rounded-xl
         font-semibold
+        uppercase
+        tracking-[0.08em]
         transition
     "
                     >
@@ -158,13 +160,14 @@ export default async function ArtistPage({
 
 
             </div>
+            </section>
 
             {/* STATS */}
 
-            <div className="grid md:grid-cols-5 gap-4">
+            <section className="grid border-b border-neutral-800 md:grid-cols-5">
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                    <div className="text-xs text-neutral-500">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Products
                     </div>
 
@@ -173,8 +176,8 @@ export default async function ArtistPage({
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                    <div className="text-xs text-neutral-500">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Sales
                     </div>
 
@@ -183,8 +186,8 @@ export default async function ArtistPage({
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                    <div className="text-xs text-neutral-500">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Revenue
                     </div>
 
@@ -193,18 +196,18 @@ export default async function ArtistPage({
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                    <div className="text-xs text-neutral-500">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Earnings
                     </div>
 
-                    <div className="text-3xl font-black mt-2 text-green-400">
+                    <div className="text-3xl font-black mt-2 text-lime-300">
                         {money(earnings)}
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-yellow-600/20 bg-yellow-500/10 p-5">
-                    <div className="text-xs text-yellow-400">
+                <div className="border-b border-r border-yellow-600/20 bg-yellow-500/10 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-yellow-400">
                         Unpaid
                     </div>
 
@@ -213,13 +216,13 @@ export default async function ArtistPage({
                     </div>
                 </div>
 
-            </div>
+            </section>
 
             {/* DETAILS */}
 
-            <div className="grid lg:grid-cols-2 gap-6">
+            <section className="grid gap-px bg-neutral-800 p-px lg:grid-cols-2">
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                <div className="bg-neutral-950 p-6">
 
                     <h2 className="font-black text-xl mb-4">
                         Artist Details
@@ -261,7 +264,7 @@ export default async function ArtistPage({
 
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                <div className="bg-neutral-950 p-6">
 
                     <h2 className="font-black text-xl mb-4">
                         Social Links
@@ -303,11 +306,11 @@ export default async function ArtistPage({
 
                 </div>
 
-            </div>
+            </section>
 
             {/* PRODUCTS */}
 
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+            <section className="border-b border-neutral-800 bg-black p-5 md:p-8">
 
                 <h2 className="font-black text-xl mb-6">
                     Products
@@ -318,7 +321,7 @@ export default async function ArtistPage({
                     {artist.products?.map((product: ArtistProduct) => (
                         <div
                             key={product.id}
-                            className="flex items-center justify-between border border-neutral-800 rounded-xl p-4"
+                            className="flex items-center justify-between border border-neutral-800 bg-neutral-950 p-4"
                         >
                             <div>
 
@@ -335,8 +338,8 @@ export default async function ArtistPage({
                             <span
                                 className={
                                     product.is_published
-                                        ? "text-green-400 text-sm"
-                                        : "text-neutral-500 text-sm"
+                                        ? "text-lime-300 text-sm font-black uppercase"
+                                        : "text-neutral-500 text-sm font-black uppercase"
                                 }
                             >
                                 {product.is_published
@@ -349,11 +352,11 @@ export default async function ArtistPage({
 
                 </div>
 
-            </div>
+            </section>
 
             {/* RECENT ORDERS */}
 
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+            <section className="bg-black p-5 md:p-8">
 
                 <h2 className="font-black text-xl mb-6">
                     Recent Sales
@@ -375,7 +378,7 @@ export default async function ArtistPage({
                         .map((item: ArtistOrderItem) => (
                             <div
                                 key={item.id}
-                                className="flex justify-between border border-neutral-800 rounded-xl p-4"
+                                className="flex justify-between border border-neutral-800 bg-neutral-950 p-4"
                             >
                                 <div>
 
@@ -407,8 +410,8 @@ export default async function ArtistPage({
 
                 </div>
 
-            </div>
+            </section>
 
-        </div>
+        </main>
     );
 }

@@ -5,8 +5,7 @@ import {
     BadgeDollarSign,
     Check,
     CircleHelp,
-    ImagePlus,
-    Mail,
+    PackageCheck,
     Megaphone,
     Music2,
     Paintbrush,
@@ -14,6 +13,7 @@ import {
     Store,
     Upload,
 } from "lucide-react";
+import { StartProfitCalculator } from "./StartProfitCalculator";
 
 const launchPaths = [
     {
@@ -23,49 +23,49 @@ const launchPaths = [
         label: "Fastest path",
     },
     {
-        title: "I only have a logo",
-        body: "Send it through and we can help set up a clean first tee so you can see the idea live.",
+        title: "I have a logo or artwork",
+        body: "Upload it yourself, place it on the product, preview the mockup, and save the drop when it feels right.",
         icon: Shirt,
         label: "Good first drop",
     },
     {
-        title: "I have the band, not the merch",
-        body: "Tell us the vibe, music links, and rough direction. We will help shape the first product.",
+        title: "I know the band vibe",
+        body: "Use your own images, artwork, text, and product choices to build a merch page that feels like the artist.",
         icon: Music2,
-        label: "Guided setup",
+        label: "Self-guided",
     },
 ];
 
 const simpleSteps = [
     {
-        title: "Send the basics",
-        body: "Band name, logo or artwork, links, and what kind of merch you want to start with.",
-        icon: Mail,
-    },
-    {
-        title: "Make the first tee",
-        body: "Use the designer yourself or ask us to help place the artwork and set up a first product.",
+        title: "Design",
+        body: "Build the product and mockups in the designer.",
         icon: Paintbrush,
     },
     {
-        title: "Preview the drop",
-        body: "Mockups show fans what they are buying before anything needs to be printed.",
-        icon: ImagePlus,
+        title: "Publish",
+        body: "The listing goes live without buying stock first.",
+        icon: Store,
     },
     {
-        title: "Go live",
-        body: "Publish to your artist page, share the link, and start taking real orders.",
-        icon: Store,
+        title: "Order",
+        body: "Fan buys, earns credits, and triggers fulfilment.",
+        icon: PackageCheck,
+    },
+    {
+        title: "Payout",
+        body: "Artist sees units sold and profit owed.",
+        icon: BadgeDollarSign,
     },
 ];
 
 const setupHelp = [
-    "Logo or artwork cleanup",
-    "First tee layout",
-    "Product name and description",
-    "Pricing guidance",
-    "Artist profile setup",
-    "Shop launch checklist",
+    "Artist profile",
+    "Catalogue blank",
+    "Artwork upload",
+    "Mockup preview",
+    "Draft or publish",
+    "Order-ready data",
 ];
 
 const examples = [
@@ -109,14 +109,15 @@ export default function StartPage() {
 
                         <div className="relative z-10 max-w-3xl">
                             <p className="inline-flex bg-lime-300 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-black">
-                                Artist onboarding
+                                Artist self-service
                             </p>
                             <h1 className="mt-5 text-5xl font-black uppercase leading-[0.88] md:text-7xl xl:text-8xl">
-                                Start with a logo. Leave with a merch drop.
+                                Build your own drop. Publish when ready.
                             </h1>
                             <p className="mt-5 max-w-2xl text-base font-bold leading-7 text-neutral-200 md:text-lg">
-                                Merch Tent is built for artists who want to try merch without ordering boxes first.
-                                Bring artwork, a logo, or just a rough idea. We will help you get the first tee ready.
+                                Merch Tent is built for artists who want to design merch, preview mockups, and launch
+                                without ordering boxes first. Bring your own artwork, choose a blank, and use the tools
+                                to make the product yourself.
                             </p>
                             <div className="mt-7 flex flex-wrap gap-3">
                                 <Link
@@ -127,15 +128,15 @@ export default function StartPage() {
                                     <ArrowRight className="h-4 w-4" />
                                 </Link>
                                 <Link
-                                    href="mailto:support@merchtent.com.au?subject=Help%20me%20set%20up%20my%20first%20tee"
+                                    href="/start#how-it-works"
                                     className="inline-flex items-center gap-2 border border-white/30 bg-black/60 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-white hover:border-lime-300 hover:text-lime-300"
                                 >
-                                    Send us your logo
-                                    <Mail className="h-4 w-4" />
+                                    See the steps
+                                    <ArrowRight className="h-4 w-4" />
                                 </Link>
                             </div>
                             <p className="mt-4 text-sm font-bold text-neutral-400">
-                                Not ready to design alone? Send us what you have and we will help make the first product feel real.
+                                Start with one product, keep it simple, and publish only when the mockup and listing are ready.
                             </p>
                         </div>
                     </div>
@@ -172,7 +173,7 @@ export default function StartPage() {
                             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent" />
                             <div className="absolute bottom-5 left-5 right-5">
                                 <p className="w-fit bg-lime-300 px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-black">
-                                    We help
+                                    You build
                                 </p>
                                 <p className="mt-3 text-3xl font-black uppercase leading-none">
                                     Artwork, mockups, listing.
@@ -194,7 +195,7 @@ export default function StartPage() {
             <section className="border-b border-neutral-800 bg-neutral-950">
                 <div className="grid md:grid-cols-4">
                     {[
-                        ["Logo is enough", "we can help shape it"],
+                        ["Logo is enough", "upload it yourself"],
                         ["Start with one tee", "keep the first drop simple"],
                         ["Mockups before print", "show fans the product"],
                         ["Built after checkout", "less upfront risk"],
@@ -216,10 +217,10 @@ export default function StartPage() {
                         </h2>
                     </div>
                     <Link
-                        href="/contact"
+                        href="#how-it-works"
                         className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-white hover:border-lime-300 hover:text-lime-300"
                     >
-                        Ask for help
+                        See the flow
                         <CircleHelp className="h-4 w-4" />
                     </Link>
                 </div>
@@ -243,30 +244,30 @@ export default function StartPage() {
                 </div>
             </section>
 
-            <section className="border-b border-neutral-800 bg-[#f3f1e8] text-black">
+            <section id="how-it-works" className="border-b border-neutral-800 bg-[#f3f1e8] text-black">
                 <div className="grid lg:grid-cols-[0.88fr_1.12fr]">
                     <div className="border-b border-neutral-300 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-600">We can set it up with you</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-600">Self-service setup</p>
                         <h2 className="mt-2 max-w-2xl text-5xl font-black uppercase leading-[0.88] md:text-7xl">
-                            Send us your logo and first tee idea.
+                            Your artwork. Your product. Your launch.
                         </h2>
                         <p className="mt-5 max-w-xl text-base leading-7 text-neutral-700">
-                            If the designer feels like too much on day one, start by emailing the logo. We can help make a first
-                            tee, get mockups ready, and show you what your artist page could look like before you go public.
+                            The artist path is built to be direct: create the profile, choose a catalogue product, upload
+                            your artwork, preview the mockups, then save a draft or publish to your shop.
                         </p>
                         <div className="mt-7 flex flex-wrap gap-3">
                             <Link
-                                href="mailto:support@merchtent.com.au?subject=Artist%20first%20tee%20setup&body=Band%20name:%0D%0ALinks:%0D%0AWhat%20I%20want%20to%20make:%0D%0A"
+                                href="/auth/sign-up?type=artist"
                                 className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-white hover:bg-red-500"
                             >
-                                Email the logo
-                                <Mail className="h-4 w-4" />
+                                Create artist account
+                                <ArrowRight className="h-4 w-4" />
                             </Link>
                             <Link
-                                href="/auth/sign-up?type=artist"
+                                href="/dashboard/products/designer"
                                 className="inline-flex items-center gap-2 border border-black px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-300"
                             >
-                                Create artist account
+                                Open product designer
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
                         </div>
@@ -286,29 +287,63 @@ export default function StartPage() {
             </section>
 
             <section className="border-b border-neutral-800 bg-black">
-                <div className="border-b border-neutral-800 p-5 md:p-8">
-                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-500">Simple flow</p>
-                    <h2 className="mt-2 max-w-5xl text-5xl font-black uppercase leading-[0.88] md:text-7xl">
-                        From rough idea to shop link.
-                    </h2>
+                <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">How it works</p>
+                        <h2 className="mt-2 max-w-3xl text-5xl font-black uppercase leading-[0.88] md:text-7xl">
+                            One loop. Everyone knows their part.
+                        </h2>
+                        <p className="mt-5 max-w-2xl text-base leading-7 text-neutral-300">
+                            The journey stays simple for artists and fans: design the drop, publish the listing, take the
+                            order, then track the payout.
+                        </p>
+                    </div>
+                    <div className="relative min-h-[420px] overflow-hidden">
+                        <Image
+                            src="/images/home-new-designer-shirt-preview.png"
+                            alt="Product designer mockup preview"
+                            fill
+                            sizes="(max-width: 1024px) 100vw, 54vw"
+                            className="object-cover opacity-40"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/72 to-black/35" />
+                        <div className="relative grid h-full content-end gap-px bg-black/20 p-5 md:p-8 sm:grid-cols-3">
+                            {[
+                                ["No upfront stock", "For artists"],
+                                ["Fan credits", "For buyers"],
+                                ["Supplier routing", "For ops"],
+                            ].map(([title, label]) => (
+                                <div key={title} className="border border-white/15 bg-black/70 p-5 backdrop-blur-sm">
+                                    <p className="text-xl font-black uppercase leading-none">{title}</p>
+                                    <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500">
+                                        {label}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
                 <div className="grid md:grid-cols-4">
                     {simpleSteps.map((step, index) => {
                         const Icon = step.icon;
                         return (
-                            <article key={step.title} className="border-b border-r border-neutral-800 bg-neutral-950 p-5 md:min-h-[310px] md:p-6">
+                            <article key={step.title} className="border-b border-r border-neutral-800 bg-black p-5 md:min-h-[240px] md:p-6">
                                 <div className="flex items-start justify-between gap-4">
-                                    <span className="bg-red-600 px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em]">
+                                    <span className="text-4xl font-black leading-none text-lime-300">
                                         0{index + 1}
                                     </span>
-                                    <Icon className="h-6 w-6 text-lime-300" />
+                                    <Icon className="h-6 w-6 text-red-500" />
                                 </div>
-                                <h3 className="mt-16 text-3xl font-black uppercase leading-none">{step.title}</h3>
+                                <h3 className="mt-10 text-3xl font-black uppercase leading-none">{step.title}</h3>
                                 <p className="mt-4 text-sm leading-6 text-neutral-400">{step.body}</p>
                             </article>
                         );
                     })}
                 </div>
+            </section>
+
+            <section className="border-b border-neutral-800 bg-black">
+                <StartProfitCalculator />
             </section>
 
             <section className="border-b border-neutral-800 bg-neutral-950 p-5 md:p-8">

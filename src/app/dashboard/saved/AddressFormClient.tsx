@@ -25,7 +25,7 @@ export default function AddressFormClient({ address }: { address: DefaultAddress
         <form action={action} className="border border-neutral-800 bg-neutral-950 p-5 md:p-6">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                 <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#b7ff3c]">
                         Default delivery address
                     </p>
                     <h2 className="mt-2 text-4xl font-black uppercase leading-none">
@@ -68,7 +68,7 @@ export default function AddressFormClient({ address }: { address: DefaultAddress
             <button
                 type="submit"
                 disabled={isPending}
-                className="mt-5 inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500 disabled:opacity-60"
+                className="mt-5 inline-flex items-center gap-2 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200 disabled:opacity-60"
             >
                 {isPending ? "Saving..." : "Save default address"}
                 <ArrowRight className="h-4 w-4" />

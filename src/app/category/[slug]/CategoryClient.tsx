@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, SlidersHorizontal, Users } from "lucide-react";
 
 type Product = {
     id: string;
@@ -83,46 +84,73 @@ export default function CategoryClient({ initialProducts }: { initialProducts: P
     }
 
     return (
-        <section className="grid gap-6 lg:grid-cols-[260px_1fr]">
+        <section className="grid gap-6">
 
             {/* SIDEBAR */}
-            <aside className="space-y-6 border border-neutral-800 bg-neutral-950 p-4 lg:sticky lg:top-24 lg:self-start">
+            <aside className="border border-black/15 bg-white">
+                <div className="grid gap-px bg-black/15 lg:grid-cols-[1fr_auto_auto]">
+                    <div className="bg-white p-4">
+                        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-red-600">
+                            <SlidersHorizontal className="h-4 w-4" />
+                            Filter the rack
+                        </div>
+                        <p className="mt-2 text-sm text-neutral-600">
+                            {filtered.length} of {initialProducts.length} products showing
+                        </p>
+                    </div>
 
-                <button
-                    onClick={clearFilters}
-                    className="text-xs font-black uppercase tracking-[0.16em] text-red-400 hover:text-white"
-                >
-                    Clear filters
-                </button>
+                    <div className="bg-white p-4">
+                        <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+                            Sort
+                        </label>
+                        <select
+                            value={sort}
+                            onChange={(e) => {
+                                setSort(e.target.value);
+                                setPage(1);
+                            }}
+                            className="h-11 min-w-[190px] border border-black/20 bg-[#f2f0ea] px-3 text-sm font-black text-black"
+                        >
+                            <option value="new">Newest</option>
+                            <option value="plh">Price: Low to High</option>
+                            <option value="phl">Price: High to Low</option>
+                        </select>
+                    </div>
 
-                <div className="mb-4 flex items-center justify-between gap-3">
-
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-neutral-400">
-                        {filtered.length} items
-                    </p>
-
-                    <select
-                        value={sort}
-                        onChange={(e) => {
-                            setSort(e.target.value);
-                            setPage(1);
-                        }}
-                        className="border border-neutral-700 bg-black px-3 py-2 text-sm font-bold text-white"
-                    >
-                        <option value="new">Newest</option>
-                        <option value="plh">Price: Low → High</option>
-                        <option value="phl">Price: High → Low</option>
-                    </select>
-
+                    <div className="bg-white p-4">
+                        <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+                            Max price: ${maxPrice}
+                        </label>
+                        <input
+                            type="range"
+                            min={0}
+                            max={200}
+                            step={5}
+                            value={maxPrice}
+                            onChange={(e) => {
+                                setMaxPrice(Number(e.target.value));
+                                setPage(1);
+                            }}
+                            className="h-11 w-full min-w-[220px] accent-lime-400"
+                        />
+                    </div>
                 </div>
 
-                {/* ARTISTS */}
-                <div>
-                    <p className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-red-500">
-                        Artists
-                    </p>
+                {artists.length ? (
+                    <div className="border-t border-black/15 bg-[#f2f0ea] p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-600">
+                                Artists
+                            </p>
+                            <button
+                                onClick={clearFilters}
+                                className="text-[11px] font-black uppercase tracking-[0.14em] text-neutral-500 hover:text-black"
+                            >
+                                Clear filters
+                            </button>
+                        </div>
 
-                    <div className="flex flex-col gap-2">
+                        <div className="flex gap-2 overflow-x-auto pb-1">
                         {artists.map((a) => (
                             <button
                                 key={a.name}
@@ -132,12 +160,12 @@ export default function CategoryClient({ initialProducts }: { initialProducts: P
                                     );
                                     setPage(1);
                                 }}
-                                className={`flex items-center gap-3 border p-2 text-left transition ${selectedArtist === a.name
-                                    ? "border-red-500 bg-red-600 text-white"
-                                    : "border-neutral-800 bg-black hover:border-neutral-600"
+                                className={`flex min-w-[190px] items-center gap-3 border p-2 text-left transition ${selectedArtist === a.name
+                                    ? "border-black bg-lime-300 text-black"
+                                    : "border-black/15 bg-white hover:border-red-600"
                                     }`}
                             >
-                                <div className="flex h-9 w-9 items-center justify-center overflow-hidden bg-neutral-800 text-xs font-black">
+                                <div className="flex h-10 w-10 items-center justify-center overflow-hidden bg-black text-xs font-black text-lime-300">
 
                                     {a.image ? (
                                         <Image
@@ -158,28 +186,9 @@ export default function CategoryClient({ initialProducts }: { initialProducts: P
                                 </span>
                             </button>
                         ))}
+                        </div>
                     </div>
-                </div>
-
-                {/* PRICE SLIDER */}
-                <div>
-                    <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-red-500">
-                        Max Price: ${maxPrice}
-                    </p>
-
-                    <input
-                        type="range"
-                        min={0}
-                        max={200}
-                        step={5}
-                        value={maxPrice}
-                        onChange={(e) => {
-                            setMaxPrice(Number(e.target.value));
-                            setPage(1);
-                        }}
-                        className="w-full accent-red-500"
-                    />
-                </div>
+                ) : null}
 
             </aside>
 
@@ -187,29 +196,35 @@ export default function CategoryClient({ initialProducts }: { initialProducts: P
             <div>
 
                 {filtered.length === 0 ? (
-                    <div className="border border-neutral-800 bg-neutral-950 p-8 text-center">
-                        <p className="text-lg font-black uppercase">No products found.</p>
-                        <Link href="/artists" className="mt-2 block text-sm font-bold text-red-400 hover:text-white">
-                            Browse artists
+                    <div className="border border-black/15 bg-white p-8 text-center md:p-12">
+                        <div className="mx-auto grid h-14 w-14 place-items-center bg-lime-300 text-black">
+                            <Users className="h-6 w-6" />
+                        </div>
+                        <p className="mt-5 text-3xl font-black uppercase leading-none">No products found.</p>
+                        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-neutral-600">
+                            This rack is empty for the selected filters. Clear the filters or jump into the artist directory.
+                        </p>
+                        <Link href="/artists" className="mt-5 inline-flex items-center gap-2 bg-black px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white hover:bg-red-600">
+                            Browse artists <ArrowRight className="h-4 w-4" />
                         </Link>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-px bg-neutral-800 sm:grid-cols-3 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-px bg-black/20 sm:grid-cols-3 lg:grid-cols-4">
 
                         {paginated.map((p: Product) => (
                             <Link
                                 key={p.id}
                                 href={`/product/${p.slug}`}
-                                className="group overflow-hidden bg-neutral-950 transition hover:bg-black"
+                                className="group overflow-hidden bg-white text-black transition hover:bg-[#fbfaf7]"
                             >
-                                <div className="relative aspect-[3/4] overflow-hidden bg-white">
+                                <div className="relative aspect-[3/4] overflow-hidden bg-[#f7f4ec]">
 
                                     <Image
                                         src={p.image ?? "/merch-placeholder.svg"}
                                         alt={p.title}
                                         fill
                                         sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
-                                        className="object-cover transition-opacity duration-300 group-hover:opacity-0"
+                                        className="object-contain p-5 transition-opacity duration-300 group-hover:opacity-0 md:p-8"
                                     />
 
                                     {p.hover && (
@@ -218,24 +233,24 @@ export default function CategoryClient({ initialProducts }: { initialProducts: P
                                             alt={p.title}
                                             fill
                                             sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
-                                            className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                                            className="object-contain p-5 opacity-0 transition-opacity duration-300 group-hover:opacity-100 md:p-8"
                                         />
                                     )}
 
                                 </div>
 
-                                <div className="border-t border-neutral-800 p-3">
+                                <div className="border-t border-black/15 p-3 md:p-4">
                                     {p.artist ? (
-                                        <p className="mb-1 truncate text-[10px] font-black uppercase tracking-[0.16em] text-red-500">
+                                        <p className="mb-1 truncate text-[10px] font-black uppercase tracking-[0.16em] text-red-600">
                                             {p.artist}
                                         </p>
                                     ) : null}
-                                    <p className="truncate text-sm font-black">
+                                    <p className="line-clamp-2 min-h-[2.35rem] text-sm font-black leading-tight md:text-base">
                                         {p.title}
                                     </p>
 
-                                    <p className="mt-1 text-sm font-bold text-neutral-400">
-                                        ${p.price}
+                                    <p className="mt-3 text-lg font-black text-lime-700">
+                                        ${p.price.toFixed(2)}
                                     </p>
                                 </div>
                             </Link>
@@ -246,13 +261,13 @@ export default function CategoryClient({ initialProducts }: { initialProducts: P
 
             </div>
             {totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-center gap-2 lg:col-start-2">
+                <div className="mt-6 flex items-center justify-center gap-2">
 
                     {/* PREV */}
                     <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page === 1}
-                        className="border border-neutral-700 px-3 py-2 text-sm font-bold disabled:opacity-30"
+                        className="border border-black/20 bg-white px-3 py-2 text-sm font-black text-black disabled:opacity-30"
                     >
                         Prev
                     </button>
@@ -265,9 +280,9 @@ export default function CategoryClient({ initialProducts }: { initialProducts: P
                             <button
                                 key={p}
                                 onClick={() => setPage(p)}
-                                className={`border px-3 py-2 text-sm font-bold ${p === page
-                                    ? "bg-red-600 border-red-500 text-white"
-                                    : "border-neutral-700 hover:bg-neutral-800"
+                                className={`border px-3 py-2 text-sm font-black ${p === page
+                                    ? "border-black bg-lime-300 text-black"
+                                    : "border-black/20 bg-white text-black hover:bg-red-600 hover:text-white"
                                     }`}
                             >
                                 {p}
@@ -279,7 +294,7 @@ export default function CategoryClient({ initialProducts }: { initialProducts: P
                     <button
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page === totalPages}
-                        className="border border-neutral-700 px-3 py-2 text-sm font-bold disabled:opacity-30"
+                        className="border border-black/20 bg-white px-3 py-2 text-sm font-black text-black disabled:opacity-30"
                     >
                         Next
                     </button>

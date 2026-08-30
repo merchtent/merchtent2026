@@ -57,7 +57,7 @@ export default function CatalogChooser({ products }: { products: CatalogProduct[
                 {products.length === 0 ? (
                     <div className="p-5 md:p-8">
                         <div className="border border-red-900/60 bg-red-950/20 p-6">
-                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">
                                 No approved blanks
                             </p>
                             <h3 className="mt-2 text-2xl font-black uppercase">
@@ -84,7 +84,7 @@ export default function CatalogChooser({ products }: { products: CatalogProduct[
                                     <div className="absolute -left-12 top-16 h-28 w-16 rotate-[-24deg] bg-white" />
                                     <div className="absolute -right-12 top-16 h-28 w-16 rotate-[24deg] bg-white" />
                                 </div>
-                                <span className="absolute left-3 top-3 bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white">
+                                <span className="absolute left-3 top-3 bg-lime-300 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-black">
                                     {product.supplier.name}
                                 </span>
                             </div>
@@ -119,7 +119,7 @@ export default function CatalogChooser({ products }: { products: CatalogProduct[
                                     </div>
                                 </div>
 
-                                <span className="mt-6 inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-red-400">
+                                <span className="mt-6 inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-[#b7ff3c]">
                                     Start designing <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                                 </span>
                             </div>

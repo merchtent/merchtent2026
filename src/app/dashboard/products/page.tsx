@@ -9,10 +9,10 @@ import { requireArtistPage } from "@/lib/auth/artist";
 
 function StatusPill({ published }: { published?: boolean | null }) {
     const styles = published
-        ? "bg-green-500/15 text-green-300 border-green-500/30"
+        ? "bg-lime-300/15 text-lime-200 border-lime-300/40"
         : "bg-yellow-500/15 text-yellow-300 border-yellow-500/30";
     return (
-        <span className={`px-2 py-0.5 text-[11px] rounded-full border ${styles}`}>
+        <span className={`border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.08em] ${styles}`}>
             {published ? "Published" : "Draft"}
         </span>
     );
@@ -20,11 +20,11 @@ function StatusPill({ published }: { published?: boolean | null }) {
 
 function DesignStatusPill({ designed }: { designed: boolean }) {
     const styles = designed
-        ? "border-sky-500/30 bg-sky-500/15 text-sky-200"
+        ? "border-lime-300/40 bg-lime-300/15 text-lime-200"
         : "border-neutral-700 bg-neutral-500/10 text-neutral-300";
 
     return (
-        <span className={`px-2 py-0.5 text-[11px] rounded-full border ${styles}`}>
+        <span className={`border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.08em] ${styles}`}>
             {designed ? "Merch Tent design" : "Manual"}
         </span>
     );
@@ -61,14 +61,14 @@ function LifecyclePill({
 }) {
     const styles = {
         neutral: "border-neutral-700 bg-neutral-500/10 text-neutral-300",
-        good: "border-green-500/30 bg-green-500/15 text-green-300",
+        good: "border-lime-300/40 bg-lime-300/15 text-lime-200",
         warn: "border-yellow-500/30 bg-yellow-500/15 text-yellow-300",
         bad: "border-red-500/30 bg-red-500/15 text-red-300",
-        info: "border-sky-500/30 bg-sky-500/15 text-sky-200",
+        info: "border-cyan-500/30 bg-cyan-500/15 text-cyan-200",
     }[tone];
 
     return (
-        <span className={`px-2 py-0.5 text-[11px] rounded-full border ${styles}`}>
+        <span className={`border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.08em] ${styles}`}>
             {(label ?? "unknown").replaceAll("_", " ")}
         </span>
     );
@@ -204,7 +204,7 @@ export default async function MyProductsPage() {
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Product floor</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Product floor</p>
                         <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">My products.</h1>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
                             Drafts, live drops, generated mockups, moderation state, and production readiness in one place.
@@ -213,7 +213,7 @@ export default async function MyProductsPage() {
                     <div className="flex flex-col justify-end gap-3 p-5 md:p-8">
                         <Link
                             href="/dashboard/products/designer"
-                            className="inline-flex items-center justify-center gap-2 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                            className="inline-flex items-center justify-center gap-2 bg-lime-300 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-200"
                         >
                             <PenTool className="h-4 w-4" /> Design product
                         </Link>
@@ -225,7 +225,7 @@ export default async function MyProductsPage() {
                 {!rows || rows.length === 0 ? (
                     <div className="border border-neutral-800 bg-neutral-950 p-6 md:p-8">
                         <div className="flex items-center gap-3">
-                            <Box className="h-6 w-6 text-red-400" />
+                            <Box className="h-6 w-6 text-[#b7ff3c]" />
                             <div>
                                 <p className="text-2xl font-black uppercase">No products yet.</p>
                                 <p className="mt-1 text-sm text-neutral-400">
@@ -243,7 +243,7 @@ export default async function MyProductsPage() {
                     <div className="border border-neutral-800">
                         <div className="grid border-b border-neutral-800 bg-neutral-950 p-4 md:grid-cols-[1fr_auto] md:items-center">
                             <div>
-                                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">Inventory state</p>
+                                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#b7ff3c]">Inventory state</p>
                                 <h2 className="mt-1 text-3xl font-black uppercase leading-none">{rows.length} product{rows.length === 1 ? "" : "s"}</h2>
                             </div>
                             <p className="mt-2 text-sm text-neutral-500 md:mt-0">Live, draft, production and moderation checks.</p>
@@ -336,14 +336,14 @@ export default async function MyProductsPage() {
                                                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-red-400">
                                                     Launch readiness
                                                 </p>
-                                                <span className={`text-xs font-black ${readyForLaunch ? "text-green-300" : "text-yellow-300"}`}>
+                                                    <span className={`text-xs font-black ${readyForLaunch ? "text-lime-200" : "text-yellow-300"}`}>
                                                     {readyCount}/{readinessChecks.length} ready
                                                 </span>
                                             </div>
                                             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                                                 {readinessChecks.map((check) => (
                                                     <div key={check.label} className="flex items-center gap-2 text-xs">
-                                                        <span className={`h-2 w-2 ${check.ok ? "bg-green-400" : "bg-red-500"}`} />
+                                                        <span className={`h-2 w-2 ${check.ok ? "bg-lime-300" : "bg-red-500"}`} />
                                                         <span className={check.ok ? "text-neutral-300" : "text-red-300"}>{check.label}</span>
                                                     </div>
                                                 ))}
@@ -356,7 +356,7 @@ export default async function MyProductsPage() {
                                             <>
                                                 <Link
                                                     href={`/product/${p.slug ?? p.id}`}
-                                                    className="inline-flex items-center gap-1 text-sm font-black text-red-400 hover:text-red-300"
+                                                    className="inline-flex items-center gap-1 text-sm font-black text-[#b7ff3c] hover:text-lime-200"
                                                     title="View product"
                                                 >
                                                     View <ArrowRight className="h-4 w-4" />

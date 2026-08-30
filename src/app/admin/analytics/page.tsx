@@ -107,13 +107,13 @@ export default async function AdminAnalyticsPage() {
     const creditDiscountCents = orders.reduce((sum, order) => sum + (order.discount_cents ?? 0), 0);
 
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            <section className="border-b border-neutral-800 p-6 md:p-8">
-                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase text-red-400">
+        <main className="min-h-screen bg-black text-white">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+                <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">
                     <BarChart3 className="h-4 w-4" />
                     Admin analytics
                 </p>
-                <h1 className="mt-3 text-4xl font-black uppercase leading-none md:text-6xl">
+                <h1 className="mt-3 text-5xl font-black uppercase leading-[0.88] md:text-7xl">
                     Store performance.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
@@ -131,7 +131,7 @@ export default async function AdminAnalyticsPage() {
                 <Metric label="Conversion" value={conversionRate} icon={<Eye className="h-4 w-4" />} />
             </section>
 
-            <section className="grid gap-6 p-6 md:p-8 xl:grid-cols-2">
+            <section className="grid gap-px bg-neutral-800 p-px xl:grid-cols-2">
                 <AnalyticsPanel title="Top products" ctaHref="/admin/products">
                     <RankedList rows={topProducts} empty="No product sales in the last 30 days." />
                 </AnalyticsPanel>
@@ -146,8 +146,8 @@ export default async function AdminAnalyticsPage() {
                 </AnalyticsPanel>
             </section>
 
-            <section className="border-t border-neutral-800 p-6 md:p-8">
-                <div className="grid gap-4 md:grid-cols-4">
+            <section className="border-t border-neutral-800 bg-[#f3f1e8] p-5 text-black md:p-8">
+                <div className="grid gap-px bg-neutral-300 md:grid-cols-4">
                     <MiniSignal label="Live products" value={String(productCountRes.count ?? 0)} />
                     <MiniSignal label="Artists" value={String(artistCountRes.count ?? 0)} />
                     <MiniSignal label="Product views" value={String(productViews)} />
@@ -228,12 +228,12 @@ function aggregateTraffic(views: PageViewRow[]) {
 
 function Metric({ label, value, icon }: { label: string; value: string; icon: ReactNode }) {
     return (
-        <div className="border-b border-r border-neutral-800 bg-neutral-900 p-5">
+        <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
             <div className="flex items-center justify-between gap-3 text-red-400">
                 <p className="text-[10px] font-black uppercase text-neutral-500">{label}</p>
                 {icon}
             </div>
-            <p className="mt-4 text-2xl font-black uppercase leading-none md:text-3xl">{value}</p>
+            <p className="mt-4 text-2xl font-black uppercase leading-none text-lime-300 md:text-3xl">{value}</p>
         </div>
     );
 }

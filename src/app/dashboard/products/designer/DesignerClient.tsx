@@ -557,7 +557,7 @@ export default function DesignerClient({
                             type="button"
                             onClick={() => setActiveToolPanel(panel)}
                             className={`flex h-16 flex-col items-center justify-center gap-1 border-r border-neutral-800 text-[10px] font-black uppercase tracking-[0.12em] last:border-r-0 ${
-                                activeToolPanel === panel ? "bg-red-600 text-white" : "text-neutral-500 hover:text-white"
+                                activeToolPanel === panel ? "bg-lime-300 text-black" : "text-neutral-500 hover:text-white"
                             }`}
                         >
                             <Icon className="h-4 w-4" />
@@ -570,7 +570,7 @@ export default function DesignerClient({
                     {activeToolPanel === "product" ? (
                         <div className="space-y-4">
                             <div>
-                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">
                                     Product details
                                 </p>
                                 <h2 className="mt-2 text-2xl font-black uppercase">Name the drop.</h2>
@@ -626,7 +626,7 @@ export default function DesignerClient({
                     {activeToolPanel === "blank" ? (
                         <div className="space-y-4">
                             <div>
-                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">
                                     Catalogue blank
                                 </p>
                                 <h2 className="mt-2 text-2xl font-black uppercase">{catalogProduct.name}</h2>
@@ -660,7 +660,7 @@ export default function DesignerClient({
                                         onClick={() => setGarmentColor(item.value)}
                                         className={`flex h-10 items-center gap-2 border px-2 text-xs ${
                                             garmentColor === item.value
-                                                ? "border-red-500 bg-red-500/15"
+                                                ? "border-lime-300 bg-lime-300/15"
                                                 : "border-neutral-700 bg-black"
                                         }`}
                                     >
@@ -677,7 +677,7 @@ export default function DesignerClient({
 
                     {activeToolPanel === "layers" ? (
                         <div className="space-y-3">
-                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">
                                 {activeSide} layers
                             </p>
                             {activeLayers.length === 0 ? (
@@ -696,7 +696,7 @@ export default function DesignerClient({
                                             }}
                                             className={`flex w-full items-center justify-between border px-3 py-2 text-left text-sm ${
                                                 selectedLayerId === layer.id
-                                                    ? "border-red-500 bg-red-500/10"
+                                                    ? "border-lime-300 bg-lime-300/10"
                                                     : "border-neutral-800 bg-black"
                                             }`}
                                         >
@@ -722,15 +722,15 @@ export default function DesignerClient({
             </section>
 
             <section className="min-h-0 min-w-0 space-y-4 overflow-y-auto p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-950 p-3">
-                    <div className="inline-flex rounded-lg border border-neutral-800 bg-neutral-900 p-1">
+                <div className="flex flex-wrap items-center justify-between gap-3 border border-neutral-800 bg-neutral-950 p-3">
+                    <div className="inline-flex border border-neutral-800 bg-black p-1">
                         {(["front", "back"] as Side[]).map((side) => (
                             <button
                                 key={side}
                                 type="button"
                                 onClick={() => setActiveSide(side)}
-                                className={`h-9 rounded-md px-4 text-sm capitalize ${activeSide === side
-                                    ? "bg-red-600 text-white"
+                                className={`h-9 px-4 text-sm font-black capitalize ${activeSide === side
+                                    ? "bg-lime-300 text-black"
                                     : "text-neutral-400 hover:text-white"
                                     }`}
                             >
@@ -740,7 +740,7 @@ export default function DesignerClient({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-neutral-800 px-3 text-sm hover:bg-neutral-700">
+                        <label className="inline-flex h-9 cursor-pointer items-center gap-2 bg-lime-300 px-3 text-sm font-black text-black hover:bg-lime-200">
                             <ImageIcon className="h-4 w-4" />
                             Image
                             <input
@@ -764,7 +764,7 @@ export default function DesignerClient({
                     <div className={activeSide === "front" ? "block" : "hidden lg:block opacity-40"}>
                         <canvas
                             ref={frontCanvasRef}
-                            className="aspect-[3/4] w-full touch-none rounded-xl border border-neutral-800 bg-neutral-950"
+                            className="aspect-[3/4] w-full touch-none border border-neutral-800 bg-neutral-950"
                             onPointerDown={activeSide === "front" ? handlePointerDown : undefined}
                             onPointerMove={activeSide === "front" ? handlePointerMove : undefined}
                             onPointerUp={activeSide === "front" ? handlePointerUp : undefined}
@@ -776,7 +776,7 @@ export default function DesignerClient({
                     <div className={activeSide === "back" ? "block" : "hidden lg:block opacity-40"}>
                         <canvas
                             ref={backCanvasRef}
-                            className="aspect-[3/4] w-full touch-none rounded-xl border border-neutral-800 bg-neutral-950"
+                            className="aspect-[3/4] w-full touch-none border border-neutral-800 bg-neutral-950"
                             onPointerDown={activeSide === "back" ? handlePointerDown : undefined}
                             onPointerMove={activeSide === "back" ? handlePointerMove : undefined}
                             onPointerUp={activeSide === "back" ? handlePointerUp : undefined}
@@ -789,7 +789,7 @@ export default function DesignerClient({
 
             <section className="flex min-h-0 flex-col border-t border-neutral-800 bg-neutral-950 xl:border-l xl:border-t-0">
                 <div className="border-b border-neutral-800 p-4">
-                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">
+                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">
                         Catalogue pricing
                     </p>
                     <div className="mt-3 grid grid-cols-2 gap-2">
@@ -808,7 +808,7 @@ export default function DesignerClient({
                         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                             Current design
                         </p>
-                        <p className="mt-1 text-2xl font-black text-red-500">
+                        <p className="mt-1 text-2xl font-black text-[#b7ff3c]">
                             {formatMoneyFromCents(activePriceCents)}
                         </p>
                         <p className="mt-1 text-xs text-neutral-400">
@@ -825,12 +825,12 @@ export default function DesignerClient({
                         <input
                             value={newText}
                             onChange={(event) => setNewText(event.target.value)}
-                            className="h-10 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm"
+                            className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm outline-none focus:border-lime-300"
                         />
                     </label>
 
                     {error ? (
-                        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                        <p className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                             {error}
                         </p>
                     ) : null}
@@ -866,7 +866,7 @@ export default function DesignerClient({
                             saveModeRef.current = "publish";
                         }}
                         disabled={isSaving || !title || layers.length === 0}
-                        className="h-11 w-full bg-red-600 font-black hover:bg-red-500"
+                        className="h-11 w-full bg-lime-300 font-black text-black hover:bg-lime-200"
                     >
                         {isSaving && savingMode === "publish" ? (
                             <>

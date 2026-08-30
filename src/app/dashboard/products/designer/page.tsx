@@ -10,7 +10,7 @@ export default async function ProductDesignerPage() {
         <main className="min-h-screen bg-black text-white">
             <section className="border-b border-neutral-800 bg-black">
                 <div className="p-5 md:p-8">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">
                         Product designer
                     </p>
                     <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">

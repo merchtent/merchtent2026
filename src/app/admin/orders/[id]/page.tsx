@@ -8,7 +8,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { normaliseExternalUrl } from "@/lib/urls";
 
 function money(cents?: number | null) {
-    return `AUD ${((cents ?? 0) / 100).toFixed(2)}`;
+    return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format((cents ?? 0) / 100);
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -23,10 +23,10 @@ function StatusBadge({ status }: { status: string }) {
 
     return (
         <span
-            className={`px-3 py-1 rounded-lg text-xs font-semibold ${map[status] || map.default
+            className={`border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${map[status] || map.default
                 }`}
         >
-            {status}
+            {status?.replaceAll("_", " ")}
         </span>
     );
 }
@@ -104,7 +104,7 @@ export default async function OrderViewPage({
                     ((item.unit_price_cents ?? 0) *
                         (item.qty ?? 0)),
                 0
-            )
+            ) ?? 0;
 
     const shippingLine =
         order.order_items?.find(
@@ -121,24 +121,26 @@ export default async function OrderViewPage({
         (order.discount_cents ?? 0);
 
     return (
-        <main className="bg-neutral-950 text-neutral-100 min-h-screen">
+        <main className="min-h-screen bg-black text-white">
 
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div>
 
                 {/* Header */}
 
-                <div className="flex items-center justify-between mb-8">
+                <section className="border-b border-neutral-800 p-5 md:p-8">
+                <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
 
                     <div>
                         <Link
                             href="/admin/orders"
-                            className="inline-flex items-center gap-2 text-neutral-400 hover:text-white mb-4"
+                            className="mb-4 inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.12em] text-lime-300 hover:text-white"
                         >
                             <ArrowLeft className="h-4 w-4" />
                             Back to Orders
                         </Link>
 
-                        <h1 className="text-4xl font-black">
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-500">Order record</p>
+                        <h1 className="mt-2 text-5xl font-black uppercase leading-[0.88] md:text-7xl">
                             {order.order_number || order.id}
                         </h1>
 
@@ -148,11 +150,11 @@ export default async function OrderViewPage({
                     </div>
 
                     <div className="text-right">
-                        <div className="text-neutral-500 text-sm">
+                        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                             Order Date
                         </div>
 
-                        <div className="font-semibold">
+                        <div className="mt-2 font-black">
                             {new Date(
                                 order.created_at
                             ).toLocaleString()}
@@ -160,8 +162,9 @@ export default async function OrderViewPage({
                     </div>
 
                 </div>
+                </section>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 mb-6">
+                <section className="border-b border-neutral-800 bg-neutral-950 p-5 md:p-8">
 
                     <h2 className="font-black text-lg mb-4">
                         Order Actions
@@ -174,15 +177,15 @@ export default async function OrderViewPage({
                         currentCarrier={order.tracking_carrier}
                     />
 
-                </div>
+                </section>
 
                 {/* Top Row */}
 
-                <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                <section className="grid gap-px bg-neutral-800 p-px lg:grid-cols-2">
 
                     {/* Customer */}
 
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                    <div className="bg-neutral-950 p-6">
 
                         <h2 className="font-black text-lg mb-4">
                             Customer
@@ -222,7 +225,7 @@ export default async function OrderViewPage({
 
                     {/* Shipping */}
 
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                    <div className="bg-neutral-950 p-6">
 
                         <h2 className="font-black text-lg mb-4">
                             Shipping Address
@@ -248,11 +251,11 @@ export default async function OrderViewPage({
 
                     </div>
 
-                </div>
+                </section>
 
                 {/* Items */}
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 mb-6">
+                <section className="border-b border-neutral-800 bg-black p-5 md:p-8">
 
                     <h2 className="font-black text-lg mb-6">
                         Order Items
@@ -266,7 +269,7 @@ export default async function OrderViewPage({
                             return (
                             <div
                                 key={item.id}
-                                className="border border-neutral-800 rounded-xl p-4"
+                                className="border border-neutral-800 bg-neutral-950 p-4"
                             >
                                 <div className="flex justify-between items-start gap-4">
 
@@ -345,17 +348,17 @@ export default async function OrderViewPage({
 
                     </div>
 
-                </div>
+                </section>
 
 
 
                 {/* Bottom Row */}
 
-                <div className="grid lg:grid-cols-2 gap-6">
+                <section className="grid gap-px bg-neutral-800 p-px lg:grid-cols-2">
 
                     {/* Tracking */}
 
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                    <div className="bg-neutral-950 p-6">
 
                         <h2 className="font-black text-lg mb-4">
                             Tracking
@@ -410,7 +413,7 @@ export default async function OrderViewPage({
 
                     {/* Totals */}
 
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                    <div className="bg-neutral-950 p-6">
 
                         <h2 className="font-black text-lg mb-4">
                             Totals
@@ -462,7 +465,7 @@ export default async function OrderViewPage({
 
                     </div>
 
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+                    <div className="bg-neutral-950 p-6">
 
                         <h2 className="font-black text-lg mb-4">
                             Status Timeline
@@ -477,7 +480,7 @@ export default async function OrderViewPage({
                                 {timeline.map((event) => (
                                     <div
                                         key={event.id}
-                                        className="rounded-xl border border-neutral-800 bg-neutral-950 p-3"
+                                        className="border border-neutral-800 bg-black p-3"
                                     >
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="text-sm font-semibold">
@@ -504,7 +507,7 @@ export default async function OrderViewPage({
 
                     </div>
 
-                </div>
+                </section>
 
             </div>
 

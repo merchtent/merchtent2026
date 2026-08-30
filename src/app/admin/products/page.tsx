@@ -67,7 +67,7 @@ export default async function ProductsPage() {
 
     if (error) {
         return (
-            <div className="p-8">
+            <div className="m-6 border border-red-900 bg-red-950/20 p-6 text-red-200">
                 Failed to load products
             </div>
         );
@@ -107,19 +107,21 @@ export default async function ProductsPage() {
         ) ?? 0;
 
     return (
-        <div className="space-y-8 p-6">
+        <main className="min-h-screen bg-black text-white">
 
             {/* HEADER */}
 
-            <div className="flex items-center justify-between">
+            <section className="border-b border-neutral-800 p-5 md:p-8">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
 
                 <div>
-                    <h1 className="text-4xl font-black">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">Merch control</p>
+                    <h1 className="mt-2 text-5xl font-black uppercase leading-[0.88] md:text-7xl">
                         Products
                     </h1>
 
-                    <p className="text-neutral-400 mt-2">
-                        Manage merch, colours, images and sales.
+                    <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                        Manage merch, colours, images, moderation state, fulfilment flow and sales visibility.
                     </p>
                 </div>
 
@@ -129,12 +131,14 @@ export default async function ProductsPage() {
                         inline-flex
                         items-center
                         gap-2
-                        bg-red-600
-                        hover:bg-red-500
-                        px-4
+                        bg-lime-300
+                        hover:bg-lime-200
+                        px-5
                         py-3
-                        rounded-xl
-                        font-semibold
+                        font-black
+                        uppercase
+                        tracking-[0.08em]
+                        text-black
                         transition
                     "
                 >
@@ -143,27 +147,28 @@ export default async function ProductsPage() {
                 </Link>
 
             </div>
+            </section>
 
             {/* STATS */}
 
-            <div className="grid md:grid-cols-4 gap-4">
+            <section className="grid border-b border-neutral-800 md:grid-cols-4">
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                    <div className="text-sm text-neutral-500">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Products
                     </div>
 
-                    <div className="text-3xl font-black mt-2">
+                    <div className="mt-4 text-4xl font-black">
                         {products?.length ?? 0}
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                    <div className="text-sm text-neutral-500">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Published
                     </div>
 
-                    <div className="text-3xl font-black mt-2">
+                    <div className="mt-4 text-4xl font-black text-lime-300">
                         {
                             products?.filter(
                                 p => p.is_published
@@ -172,12 +177,12 @@ export default async function ProductsPage() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                    <div className="text-sm text-neutral-500">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Pending Review
                     </div>
 
-                    <div className="text-3xl font-black mt-2">
+                    <div className="mt-4 text-4xl font-black text-red-400">
                         {
                             products?.filter(
                                 p => p.moderation_status === "pending_review"
@@ -186,31 +191,31 @@ export default async function ProductsPage() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-                    <div className="text-sm text-neutral-500">
+                <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                         Total Sales
                     </div>
 
-                    <div className="text-3xl font-black mt-2">
+                    <div className="mt-4 text-4xl font-black">
                         {totalSales}
                     </div>
                 </div>
 
-            </div>
+            </section>
 
             {/* TABLE */}
 
+            <section className="p-5 md:p-8">
             <div className="
-                rounded-2xl
                 border
                 border-neutral-800
-                bg-neutral-900
+                bg-neutral-950
                 overflow-hidden
             ">
 
                 <table className="w-full">
 
-                    <thead className="bg-neutral-950">
+                    <thead className="bg-black text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
 
                         <tr>
 
@@ -486,7 +491,8 @@ export default async function ProductsPage() {
                 </table>
 
             </div>
+            </section>
 
-        </div>
+        </main>
     );
 }
