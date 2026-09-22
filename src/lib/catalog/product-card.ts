@@ -22,6 +22,7 @@ export type CatalogProductRow = {
     id: string;
     title?: string | null;
     slug?: string | null;
+    category?: string | null;
     price_cents?: number | null;
     product_images?: CatalogProductImageRow[] | null;
     product_colors?: CatalogProductColorRow[] | null;
@@ -31,6 +32,7 @@ export type CatalogProductRow = {
 export type CatalogProductCard = {
     id: string;
     title: string;
+    category: string | null;
     price: number;
     image: string;
     hover: string;
@@ -77,6 +79,7 @@ export function mapCatalogProductCard(
     return {
         id: String(product.id),
         title: product.title ?? "Untitled product",
+        category: product.category ?? null,
         price: (product.price_cents ?? 0) / 100,
         image: primary,
         hover,

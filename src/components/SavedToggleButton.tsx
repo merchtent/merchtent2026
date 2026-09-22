@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useOptimistic, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Heart, Star } from "lucide-react";
 import Link from "next/link";
 import { toggleSavedArtist, toggleWishlistedProduct } from "@/app/dashboard/saved/actions";
@@ -21,7 +21,7 @@ export default function SavedToggleButton({
     className = "",
 }: SavedToggleButtonProps) {
     const [isPending, startTransition] = useTransition();
-    const [saved, setSaved] = useOptimistic(initialSaved);
+    const [saved, setSaved] = useState(initialSaved);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -36,7 +36,7 @@ export default function SavedToggleButton({
         return () => {
             mounted = false;
         };
-    }, [id, setSaved, type]);
+    }, [id, type]);
     const Icon = type === "artist" ? Star : Heart;
     const label = saved
         ? type === "artist"

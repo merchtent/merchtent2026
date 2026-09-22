@@ -2,10 +2,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Box, FileClock, AlertTriangle, PenTool, ArrowRight, Shirt } from "lucide-react";
+import { Box, AlertTriangle, PenTool, ArrowRight, Shirt, Check, X } from "lucide-react";
 import { publicImageUrl } from "@/lib/storage";
 import { logger } from "@/lib/logger";
 import { requireArtistPage } from "@/lib/auth/artist";
+import ArchiveProductButton from "./ArchiveProductButton";
 
 function StatusPill({ published }: { published?: boolean | null }) {
     const styles = published
@@ -14,18 +15,6 @@ function StatusPill({ published }: { published?: boolean | null }) {
     return (
         <span className={`border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.08em] ${styles}`}>
             {published ? "Published" : "Draft"}
-        </span>
-    );
-}
-
-function DesignStatusPill({ designed }: { designed: boolean }) {
-    const styles = designed
-        ? "border-lime-300/40 bg-lime-300/15 text-lime-200"
-        : "border-neutral-700 bg-neutral-500/10 text-neutral-300";
-
-    return (
-        <span className={`border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.08em] ${styles}`}>
-            {designed ? "Merch Tent design" : "Manual"}
         </span>
     );
 }
@@ -98,6 +87,7 @@ export default async function MyProductsPage() {
             "id, title, description, is_published, created_at, primary_image_path, slug"
         )
         .eq("artist_id", artist.id)
+        .is("artist_archived_at", null)
         .order("created_at", { ascending: false });
 
     if (error) {
@@ -265,125 +255,73 @@ export default async function MyProductsPage() {
                             const readyCount = readinessChecks.filter((check) => check.ok).length;
                             const readyForLaunch = readyCount === readinessChecks.length;
                             return (
-                                <li
-                                    key={p.id}
-                                    className="grid gap-4 border-b border-neutral-800 bg-neutral-950 p-4 last:border-b-0 md:grid-cols-[96px_1fr_auto] md:items-center"
-                                >
-                                    <div className="relative h-24 w-24 shrink-0 overflow-hidden border border-neutral-800 bg-black">
-                                        {thumbnailUrl ? (
-                                            <Image
-                                                src={thumbnailUrl}
-                                                alt={p.title}
-                                                fill
-                                                sizes="80px"
-                                                className="object-cover"
-                                            />
-                                        ) : (
-                                            <div className="h-full w-full grid place-items-center text-neutral-500">
-                                                <Shirt className="h-6 w-6" />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <div className="text-xl font-black leading-tight">{p.title}</div>
-                                                <div className="mt-1 text-xs uppercase tracking-[0.14em] text-neutral-500">
-                                                    {new Date(String(p.created_at)).toLocaleString("en-AU", {
-                                                        year: "numeric",
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
+                                <li key={p.id} className="border-b border-neutral-800 bg-neutral-950 p-5 last:border-b-0 md:p-7">
+                                    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_190px] xl:gap-8">
+                                        <div className="min-w-0">
+                                            <div className="flex min-w-0 items-start gap-4 md:gap-6">
+                                                <div className="relative aspect-[4/5] w-24 shrink-0 overflow-hidden border border-neutral-800 bg-black md:w-32">
+                                                    {thumbnailUrl ? (
+                                                        <Image src={thumbnailUrl} alt={p.title} fill sizes="128px" className="object-contain" />
+                                                    ) : (
+                                                        <div className="grid h-full w-full place-items-center text-neutral-500"><Shirt className="h-7 w-7" /></div>
+                                                    )}
                                                 </div>
-                                            </div>
-
-                                            <div className="hidden text-right md:block">
-                                                <StatusPill published={p.is_published} />
-                                                <div className="mt-1">
-                                                    <DesignStatusPill designed={isDesignedProduct} />
-                                                </div>
-                                                <div className="mt-1 flex flex-col items-end gap-1">
-                                                    <LifecyclePill
-                                                        label={lifecycle?.production_status}
-                                                        tone={productionTone(lifecycle?.production_status)}
-                                                    />
-                                                    <LifecyclePill
-                                                        label={lifecycle?.moderation_status}
-                                                        tone={moderationTone(lifecycle?.moderation_status)}
-                                                    />
-                                                </div>
-                                                <div className="mt-1 text-[11px] text-neutral-400">
-                                                    {unitsSold} {unitsSold === 1 ? "sale" : "sales"}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {p.description && (
-                                            <p className="mt-1 text-sm text-neutral-300 line-clamp-2">
-                                                {p.description}
-                                            </p>
-                                        )}
-                                        {lifecycle?.readiness_notes ? (
-                                            <p className="mt-2 text-xs text-neutral-500 line-clamp-2">
-                                                {lifecycle.readiness_notes}
-                                            </p>
-                                        ) : null}
-                                        <div className="mt-4 border border-neutral-800 bg-black p-3">
-                                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-red-400">
-                                                    Launch readiness
-                                                </p>
-                                                    <span className={`text-xs font-black ${readyForLaunch ? "text-lime-200" : "text-yellow-300"}`}>
-                                                    {readyCount}/{readinessChecks.length} ready
-                                                </span>
-                                            </div>
-                                            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                                                {readinessChecks.map((check) => (
-                                                    <div key={check.label} className="flex items-center gap-2 text-xs">
-                                                        <span className={`h-2 w-2 ${check.ok ? "bg-lime-300" : "bg-red-500"}`} />
-                                                        <span className={check.ok ? "text-neutral-300" : "text-red-300"}>{check.label}</span>
+                                                <div className="min-w-0 flex-1">
+                                                    <h3 className="text-lg font-black leading-tight text-white md:text-2xl">{p.title}</h3>
+                                                    <p className="mt-1 text-xs uppercase text-neutral-500">
+                                                        {new Date(String(p.created_at)).toLocaleString("en-AU", {
+                                                            year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+                                                        })}
+                                                    </p>
+                                                    <div className="mt-4 flex flex-wrap gap-2">
+                                                        <StatusPill published={p.is_published} />
+                                                        {lifecycle?.production_status && lifecycle.production_status !== "published" ? (
+                                                            <LifecyclePill
+                                                                label={lifecycle.production_status === "failed" ? "Generation failed" : lifecycle.production_status === "generated" ? "Ready" : lifecycle.production_status}
+                                                                tone={productionTone(lifecycle.production_status)}
+                                                            />
+                                                        ) : null}
+                                                        {lifecycle?.moderation_status && lifecycle.moderation_status !== "draft" ? (
+                                                            <LifecyclePill label={lifecycle.moderation_status} tone={moderationTone(lifecycle.moderation_status)} />
+                                                        ) : null}
                                                     </div>
-                                                ))}
+                                                    {p.description ? <p className="mt-4 text-sm leading-6 text-neutral-300">{p.description}</p> : null}
+                                                    {lifecycle?.readiness_notes ? <p className="mt-3 text-sm leading-6 text-neutral-500">{lifecycle.readiness_notes}</p> : null}
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-6 border-t border-neutral-800 pt-5">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-lime-300">Launch readiness</p>
+                                                    <span className={`text-xs font-black ${readyForLaunch ? "text-lime-300" : "text-yellow-300"}`}>
+                                                        {readyCount} of {readinessChecks.length} ready
+                                                    </span>
+                                                </div>
+                                                <div className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+                                                    {readinessChecks.map((check) => (
+                                                        <div key={check.label} className="flex min-w-0 items-center gap-2 text-xs">
+                                                            {check.ok ? <Check className="h-4 w-4 shrink-0 text-lime-300" /> : <X className="h-4 w-4 shrink-0 text-red-400" />}
+                                                            <span className={check.ok ? "text-neutral-300" : "text-red-300"}>{check.label}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="flex items-center gap-3 md:justify-end">
-                                        {p.is_published ? (
-                                            <>
-                                                <Link
-                                                    href={`/product/${p.slug ?? p.id}`}
-                                                    className="inline-flex items-center gap-1 text-sm font-black text-[#b7ff3c] hover:text-lime-200"
-                                                    title="View product"
-                                                >
-                                                    View <ArrowRight className="h-4 w-4" />
+                                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-800 pt-5 xl:flex-col xl:items-stretch xl:justify-start xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+                                            <p className="text-sm text-neutral-400">{unitsSold} {unitsSold === 1 ? "sale" : "sales"}</p>
+                                            <div className="flex flex-wrap gap-2 xl:mt-4 xl:flex-col">
+                                                {p.is_published ? (
+                                                    <Link href={`/product/${p.slug ?? p.id}`} className="inline-flex h-10 items-center justify-center gap-2 border border-lime-300 px-3 text-sm font-black text-lime-300 hover:bg-lime-300 hover:text-black">
+                                                        View <ArrowRight className="h-4 w-4" />
+                                                    </Link>
+                                                ) : null}
+                                                <Link href={`/dashboard/products/${p.id}/edit`} className="inline-flex h-10 items-center justify-center gap-2 border border-neutral-700 px-3 text-sm font-black text-white hover:border-lime-300">
+                                                    <PenTool className="h-4 w-4" /> Edit
                                                 </Link>
-                                                <Link
-                                                    href={`/dashboard/products/${p.id}/edit`}
-                                                    className="text-sm font-black underline"
-                                                >
-                                                    Edit
-                                                </Link>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="text-xs text-neutral-500 inline-flex items-center gap-1">
-                                                    <FileClock className="h-3.5 w-3.5" />
-                                                    Not live
-                                                </span>
-                                                <Link
-                                                    href={`/dashboard/products/${p.id}/edit`}
-                                                    className="text-sm font-black underline"
-                                                >
-                                                    Edit
-                                                </Link>
-                                            </>
-
-
-                                        )}
+                                                <ArchiveProductButton productId={p.id} productTitle={p.title} />
+                                            </div>
+                                        </div>
                                     </div>
                                 </li>
                             );

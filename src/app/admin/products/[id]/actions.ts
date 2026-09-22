@@ -15,6 +15,7 @@ type ProductModerationRow = {
     is_published: boolean | null;
     production_status: string | null;
     moderation_status: string | null;
+    artist_archived_at: string | null;
 };
 
 export async function moderateProduct(productId: string, status: ModerationStatus, notes = "") {
@@ -24,7 +25,7 @@ export async function moderateProduct(productId: string, status: ModerationStatu
 
     const { data: product, error: productError } = await serviceSupabase
         .from("products")
-        .select("id, artist_id, title, is_published, production_status, moderation_status")
+        .select("id, artist_id, title, is_published, production_status, moderation_status, artist_archived_at")
         .eq("id", productId)
         .maybeSingle();
 
@@ -43,6 +44,7 @@ export async function moderateProduct(productId: string, status: ModerationStatu
     }
 
     const typedProduct = product as ProductModerationRow;
+    if (typedProduct.artist_archived_at) throw new Error("Restore this product before moderating it.");
     if (
         status === "approved" &&
         (typedProduct.is_published !== true || typedProduct.production_status !== "published")

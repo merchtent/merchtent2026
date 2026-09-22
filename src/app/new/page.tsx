@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import {
     ArrowRight,
@@ -14,8 +15,21 @@ import { publicImageUrl } from "@/lib/storage";
 import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 import { logger } from "@/lib/logger";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
+import TrackItemList from "@/components/TrackItemList";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+    title: "New Band Merch Drops",
+    description: "Shop the latest tees, hoodies and official merch drops from Australian local and unsigned artists.",
+    alternates: { canonical: "/new" },
+    openGraph: {
+        title: "New Band Merch Drops",
+        description: "Fresh official merch from Australian local and unsigned artists.",
+        url: "/new",
+        type: "website",
+    },
+};
 
 type ProductImageRow = {
     path: string | null;
@@ -181,6 +195,7 @@ export default async function NewThisWeekPage({
 
     return (
         <main className="min-h-screen bg-black text-white">
+            <TrackItemList listName="new_drops" items={products.map((product) => ({ id: product.id, title: product.title }))} />
             <section className="relative overflow-hidden border-b border-neutral-800 bg-black">
                 <div className="absolute inset-0">
                     <Image

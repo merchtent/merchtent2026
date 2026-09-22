@@ -131,9 +131,9 @@ export default function ProductBuyBox({
                     Made only when you order
                 </p>
                 <ul className="mt-3 space-y-1.5 text-neutral-400">
-                    <li>Eco friendly print model</li>
-                    <li>No bulk stock gamble</li>
-                    <li>Directly supports the artist</li>
+                    <li>Usually produced in 2–3 business days</li>
+                    <li>Tracked shipping selected at checkout</li>
+                    <li>Damaged, misprinted or incorrect items are covered</li>
                 </ul>
             </div>
 
@@ -220,25 +220,20 @@ export default function ProductBuyBox({
             </div>
 
             <div className="mt-4 grid border border-neutral-800 bg-neutral-950 md:grid-cols-3">
-                <SceneSignal icon={<PackageCheck className="h-4 w-4" />} label="Low-waste print" body="Made after sale" />
+                <SceneSignal icon={<PackageCheck className="h-4 w-4" />} label="Made to order" body="2–3 day production" />
                 <SceneSignal icon={<BadgePercent className="h-4 w-4" />} label="Fan credits" body="Earned on buys" />
                 <SceneSignal icon={<ShieldCheck className="h-4 w-4" />} label="Secure checkout" body="Tracked order" />
             </div>
-
-            {/* ⚡ URGENCY */}
-            <p className="mt-2 text-[11px] text-neutral-500">
-                This design may not be restocked
-            </p>
 
             {/* TRUST */}
             <div className="mt-4 grid grid-cols-3 border border-neutral-800 text-[11px] text-neutral-400">
                 <div className="flex items-center gap-1 border-r border-neutral-800 p-2">
                     <Truck className="h-3.5 w-3.5" />
-                    Fast dispatch
+                    Tracked shipping
                 </div>
                 <div className="flex items-center gap-1 border-r border-neutral-800 p-2">
                     <RefreshCw className="h-3.5 w-3.5" />
-                    Eco print
+                    Order support
                 </div>
                 <div className="flex items-center gap-1 p-2">
                     <ShieldCheck className="h-3.5 w-3.5" />
@@ -248,7 +243,7 @@ export default function ProductBuyBox({
 
             {/* MICRO TRUST */}
             <p className="mt-3 text-center text-[10px] text-neutral-500">
-                Secure checkout • Printed locally • Tracked delivery
+                Secure Stripe checkout • Production updates • Tracked delivery
             </p>
 
         </div>

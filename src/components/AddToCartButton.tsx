@@ -2,6 +2,7 @@
 "use client";
 
 import { useCart } from "@/components/CartProvider";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 type AddToCartButtonProps = {
     product_id: string;
@@ -38,19 +39,11 @@ export default function AddToCartButton({
     return (
         <button
             type="button"
-            // className={
-            //     className ??
-            //     // ✅ same look as checkout
-            //     "relative h-11 px-6 font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 rounded-2xl"
-            // }
             className={
                 className ??
-                "relative rounded-xl px-5 py-3 text-sm font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-50"
+                "relative border border-[#b6ff3f] bg-[#b6ff3f] px-5 py-3 text-sm font-black uppercase tracking-wide text-black transition hover:bg-white disabled:opacity-50"
             }
-            style={{
-                clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)",
-                cursor: "pointer"
-            }}
+            style={{ cursor: "pointer" }}
             onClick={() => {
                 add(
                     {
@@ -65,6 +58,18 @@ export default function AddToCartButton({
                     },
                     1
                 );
+                trackMarketingEvent("add_to_cart", {
+                    currency,
+                    value_cents: price_cents,
+                    items: [{
+                        item_id: product_id,
+                        item_name: title,
+                        price_cents,
+                        currency,
+                        quantity: 1,
+                        item_variant: [selectedSize, selectedColorLabel ?? selectedColor].filter(Boolean).join(" / "),
+                    }],
+                });
                 open();
             }}
         >

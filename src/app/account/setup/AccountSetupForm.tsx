@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { completeAccountSetup } from "./actions";
+import { marketingAttributionJson } from "@/lib/marketing/attribution";
 
 type AccountType = "fan" | "artist";
 
@@ -44,7 +45,7 @@ export default function AccountSetupForm({
     const helper = useMemo(
         () =>
             accountType === "artist"
-                ? "Sell merch, design products, view sales, and cash out artist earnings."
+                ? "Use the self-service tools to create products, publish merch, view sales, and cash out artist earnings."
                 : "Track purchases, earn merch credits, and keep your fan history in one place.",
         [accountType]
     );
@@ -52,6 +53,7 @@ export default function AccountSetupForm({
     async function action(formData: FormData) {
         setError(null);
         try {
+            formData.set("marketing_attribution", marketingAttributionJson());
             await completeAccountSetup(formData);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Could not finish setup.");
@@ -66,51 +68,51 @@ export default function AccountSetupForm({
                 <button
                     type="button"
                     onClick={() => setAccountType("fan")}
-                    className={`rounded-2xl border p-4 text-left transition ${accountType === "fan"
-                        ? "border-red-500 bg-red-500/15"
-                        : "border-neutral-800 bg-neutral-950 hover:border-neutral-700"
+                    className={`border p-4 text-left transition ${accountType === "fan"
+                        ? "border-[#b6ff3f] bg-[#b6ff3f]"
+                        : "border-black/10 bg-white hover:border-[#477a00]"
                         }`}
                 >
-                    <p className="text-lg font-black">Fan</p>
-                    <p className="mt-2 text-sm text-neutral-400">
+                    <p className="text-lg font-black uppercase">Fan</p>
+                    <p className={`mt-2 text-sm ${accountType === "fan" ? "text-black/70" : "text-black/55"}`}>
                         Buy merch, view orders, and collect credits.
                     </p>
                 </button>
                 <button
                     type="button"
                     onClick={() => setAccountType("artist")}
-                    className={`rounded-2xl border p-4 text-left transition ${accountType === "artist"
-                        ? "border-red-500 bg-red-500/15"
-                        : "border-neutral-800 bg-neutral-950 hover:border-neutral-700"
+                    className={`border p-4 text-left transition ${accountType === "artist"
+                        ? "border-[#b6ff3f] bg-[#b6ff3f]"
+                        : "border-black/10 bg-white hover:border-[#477a00]"
                         }`}
                 >
-                    <p className="text-lg font-black">Artist / Band</p>
-                    <p className="mt-2 text-sm text-neutral-400">
+                    <p className="text-lg font-black uppercase">Artist / Band</p>
+                    <p className={`mt-2 text-sm ${accountType === "artist" ? "text-black/70" : "text-black/55"}`}>
                         Create products, manage sales, and get paid.
                     </p>
                 </button>
             </div>
 
-            <p className="rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-neutral-300">
+            <p className="border border-black/10 bg-white px-4 py-3 text-sm text-black/65">
                 {helper}
             </p>
 
             <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.18em] text-[#477a00]">
                     Display name
                 </span>
                 <input
                     name="display_name"
                     value={displayName}
                     onChange={(event) => setDisplayName(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 text-sm text-neutral-100"
+                    className="h-11 w-full border border-black/15 bg-white px-3 text-sm text-black outline-none focus:border-[#477a00]"
                     placeholder="Your name"
                 />
             </label>
 
             {accountType === "artist" ? (
                 <label className="block">
-                    <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                    <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.18em] text-[#477a00]">
                         Artist / band name
                     </span>
                     <input
@@ -120,21 +122,21 @@ export default function AccountSetupForm({
                         minLength={2}
                         maxLength={60}
                         required
-                        className="h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 text-sm text-neutral-100"
+                        className="h-11 w-full border border-black/15 bg-white px-3 text-sm text-black outline-none focus:border-[#477a00]"
                         placeholder="e.g. Greg Mitchell Trio"
                     />
                 </label>
             ) : null}
 
             {error ? (
-                <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                <p className="border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700">
                     {error}
                 </p>
             ) : null}
 
             <button
                 type="submit"
-                className="rounded-xl border border-red-500 bg-red-600 px-5 py-3 text-sm font-black text-white hover:bg-red-500"
+                className="border border-[#b6ff3f] bg-[#b6ff3f] px-5 py-3 text-sm font-black uppercase text-black hover:bg-white"
             >
                 Finish setup
             </button>

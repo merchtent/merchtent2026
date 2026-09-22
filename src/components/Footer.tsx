@@ -12,6 +12,7 @@ const shopNav = [
     { label: "Hoodies", href: "/category/hoodies" },
     { label: "Hats", href: "/category/hats" },
     { label: "Tank Tops", href: "/category/tanks" },
+    { label: "Bags", href: "/category/bags" },
     { label: "Artists", href: "/artists" },
 ];
 

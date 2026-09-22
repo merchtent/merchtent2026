@@ -1,6 +1,12 @@
 // src/app/page.tsx
 import { getServerSupabase } from "@/lib/supabase/server";
 import Home from "@/components/shop/Home";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+  alternates: { canonical: "/" },
+};
 
 async function getTourDates() {
   const supabase = getServerSupabase();

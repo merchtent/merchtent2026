@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 type LogContext = Record<string, unknown>;
@@ -14,10 +16,11 @@ const SENSITIVE_VALUE_PATTERNS: Array<[RegExp, string]> = [
 ];
 
 function writeLog(level: LogLevel, message: string, context?: LogContext) {
+    const redactedContext = redactLogValue(context ?? {});
     const payload = {
         level,
         message: redactLogString(message),
-        context: redactLogValue(context ?? {}),
+        context: redactedContext,
         timestamp: new Date().toISOString(),
     };
 
@@ -25,6 +28,10 @@ function writeLog(level: LogLevel, message: string, context?: LogContext) {
 
     if (level === "error") {
         console.error(line);
+        Sentry.withScope((scope) => {
+            scope.setContext("application", redactedContext as Record<string, unknown>);
+            Sentry.captureMessage(payload.message, "error");
+        });
     } else if (level === "warn") {
         console.warn(line);
     } else {

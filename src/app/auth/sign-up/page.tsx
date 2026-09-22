@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Disc3, Mail, ShieldCheck, Store } from "lucide-react";
+import { marketingAttributionJson } from "@/lib/marketing/attribution";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 type AccountType = "fan" | "artist";
 
@@ -67,6 +69,7 @@ export default function SignUpPage() {
                         account_type: accountType,
                         display_name: cleanName || null,
                         page: "/auth/sign-up",
+                        attribution: marketingAttributionJson() ? JSON.parse(marketingAttributionJson()) : null,
                     }),
                     consent: true,
                 }),
@@ -79,6 +82,10 @@ export default function SignUpPage() {
 
             localStorage.setItem("pending_account_type", accountType);
             if (cleanName) localStorage.setItem("pending_display_name", cleanName);
+            trackMarketingEvent(accountType === "artist" ? "artist_lead" : "sign_up", {
+                account_type: accountType,
+                source: "early_access",
+            });
             setSent(true);
         } catch {
             setErr(ACCESS_ERROR);

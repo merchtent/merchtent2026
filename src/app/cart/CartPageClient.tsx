@@ -4,7 +4,7 @@ import { useCart } from "@/components/CartProvider";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { publicProductImageUrlOrSource } from "@/lib/storage";
 
 function fmt(amount_cents: number, currency: string | null) {
@@ -31,49 +31,51 @@ export default function CartPageClient() {
     }
 
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* angled banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-6xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-[10px] text-red-600">
-                                Checkout
-                            </p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                Your cart
-                            </h1>
-                        </div>
-                        {!!items.length && (
-                            <button
-                                onClick={clear}
-                                className="hidden md:inline-flex items-center gap-2 text-xs underline text-neutral-700"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                                Clear cart
-                            </button>
-                        )}
+        <main className="min-h-screen bg-[#060606] text-white">
+            <section className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(180,255,55,0.16),transparent_28%),linear-gradient(180deg,#080808,#111)]">
+                <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-12 md:flex-row md:items-end md:justify-between md:px-8 md:py-16">
+                    <div>
+                        <p className="text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">
+                            Checkout
+                        </p>
+                        <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            Your cart.
+                        </h1>
+                        <p className="mt-4 max-w-xl text-sm leading-6 text-white/65">
+                            Check the drop, pick the quantities, then head through to secure payment.
+                        </p>
                     </div>
+                    {!!items.length && (
+                        <button
+                            onClick={clear}
+                            className="inline-flex items-center gap-2 border border-white/15 px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-white/70 hover:border-red-500 hover:text-red-400"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            Clear cart
+                        </button>
+                    )}
                 </div>
             </section>
 
-            <section className="max-w-6xl mx-auto px-4 py-8">
+            <section className="mx-auto max-w-7xl px-4 py-10 md:px-8 md:py-14">
                 {items.length === 0 ? (
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
-                        Your cart is empty.{" "}
-                        <Link href="/" className="underline">
+                    <div className="border border-white/10 bg-[#f4f1e8] p-8 text-black md:p-10">
+                        <ShoppingBag className="h-9 w-9 text-red-600" />
+                        <h2 className="mt-5 text-4xl font-black uppercase leading-none">
+                            Your cart is empty.
+                        </h2>
+                        <p className="mt-3 max-w-lg text-sm leading-6 text-black/65">
+                            Find a band, back a drop, and your order will appear here.
+                        </p>
+                        <Link href="/" className="mt-6 inline-flex items-center gap-2 bg-[#b6ff3f] px-5 py-3 text-sm font-black uppercase text-black">
                             Continue shopping
+                            <ArrowRight className="h-4 w-4" />
                         </Link>
-                        .
                     </div>
                 ) : (
                     <div className="grid lg:grid-cols-3 gap-6">
-                        {/* Items list */}
-                        <div
-                            className="lg:col-span-2 rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden"
-                            style={{ clipPath: "polygon(2% 0,100% 0,100% 100%,0 100%)" }}
-                        >
-                            <ul className="divide-y divide-neutral-800">
+                        <div className="lg:col-span-2 overflow-hidden border border-white/10 bg-black">
+                            <ul className="divide-y divide-white/10">
                                 {items.map((item) => {
                                     const lineId = item.sku ?? item.product_id;
                                     const resolvedImg = publicProductImageUrlOrSource(item.image_path);
@@ -84,14 +86,14 @@ export default function CartPageClient() {
                                             key={lineId}
                                             className="p-4 md:p-5 flex items-center gap-4 md:gap-6"
                                         >
-                                            <div className="relative h-20 w-20 md:h-24 md:w-24 shrink-0 overflow-hidden rounded bg-neutral-950 border border-neutral-800">
+                                            <div className="relative h-24 w-24 md:h-28 md:w-28 shrink-0 overflow-hidden border border-white/10 bg-[#f4f1e8]">
                                                 {resolvedImg ? (
                                                     <Image
                                                         src={resolvedImg}
                                                         alt={item.title}
                                                         fill
                                                         sizes="96px"
-                                                        className="object-cover"
+                                                        className="object-contain p-2"
                                                     />
                                                 ) : (
                                                     <div className="h-full w-full grid place-items-center text-xs text-neutral-500">
@@ -103,15 +105,15 @@ export default function CartPageClient() {
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="min-w-0">
-                                                        <p className="font-medium truncate">{item.title}</p>
-                                                        <p className="text-sm text-neutral-400">
+                                                        <p className="font-black uppercase leading-tight text-white">{item.title}</p>
+                                                        <p className="mt-1 text-sm font-black text-[#b6ff3f]">
                                                             {fmt(item.price_cents, item.currency)}
                                                         </p>
 
                                                         {hasVariantLine ? (
-                                                            <div className="mt-1 text-[11px] text-neutral-500 space-x-2">
+                                                            <div className="mt-2 text-[11px] uppercase tracking-[0.16em] text-white/45 space-x-2">
                                                                 {item.sku ? (
-                                                                    <span className="inline-block bg-neutral-900/40 px-1.5 py-0.5 rounded-sm border border-neutral-800/60">
+                                                                    <span className="inline-block border border-white/10 bg-white/5 px-1.5 py-0.5">
                                                                         {item.sku}
                                                                     </span>
                                                                 ) : null}
@@ -126,7 +128,7 @@ export default function CartPageClient() {
                                                                 by: item.sku ? "sku" : "product_id",
                                                             })
                                                         }
-                                                        className="text-xs underline text-neutral-400 hover:text-white"
+                                                        className="text-xs font-black uppercase tracking-[0.16em] text-white/45 underline decoration-red-500 underline-offset-4 hover:text-red-400"
                                                     >
                                                         Remove
                                                     </button>
@@ -134,12 +136,12 @@ export default function CartPageClient() {
 
                                                 {/* qty row */}
                                                 <div className="mt-3 flex items-center gap-3">
-                                                    <span className="text-xs text-neutral-500">Qty</span>
-                                                    <div className="inline-flex items-center rounded-lg border border-neutral-700 overflow-hidden">
+                                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-white/45">Qty</span>
+                                                    <div className="inline-flex items-center overflow-hidden border border-white/15">
                                                         <button
                                                             type="button"
                                                             aria-label="Decrease quantity"
-                                                            className="h-8 w-8 grid place-items-center hover:bg-neutral-950"
+                                                            className="h-9 w-9 grid place-items-center hover:bg-white/10"
                                                             onClick={() =>
                                                                 setQty(
                                                                     lineId,
@@ -162,12 +164,12 @@ export default function CartPageClient() {
                                                                     { by: item.sku ? "sku" : "product_id" }
                                                                 )
                                                             }
-                                                            className="h-8 w-14 bg-neutral-950 text-center text-sm outline-none"
+                                                            className="h-9 w-14 bg-black text-center text-sm outline-none"
                                                         />
                                                         <button
                                                             type="button"
                                                             aria-label="Increase quantity"
-                                                            className="h-8 w-8 grid place-items-center hover:bg-neutral-950"
+                                                            className="h-9 w-9 grid place-items-center hover:bg-white/10"
                                                             onClick={() =>
                                                                 setQty(
                                                                     lineId,
@@ -187,11 +189,11 @@ export default function CartPageClient() {
                             </ul>
 
                             {/* footer actions (mobile) */}
-                            <div className="p-4 border-t border-neutral-800 flex items-center justify-between lg:hidden">
-                                <Link href="/" className="underline text-sm">
+                            <div className="p-4 border-t border-white/10 flex items-center justify-between lg:hidden">
+                                <Link href="/" className="text-sm font-black uppercase text-[#b6ff3f]">
                                     Continue shopping
                                 </Link>
-                                <button onClick={clear} className="text-xs underline text-neutral-400">
+                                <button onClick={clear} className="text-xs font-black uppercase tracking-[0.16em] text-white/45 underline">
                                     Clear cart
                                 </button>
                             </div>
@@ -199,43 +201,39 @@ export default function CartPageClient() {
 
                         {/* Summary */}
                         <aside className="lg:sticky lg:top-6 h-max">
-                            <div
-                                className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 md:p-6"
-                                style={{ clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)" }}
-                            >
-                                <h2 className="text-sm uppercase tracking-[0.25em] text-neutral-400">
+                            <div className="border border-white/10 bg-[#f4f1e8] p-5 md:p-6 text-black">
+                                <h2 className="text-xs font-black uppercase tracking-[0.28em] text-red-600">
                                     Summary
                                 </h2>
 
                                 <div className="mt-4 space-y-2 text-sm">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-neutral-300">Subtotal</span>
-                                        <span className="text-lg font-black text-red-400">
+                                        <span className="text-black/60">Subtotal</span>
+                                        <span className="text-2xl font-black text-black">
                                             {fmt(subtotal_cents, currency)}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-neutral-400">Shipping</span>
-                                        <span className="text-neutral-400">Calculated at checkout</span>
+                                        <span className="text-black/55">Shipping</span>
+                                        <span className="text-black/55">Calculated at checkout</span>
                                     </div>
                                 </div>
 
                                 <button
                                     onClick={goToCheckout}
                                     disabled={items.length === 0}
-                                    className="mt-5 w-full relative rounded-xl px-5 py-3 text-sm font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-50"
-                                    style={{ clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)" }}
+                                    className="mt-5 w-full px-5 py-4 text-sm font-black uppercase tracking-wide bg-[#b6ff3f] text-black disabled:opacity-50"
                                 >
-                                    Checkout
+                                    Checkout <ArrowRight className="ml-2 inline h-4 w-4" />
                                 </button>
 
-                                <p className="mt-3 text-[11px] text-neutral-500">
+                                <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-black/45">
                                     Taxes calculated at checkout.
                                 </p>
                             </div>
 
                             <div className="mt-4 text-center">
-                                <Link href="/" className="underline text-sm">
+                                <Link href="/" className="text-sm font-black uppercase text-white/70 underline decoration-red-500 underline-offset-4 hover:text-red-400">
                                     Continue shopping
                                 </Link>
                             </div>

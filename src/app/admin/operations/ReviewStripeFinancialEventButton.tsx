@@ -43,7 +43,7 @@ export default function ReviewStripeFinancialEventButton({
                 onChange={(event) => setNotes(event.target.value)}
                 maxLength={1000}
                 placeholder={copy.placeholder}
-                className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs text-neutral-100 outline-none transition placeholder:text-neutral-500 focus:border-red-400"
+                className="border border-white/15 bg-black px-3 py-2 text-xs text-white outline-none transition placeholder:text-white/35 focus:border-[#b6ff3f]"
             />
             <button
                 type="button"
@@ -70,7 +70,7 @@ export default function ReviewStripeFinancialEventButton({
                         }
                     });
                 }}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-700 px-3 py-2 text-xs font-semibold text-neutral-100 transition hover:border-red-500 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 border border-[#b6ff3f]/60 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#b6ff3f] transition hover:bg-[#b6ff3f] hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
             >
                 <Icon className="h-3.5 w-3.5" />
                 {pending ? "Updating..." : copy.label}

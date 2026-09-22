@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import AddToCartButton from "@/components/AddToCartButton";
 import SavedToggleButton from "@/components/SavedToggleButton";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 export type ProductColorVariant = {
     hex: string;
@@ -33,7 +34,7 @@ function BootlegStamp() {
     return (
         <div className="pointer-events-none absolute -left-8 -top-4 rotate-[-12deg] text-[11px] font-black tracking-wider">
             <span className="bg-red-600 text-white px-3 py-1 rounded">
-                LIMITED // 300
+                ARTIST DROP
             </span>
         </div>
     );
@@ -166,6 +167,7 @@ export function ProductCard({
                     aria-label={p.title}
                     className="absolute inset-0 z-10"
                     tabIndex={-1}
+                    onClick={() => trackMarketingEvent("select_item", { item_list_name: "product_grid", items: [{ item_id: p.id, item_name: p.title, price_cents: Math.round(p.price * 100), currency: "AUD" }] })}
                 />
 
                 {/* FRONT image */}
@@ -228,6 +230,7 @@ export function ProductCard({
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
+                                trackMarketingEvent("select_item", { item_list_name: "product_grid", items: [{ item_id: p.id, item_name: p.title, price_cents: Math.round(p.price * 100), currency: "AUD" }] });
                                 router.push(`/product/${p.slug ?? p.id}`);
                             }}
                         >

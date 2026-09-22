@@ -45,6 +45,7 @@ export default function CheckoutShellClient({
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [useMerchCredits, setUseMerchCredits] = useState(false);
+    const [shippingCountry, setShippingCountry] = useState(defaultAddress?.country || "AU");
 
     // save shipping method whenever it changes
     useEffect(() => {
@@ -54,7 +55,7 @@ export default function CheckoutShellClient({
     }, [shippingMethod]);
 
     return (
-        <section className="max-w-5xl mx-auto px-4 pb-10 grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-start">
+        <section className="mx-auto grid max-w-7xl items-start gap-6 px-4 py-8 pb-14 md:px-8 lg:grid-cols-[1.1fr_0.9fr]">
             <CheckoutFormClient
                 userEmail={userEmail}
                 defaultAddress={defaultAddress}
@@ -66,12 +67,14 @@ export default function CheckoutShellClient({
                 canUseMerchCredits={canUseMerchCredits}
                 useMerchCredits={useMerchCredits}
                 setUseMerchCredits={setUseMerchCredits}
+                setShippingCountry={setShippingCountry}
             />
             <CheckoutSummaryClient
                 shippingMethod={shippingMethod}
                 isSubmitting={isSubmitting}
                 useMerchCredits={useMerchCredits}
                 merchCreditBalance={merchCreditBalance}
+                shippingCountry={shippingCountry}
             />
         </section>
     );

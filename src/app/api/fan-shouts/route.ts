@@ -49,7 +49,8 @@ export async function GET(req: Request) {
     }
 
     // 🔥 calculate average
-    const ratings = ((data ?? []) as FanShoutRow[]).map((r) => r.rating ?? 5);
+    const ratings = ((data ?? []) as FanShoutRow[])
+        .flatMap((review) => typeof review.rating === "number" ? [review.rating] : []);
 
     const avg =
         ratings.length > 0

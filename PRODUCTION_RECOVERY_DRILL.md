@@ -106,3 +106,20 @@ A drill passes only when:
 - Follow-up actions have named owners.
 
 If any pass criteria fails, the release is not operationally ready.
+
+## Supplier Outage Drill
+
+Run this drill against staging with supplier submissions disabled or directed to a controlled failure stub. Do not create live supplier orders.
+
+1. Record the start time, operator, commit, supplier, and expected recovery owner.
+2. Simulate supplier API timeouts or HTTP 5xx responses for product sync and order submission.
+3. Place a test order and confirm payment/order creation remains durable while supplier submission is recorded as failed or awaiting retry.
+4. Confirm `/api/health/operations` returns HTTP 503 and `/admin/operations` identifies the supplier-sync exception without exposing credentials or customer data.
+5. Confirm Sentry receives the exception and the configured alert reaches the on-call destination.
+6. Confirm the customer is not sent a false shipping or production-complete notification.
+7. Restore supplier connectivity, retry through the admin operation, and verify idempotency prevents duplicate supplier orders.
+8. Reconcile the local order, fulfilment job, supplier order reference, case history, notifications, and platform events.
+9. Measure detection time, recovery time, and the number of orders requiring manual intervention.
+10. Save a `supplier_outage` evidence JSON record under `operations/drills/evidence` and run `npm run ops:drills:check`.
+
+The supplier drill passes only when the failure is visible, alerting works, no order is duplicated or lost, customer messaging remains accurate, and recovery leaves no unexplained operational exceptions.

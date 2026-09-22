@@ -1,0 +1,20 @@
+{
+  "drill_type": "backup_restore",
+  "result": "passed",
+  "completed_at": "2026-09-22T00:00:00.000Z",
+  "operator": "Name",
+  "environment": "staging",
+  "git_commit": "full-commit-sha",
+  "evidence_url": "https://internal-runbook-or-ticket.example/evidence",
+  "target_rto_minutes": 120,
+  "actual_rto_minutes": 75,
+  "target_rpo_minutes": 1440,
+  "observed_rpo_minutes": 30,
+  "follow_up_owner": "Name",
+  "validations": [
+    { "name": "health", "passed": true },
+    { "name": "migration_alignment", "passed": true },
+    { "name": "smoke_test", "passed": true }
+  ],
+  "notes": "Duplicate this file for each real drill. Use supplier_outage for the supplier drill."
+}

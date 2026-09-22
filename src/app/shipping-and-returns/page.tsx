@@ -1,235 +1,121 @@
-// app/shipping-and-returns/page.tsx
 import Link from "next/link";
+import type { Metadata } from "next";
+import { ArrowRight, Mail, PackageCheck, RotateCcw, Truck } from "lucide-react";
 
 export const revalidate = 60;
 
+export const metadata: Metadata = {
+    title: "Shipping and Returns",
+    description: "Merch Tent shipping rates, delivery estimates, tracking guidance and made-to-order returns information for Australian band merch orders.",
+    alternates: { canonical: "/shipping-and-returns" },
+};
+
+const deliveryRows = [
+    ["Australia metro", "2-5 business days"],
+    ["Australia regional", "3-8 business days"],
+    ["New Zealand", "5-10 business days"],
+    ["US / Canada", "7-14 business days"],
+    ["EU / UK", "7-14 business days"],
+];
+
+const faqs = [
+    ["My order is late. What should I do?", "Check tracking first. If it has not moved for 5+ business days, contact us with your order number."],
+    ["Can I return the wrong size?", "Because items are printed on demand, change-of-mind and size-change returns are not available. Please check the size guide before buying."],
+    ["What if the item is damaged or incorrect?", "Email support@merchtent.com.au within 7 days of delivery with your order number and clear photos. We will review it for replacement or refund."],
+    ["Can I change my address?", "If production or shipping has not started, we will do our best. Contact us as soon as possible."],
+];
+
 export default function ShippingAndReturnsPage() {
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* Angled banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-6xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">Support</p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">Shipping & Returns</h1>
-                        </div>
-                        <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">
-                            POLICY
-                        </span>
+        <main className="min-h-screen bg-[#060606] text-white">
+            <section className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(180,255,55,0.14),transparent_30%),linear-gradient(180deg,#080808,#111)]">
+                <div className="mx-auto max-w-7xl px-4 py-14 md:px-8 md:py-20">
+                    <p className="text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">Support</p>
+                    <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                        Shipping and returns.
+                    </h1>
+                    <p className="mt-6 max-w-2xl text-base leading-7 text-white/68">
+                        Made-to-order merch means every item starts moving after checkout. Here is what to expect before it reaches your door.
+                    </p>
+                </div>
+            </section>
+
+            <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 md:grid-cols-3 md:px-8 md:py-16">
+                <article className="border border-white/10 bg-black p-6">
+                    <Truck className="h-8 w-8 text-[#b6ff3f]" />
+                    <h2 className="mt-5 text-3xl font-black uppercase leading-none">Shipping</h2>
+                    <p className="mt-4 text-sm leading-6 text-white/62">
+                        Shipping rates are calculated at checkout based on the items, destination and available delivery services.
+                    </p>
+                </article>
+                <article className="border border-white/10 bg-black p-6">
+                    <PackageCheck className="h-8 w-8 text-[#b6ff3f]" />
+                    <h2 className="mt-5 text-3xl font-black uppercase leading-none">Tracking</h2>
+                    <p className="mt-4 text-sm leading-6 text-white/62">
+                        You will receive tracking once the order ships. Tracking can take 24-48 hours to activate after dispatch.
+                    </p>
+                </article>
+                <article className="border border-white/10 bg-black p-6">
+                    <RotateCcw className="h-8 w-8 text-[#b6ff3f]" />
+                    <h2 className="mt-5 text-3xl font-black uppercase leading-none">Returns</h2>
+                    <p className="mt-4 text-sm leading-6 text-white/62">
+                        Printed-on-demand items are final sale unless they arrive damaged, misprinted or incorrect.
+                    </p>
+                </article>
+            </section>
+
+            <section className="border-y border-white/10 bg-[#f4f1e8] text-black">
+                <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[0.85fr_1.15fr] md:px-8 md:py-16">
+                    <div>
+                        <p className="text-xs font-black uppercase tracking-[0.3em] text-[#477a00]">Delivery guide</p>
+                        <h2 className="mt-3 text-4xl font-black uppercase leading-[0.9] md:text-6xl">
+                            Estimate the wait before the drop lands.
+                        </h2>
+                    </div>
+                    <div className="border border-black/10 bg-white">
+                        {deliveryRows.map(([region, time]) => (
+                            <div key={region} className="grid grid-cols-[1fr_auto] gap-4 border-b border-black/10 p-4 last:border-b-0">
+                                <span className="font-black uppercase">{region}</span>
+                                <span className="text-sm font-black text-[#477a00]">{time}</span>
+                            </div>
+                        ))}
+                        <p className="border-t border-black/10 p-4 text-xs uppercase tracking-[0.12em] text-black/45">
+                            Estimates exclude production time, weekends, holidays and customs delays.
+                        </p>
                     </div>
                 </div>
             </section>
 
-            {/* Content */}
-            <section className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-                {/* Quick index */}
-                <nav className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4 text-sm"
-                    style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
-                    <p className="text-neutral-300 mb-2">Jump to:</p>
-                    <ul className="flex flex-wrap gap-3">
-                        <li><a className="underline text-neutral-200" href="#shipping">Shipping</a></li>
-                        <li><a className="underline text-neutral-200" href="#delivery-times">Delivery Times</a></li>
-                        <li><a className="underline text-neutral-200" href="#tracking">Tracking</a></li>
-                        <li><a className="underline text-neutral-200" href="#international">International & Customs</a></li>
-                        <li><a className="underline text-neutral-200" href="#returns">Returns & Exchanges</a></li>
-                        <li><a className="underline text-neutral-200" href="#refunds">Refunds</a></li>
-                        <li><a className="underline text-neutral-200" href="#faq">FAQ</a></li>
-                    </ul>
-                </nav>
-
-                {/* Shipping */}
-                <section id="shipping" className="grid md:grid-cols-2 gap-6">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
-                        style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
-                        <h2 className="text-lg font-bold">Shipping</h2>
-                        <p className="text-neutral-300 mt-2">
-                            We ship worldwide from regional partners. Rates are calculated at checkout based on
-                            weight, destination, and service level.
-                        </p>
-                        <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>Shipping options shown at checkout (standard / express where available).</li>
-                            <li>Some items may ship separately to speed up delivery.</li>
-                        </ul>
-                    </div>
-
-                    <div id="delivery-times" className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
-                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}>
-                        <h2 className="text-lg font-bold">Estimated Delivery Times</h2>
-                        <ul className="mt-3 grid grid-cols-1 gap-2 text-sm">
-                            <li className="flex items-center justify-between border border-neutral-800 rounded-xl px-3 py-2">
-                                <span className="text-neutral-300">Australia (metro)</span>
-                                <span className="text-neutral-200 font-medium">2–5 business days</span>
-                            </li>
-                            <li className="flex items-center justify-between border border-neutral-800 rounded-xl px-3 py-2">
-                                <span className="text-neutral-300">Australia (regional)</span>
-                                <span className="text-neutral-200 font-medium">3–8 business days</span>
-                            </li>
-                            <li className="flex items-center justify-between border border-neutral-800 rounded-xl px-3 py-2">
-                                <span className="text-neutral-300">New Zealand</span>
-                                <span className="text-neutral-200 font-medium">5–10 business days</span>
-                            </li>
-                            <li className="flex items-center justify-between border border-neutral-800 rounded-xl px-3 py-2">
-                                <span className="text-neutral-300">US / Canada</span>
-                                <span className="text-neutral-200 font-medium">7–14 business days</span>
-                            </li>
-                            <li className="flex items-center justify-between border border-neutral-800 rounded-xl px-3 py-2">
-                                <span className="text-neutral-300">EU / UK</span>
-                                <span className="text-neutral-200 font-medium">7–14 business days</span>
-                            </li>
-                        </ul>
-                        <p className="text-xs text-neutral-500 mt-2">
-                            Estimates exclude weekends/holidays and may vary during peak periods.
-                        </p>
-                    </div>
-                </section>
-
-                {/* Tracking & International */}
-                <section className="grid md:grid-cols-2 gap-6">
-                    <div id="tracking" className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
-                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}>
-                        <h2 className="text-lg font-bold">Order Tracking</h2>
-                        <p className="text-neutral-300 mt-2">
-                            You’ll receive a tracking link as soon as your order ships. Tracking can take up to
-                            24–48 hours to activate.
-                        </p>
-                        <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>Didn’t get an email? Check spam or your <Link href="/dashboard/orders" className="underline">Orders</Link> page.</li>
-                            <li>Tracking shows delivered but no package? Check with neighbours/building manager first.</li>
-                        </ul>
-                    </div>
-
-                    <div id="international" className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
-                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}>
-                        <h2 className="text-lg font-bold">International & Customs</h2>
-                        <p className="text-neutral-300 mt-2">
-                            International orders may be subject to customs duties, taxes, and fees, which are the
-                            recipient’s responsibility.
-                        </p>
-                        <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>Delays at customs are outside our control.</li>
-                            <li>We can’t declare items as gifts or reduce declared values.</li>
-                        </ul>
-                    </div>
-                </section>
-
-                {/* Returns & Refunds */}
-                <section id="returns" className="grid md:grid-cols-2 gap-6">
-
-                    {/* RETURNS */}
-                    <div
-                        className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
-                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
-                    >
-                        <h2 className="text-lg font-bold">Returns & Exchanges</h2>
-
-                        <p className="text-neutral-300 mt-2">
-                            All items are printed on demand — made specifically for each order.
-                            Because of this, we <strong>don’t offer returns or exchanges for change of mind</strong>,
-                            including incorrect size selection.
-                        </p>
-
-                        <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>Please double-check sizing before ordering.</li>
-                            <li>Each item is made to order and cannot be restocked.</li>
-                            <li>We recommend reviewing size guides on each product page.</li>
-                        </ul>
-
-                        <p className="text-xs text-neutral-500 mt-3">
-                            As a print-on-demand platform, this helps reduce waste and overproduction.
-                        </p>
-                    </div>
-
-                    {/* ISSUES / REFUNDS */}
-                    <div
-                        id="refunds"
-                        className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
-                        style={{ clipPath: "polygon(2% 0,100% 0,98% 100%,0 100%)" }}
-                    >
-                        <h2 className="text-lg font-bold">Damaged or Incorrect Items</h2>
-
-                        <p className="text-neutral-300 mt-2">
-                            If your order arrives damaged, misprinted, or incorrect, we’ll make it right.
-                        </p>
-
-                        <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                            <li>Email us at <a className="underline" href="mailto:support@merchtent.com.au">support@merchtent.com.au</a> within 7 days of delivery.</li>
-                            <li>Include your order number and clear photos of the issue.</li>
-                            <li>If approved, we’ll arrange a replacement or refund at no cost.</li>
-                        </ul>
-
-                        <p className="text-xs text-neutral-500 mt-3">
-                            We stand by the quality of our products and will always fix genuine issues.
-                        </p>
-                    </div>
-
-                </section>
-
-                {/* FAQ */}
-                <section id="faq" className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 space-y-4"
-                    style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
-                    <h2 className="text-lg font-bold">FAQ</h2>
-
-                    <details className="group border border-neutral-800 rounded-xl">
-                        <summary className="cursor-pointer px-4 py-3 flex items-center justify-between">
-                            <span className="text-sm">My order is late—what should I do?</span>
-                            <span className="text-neutral-500 group-open:rotate-180 transition">⌄</span>
-                        </summary>
-                        <div className="px-4 pb-4 text-sm text-neutral-300">
-                            Check tracking first. If it hasn’t updated in 5+ business days, contact us at{" "}
-                            <a className="underline" href="mailto:support@merchtent.example">support@merchtent.example</a> with your order #.
-                        </div>
-                    </details>
-
-                    <details className="group border border-neutral-800 rounded-xl">
-                        <summary className="cursor-pointer px-4 py-3 flex items-center justify-between">
-                            <span className="text-sm">I received a damaged or incorrect item.</span>
-                            <span className="text-neutral-500 group-open:rotate-180 transition">⌄</span>
-                        </summary>
-                        <div className="px-4 pb-4 text-sm text-neutral-300">
-                            We’ll fix it. Email photos and your order # to{" "}
-                            <a className="underline" href="mailto:support@merchtent.example">support@merchtent.example</a> within 7 days of delivery.
-                        </div>
-                    </details>
-
-                    <details className="group border border-neutral-800 rounded-xl">
-                        <summary className="cursor-pointer px-4 py-3 flex items-center justify-between">
-                            <span className="text-sm">Can I change my address after ordering?</span>
-                            <span className="text-neutral-500 group-open:rotate-180 transition">⌄</span>
-                        </summary>
-                        <div className="px-4 pb-4 text-sm text-neutral-300">
-                            If your order hasn’t shipped, we’ll do our best. Contact us ASAP with the correct address.
-                        </div>
-                    </details>
-
-                    <details className="group border border-neutral-800 rounded-xl">
-                        <summary className="cursor-pointer px-4 py-3 flex items-center justify-between">
-                            <span className="text-sm">Which items are final sale?</span>
-                            <span className="text-neutral-500 group-open:rotate-180 transition">⌄</span>
-                        </summary>
-                        <div className="px-4 pb-4 text-sm text-neutral-300">
-                            Digital downloads, custom/personalized products, and marked clearance items are final sale
-                            unless faulty on arrival.
-                        </div>
-                    </details>
-                </section>
-
-                {/* Contact rail */}
-                <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 flex items-center justify-between"
-                    style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
+            <section className="mx-auto max-w-7xl px-4 py-12 md:px-8 md:py-16">
+                <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
-                        <p className="text-sm text-neutral-300">Still need help?</p>
-                        <p className="font-semibold">Our team is here for you.</p>
+                        <p className="text-xs font-black uppercase tracking-[0.35em] text-red-500">FAQ</p>
+                        <h2 className="mt-3 text-4xl font-black uppercase leading-none">Before you email.</h2>
                     </div>
-                    <div className="flex gap-3">
-                        <Link href="/contact" className="rounded-xl border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800">
-                            Contact Us
-                        </Link>
-                        <Link href="/dashboard/orders" className="rounded-xl bg-red-600 text-white px-4 py-2 text-sm hover:bg-red-500">
-                            View My Orders
-                        </Link>
+                    <Link href="/dashboard/orders" className="inline-flex items-center gap-2 text-sm font-black uppercase text-[#b6ff3f]">
+                        View my orders <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+                <div className="grid gap-px border border-white/10 bg-white/10 md:grid-cols-2">
+                    {faqs.map(([q, a]) => (
+                        <article key={q} className="bg-black p-6">
+                            <h3 className="text-xl font-black uppercase leading-tight">{q}</h3>
+                            <p className="mt-3 text-sm leading-6 text-white/62">{a}</p>
+                        </article>
+                    ))}
+                </div>
+                <div className="mt-8 flex flex-col gap-4 border border-white/10 bg-black p-6 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-3">
+                        <Mail className="mt-1 h-5 w-5 text-[#b6ff3f]" />
+                        <div>
+                            <p className="font-black uppercase">Still need help?</p>
+                            <p className="mt-1 text-sm text-white/55">Send us your order number and what went wrong.</p>
+                        </div>
                     </div>
-                </section>
+                    <Link href="/contact" className="inline-flex items-center gap-2 bg-[#b6ff3f] px-5 py-3 text-sm font-black uppercase text-black">
+                        Contact us <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
             </section>
         </main>
     );

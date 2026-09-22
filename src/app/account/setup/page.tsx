@@ -23,19 +23,21 @@ export default async function AccountSetupPage() {
     }
 
     return (
-        <main className="min-h-screen bg-neutral-950 px-4 py-10 text-neutral-100">
-            <section className="mx-auto max-w-2xl">
-                <p className="text-xs uppercase tracking-[0.25em] text-red-500">
+        <main className="min-h-screen bg-[#060606] px-4 py-12 text-white md:py-16">
+            <section className="mx-auto grid max-w-5xl gap-8 md:grid-cols-[0.85fr_1.15fr] md:items-start">
+                <div className="border border-white/10 bg-black p-6 md:p-8">
+                    <p className="text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">
                     Account setup
-                </p>
-                <h1 className="mt-2 text-3xl font-black leading-tight">
-                    Choose how you want to use Merch Tent
-                </h1>
-                <p className="mt-2 text-sm text-neutral-400">
-                    You can start as a fan or artist. The dashboard will adapt to the account you choose.
-                </p>
+                    </p>
+                    <h1 className="mt-4 text-5xl font-black uppercase leading-[0.86]">
+                        Pick your side of the table.
+                    </h1>
+                    <p className="mt-5 text-sm leading-6 text-white/62">
+                        Choose fan or artist. Your dashboard will unlock the right self-service tools from there.
+                    </p>
+                </div>
 
-                <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
+                <div className="border border-white/10 bg-[#f4f1e8] p-5 text-black md:p-6">
                     <AccountSetupForm initialEmail={user.email ?? null} />
                 </div>
             </section>

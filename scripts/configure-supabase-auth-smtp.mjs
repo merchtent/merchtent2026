@@ -1,3 +1,5 @@
+import { buildAuthEmailConfig } from "./lib/auth-email-templates.mjs";
+
 const required = [
   "SUPABASE_ACCESS_TOKEN",
   "SUPABASE_PROJECT_REF",
@@ -18,6 +20,8 @@ const smtpHost = read("SUPABASE_AUTH_SMTP_HOST") || "smtp.postmarkapp.com";
 const smtpPort = Number(read("SUPABASE_AUTH_SMTP_PORT") || "587");
 const smtpUser = read("SUPABASE_AUTH_SMTP_USER") || read("POSTMARK_SERVER_TOKEN");
 const smtpPass = read("SUPABASE_AUTH_SMTP_PASS") || read("POSTMARK_SERVER_TOKEN");
+const siteUrl = read("NEXT_PUBLIC_SITE_URL") || "https://merchtent.com.au";
+const emailAssetBaseUrl = read("EMAIL_ASSET_BASE_URL") || "https://www.merchtent.com.au";
 
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail)) {
   console.error("SUPABASE_AUTH_SMTP_FROM or POSTMARK_FROM must be a valid email address.");
@@ -45,6 +49,7 @@ const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}
     smtp_user: smtpUser,
     smtp_pass: smtpPass,
     smtp_sender_name: senderName,
+    ...buildAuthEmailConfig(siteUrl, emailAssetBaseUrl),
   }),
 });
 
@@ -60,6 +65,7 @@ console.log(`Project: ${projectRef}`);
 console.log(`From: ${fromEmail}`);
 console.log(`Host: ${smtpHost}:${smtpPort}`);
 console.log(`Sender: ${senderName}`);
+console.log("Branded auth email templates updated.");
 
 function read(key) {
   const value = process.env[key];

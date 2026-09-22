@@ -26,7 +26,44 @@ type ProductColour = {
     label?: string | null;
 };
 
-export default async function ProductsPage() {
+const statusFilters = [
+    { value: "all", label: "All" },
+    { value: "pending_review", label: "Pending review" },
+    { value: "approved", label: "Approved" },
+    { value: "blocked", label: "Blocked" },
+    { value: "draft", label: "Drafts" },
+    { value: "failed", label: "Failed" },
+    { value: "archived", label: "Archived" },
+] as const;
+const PAGE_SIZE = 20;
+
+type StatusFilter = (typeof statusFilters)[number]["value"];
+
+function matchesStatus(product: { moderation_status: string | null; production_status: string | null; is_published: boolean | null; artist_archived_at: string | null }, status: StatusFilter) {
+    if (status === "archived") return Boolean(product.artist_archived_at);
+    if (product.artist_archived_at) return false;
+    if (status === "all") return true;
+    if (status === "failed") return product.production_status === "failed";
+    if (status === "draft") return !product.is_published && product.moderation_status !== "blocked" && product.production_status !== "failed";
+    return product.moderation_status === status;
+}
+
+function filterHref(status: StatusFilter, artistId: string, page = 1) {
+    const params = new URLSearchParams();
+    if (status !== "all") params.set("status", status);
+    if (artistId) params.set("artist", artistId);
+    if (page > 1) params.set("page", String(page));
+    const query = params.toString();
+    return `/admin/products${query ? `?${query}` : ""}`;
+}
+
+export default async function ProductsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ status?: string; artist?: string; page?: string }>;
+}) {
+    const filters = await searchParams;
+    const status: StatusFilter = statusFilters.find((item) => item.value === filters.status)?.value ?? "all";
     const supabase = getServerSupabase();
 
     const { data: artists } = await supabase
@@ -36,6 +73,8 @@ export default async function ProductsPage() {
     const artistLookup = Object.fromEntries(
         (artists ?? []).map((a) => [a.id, a.display_name])
     );
+    const artistId = filters.artist && artistLookup[filters.artist] ? filters.artist : "";
+    const artistOptions = [...(artists ?? [])].sort((a, b) => a.display_name.localeCompare(b.display_name));
 
     const { data: products, error } = await supabase
         .from("products")
@@ -105,6 +144,16 @@ export default async function ProductsPage() {
                 ),
             0
         ) ?? 0;
+    const artistProducts = artistId ? sortedProducts.filter((product) => product.artist_id === artistId) : sortedProducts;
+    const visibleProducts = artistProducts.filter((product) => matchesStatus(product, status));
+    const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PAGE_SIZE));
+    const requestedPage = filters.page && /^\d+$/.test(filters.page) ? Number(filters.page) : 1;
+    const currentPage = Math.min(Math.max(1, requestedPage), totalPages);
+    const firstIndex = (currentPage - 1) * PAGE_SIZE;
+    const pageProducts = visibleProducts.slice(firstIndex, firstIndex + PAGE_SIZE);
+    const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, index) =>
+        Math.max(1, Math.min(currentPage - 2, totalPages - 4)) + index
+    );
 
     return (
         <main className="min-h-screen bg-black text-white">
@@ -159,19 +208,19 @@ export default async function ProductsPage() {
                     </div>
 
                     <div className="mt-4 text-4xl font-black">
-                        {products?.length ?? 0}
+                        {products?.filter((product) => !product.artist_archived_at).length ?? 0}
                     </div>
                 </div>
 
                 <div className="border-b border-r border-neutral-800 bg-neutral-950 p-5">
                     <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
-                        Published
+                        Live
                     </div>
 
                     <div className="mt-4 text-4xl font-black text-lime-300">
                         {
                             products?.filter(
-                                p => p.is_published
+                                p => !p.artist_archived_at && p.is_published && p.moderation_status === "approved" && p.production_status === "published"
                             ).length
                         }
                     </div>
@@ -185,7 +234,7 @@ export default async function ProductsPage() {
                     <div className="mt-4 text-4xl font-black text-red-400">
                         {
                             products?.filter(
-                                p => p.moderation_status === "pending_review"
+                                p => !p.artist_archived_at && p.moderation_status === "pending_review"
                             ).length
                         }
                     </div>
@@ -203,17 +252,52 @@ export default async function ProductsPage() {
 
             </section>
 
-            {/* TABLE */}
-
             <section className="p-5 md:p-8">
+            <div className="mb-5 flex flex-col gap-4 border-b border-neutral-800 pb-5 xl:flex-row xl:items-end xl:justify-between">
+                <div className="min-w-0">
+                    <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-lime-300">Filter products</p>
+                    <nav className="flex max-w-full gap-2 overflow-x-auto pb-1" aria-label="Product status filters">
+                        {statusFilters.map((item) => {
+                            const active = status === item.value;
+                            const count = artistProducts.filter((product) => matchesStatus(product, item.value)).length;
+                            return (
+                                <Link
+                                    key={item.value}
+                                    href={filterHref(item.value, artistId)}
+                                    aria-current={active ? "page" : undefined}
+                                    className={`inline-flex h-10 shrink-0 items-center gap-2 border px-3 text-xs font-black uppercase transition ${active ? "border-lime-300 bg-lime-300 text-black" : "border-neutral-700 bg-neutral-950 text-neutral-300 hover:border-lime-300 hover:text-white"}`}
+                                >
+                                    {item.label}<span className={active ? "text-black/65" : "text-neutral-500"}>{count}</span>
+                                </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
+                <form action="/admin/products" className="flex flex-wrap items-end gap-2">
+                    {status !== "all" ? <input type="hidden" name="status" value={status} /> : null}
+                    <label className="grid min-w-52 gap-1 text-[10px] font-black uppercase tracking-[0.16em] text-neutral-400">
+                        Artist
+                        <select name="artist" defaultValue={artistId} className="h-10 min-w-52 border border-neutral-700 bg-black px-3 text-sm font-semibold normal-case tracking-normal text-white focus:border-lime-300 focus:outline-none">
+                            <option value="">All artists</option>
+                            {artistOptions.map((artist) => <option key={artist.id} value={artist.id}>{artist.display_name}</option>)}
+                        </select>
+                    </label>
+                    <button type="submit" className="h-10 border border-neutral-700 px-4 text-xs font-black uppercase text-white transition hover:border-lime-300 hover:text-lime-300">Apply</button>
+                </form>
+            </div>
+            <p className="mb-3 text-xs text-neutral-500" aria-live="polite">
+                {visibleProducts.length === 0
+                    ? "No products match these filters"
+                    : `Showing ${firstIndex + 1}-${firstIndex + pageProducts.length} of ${visibleProducts.length} products`}
+            </p>
             <div className="
                 border
                 border-neutral-800
                 bg-neutral-950
-                overflow-hidden
+                overflow-x-auto
             ">
 
-                <table className="w-full">
+                <table className="w-full min-w-[1000px]">
 
                     <thead className="bg-black text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
 
@@ -261,7 +345,7 @@ export default async function ProductsPage() {
 
                     <tbody>
 
-                        {sortedProducts?.map((product) => {
+                        {pageProducts.map((product) => {
 
                             const sales =
                                 product.order_items?.reduce(
@@ -386,7 +470,11 @@ export default async function ProductsPage() {
 
                                         <div className="flex flex-wrap gap-2">
 
-                                            {product.is_published && (
+                                            {product.artist_archived_at && (
+                                                <span className="border border-neutral-600 px-2 py-1 text-xs text-neutral-300">ARCHIVED</span>
+                                            )}
+
+                                            {product.is_published && product.moderation_status === "approved" && product.production_status === "published" && (
                                                 <span
                                                     className="
                                                         px-2
@@ -416,7 +504,7 @@ export default async function ProductsPage() {
                                                 </span>
                                             )}
 
-                                            {!product.is_published && (
+                                            {!product.is_published && product.moderation_status !== "blocked" && product.production_status !== "failed" && (
                                                 <span
                                                     className="
                                                         px-2
@@ -429,6 +517,10 @@ export default async function ProductsPage() {
                                                 >
                                                     DRAFT
                                                 </span>
+                                            )}
+
+                                            {product.production_status === "failed" && (
+                                                <span className="border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-300">FAILED</span>
                                             )}
 
                                             {product.moderation_status && (
@@ -485,12 +577,37 @@ export default async function ProductsPage() {
                                 </tr>
                             );
                         })}
+                        {visibleProducts.length === 0 ? (
+                            <tr><td colSpan={9} className="border-t border-neutral-800 px-4 py-12 text-center text-sm text-neutral-400">No products match these filters.</td></tr>
+                        ) : null}
 
                     </tbody>
 
                 </table>
 
             </div>
+            {totalPages > 1 ? (
+                <nav className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-800 pt-5" aria-label="Product pages">
+                    <div className="text-xs text-neutral-500">Page {currentPage} of {totalPages}</div>
+                    <div className="flex flex-wrap items-center gap-1">
+                        {currentPage > 1 ? (
+                            <Link href={filterHref(status, artistId, currentPage - 1)} className="inline-flex h-10 items-center border border-neutral-700 px-3 text-xs font-black uppercase text-white hover:border-lime-300">Previous</Link>
+                        ) : <span className="inline-flex h-10 items-center border border-neutral-800 px-3 text-xs font-black uppercase text-neutral-600">Previous</span>}
+                        {pageNumbers[0] > 1 ? <Link href={filterHref(status, artistId, 1)} className="inline-flex h-10 min-w-10 items-center justify-center border border-neutral-700 px-2 text-sm text-white hover:border-lime-300">1</Link> : null}
+                        {pageNumbers[0] > 2 ? <span className="px-1 text-neutral-500" aria-hidden="true">...</span> : null}
+                        {pageNumbers.map((page) => (
+                            <Link key={page} href={filterHref(status, artistId, page)} aria-current={currentPage === page ? "page" : undefined} className={`inline-flex h-10 min-w-10 items-center justify-center border px-2 text-sm font-bold ${currentPage === page ? "border-lime-300 bg-lime-300 text-black" : "border-neutral-700 text-white hover:border-lime-300"}`}>
+                                {page}
+                            </Link>
+                        ))}
+                        {pageNumbers[pageNumbers.length - 1] < totalPages - 1 ? <span className="px-1 text-neutral-500" aria-hidden="true">...</span> : null}
+                        {pageNumbers[pageNumbers.length - 1] < totalPages ? <Link href={filterHref(status, artistId, totalPages)} className="inline-flex h-10 min-w-10 items-center justify-center border border-neutral-700 px-2 text-sm text-white hover:border-lime-300">{totalPages}</Link> : null}
+                        {currentPage < totalPages ? (
+                            <Link href={filterHref(status, artistId, currentPage + 1)} className="inline-flex h-10 items-center border border-neutral-700 px-3 text-xs font-black uppercase text-white hover:border-lime-300">Next</Link>
+                        ) : <span className="inline-flex h-10 items-center border border-neutral-800 px-3 text-xs font-black uppercase text-neutral-600">Next</span>}
+                    </div>
+                </nav>
+            ) : null}
             </section>
 
         </main>

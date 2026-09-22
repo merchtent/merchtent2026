@@ -81,7 +81,7 @@ export default function ArtistEditForm({
     return (
         <div className="space-y-6">
             {errorMessage ? (
-                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <p className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                     {errorMessage}
                 </p>
             ) : null}
@@ -100,7 +100,7 @@ export default function ArtistEditForm({
                                 e.target.value,
                         })
                     }
-                    className="w-full rounded-xl bg-neutral-900 border border-neutral-700 p-3"
+                    className="w-full border border-white/15 bg-black p-3 text-white outline-none focus:border-[#b6ff3f]"
                 />
             </div>
 
@@ -118,7 +118,7 @@ export default function ArtistEditForm({
                                 e.target.value,
                         })
                     }
-                    className="w-full rounded-xl bg-neutral-900 border border-neutral-700 p-3"
+                    className="w-full border border-white/15 bg-black p-3 text-white outline-none focus:border-[#b6ff3f]"
                 />
             </div>
 
@@ -137,7 +137,7 @@ export default function ArtistEditForm({
                                 e.target.value,
                         })
                     }
-                    className="w-full rounded-xl bg-neutral-900 border border-neutral-700 p-3"
+                    className="w-full border border-white/15 bg-black p-3 text-white outline-none focus:border-[#b6ff3f]"
                 />
             </div>
 
@@ -157,7 +157,7 @@ export default function ArtistEditForm({
                                     e.target.value,
                             })
                         }
-                        className="w-full rounded-xl bg-neutral-900 border border-neutral-700 p-3"
+                        className="w-full border border-white/15 bg-black p-3 text-white outline-none focus:border-[#b6ff3f]"
                     />
                 </div>
 
@@ -175,7 +175,7 @@ export default function ArtistEditForm({
                                     e.target.value,
                             })
                         }
-                        className="w-full rounded-xl bg-neutral-900 border border-neutral-700 p-3"
+                        className="w-full border border-white/15 bg-black p-3 text-white outline-none focus:border-[#b6ff3f]"
                     />
                 </div>
 
@@ -193,7 +193,7 @@ export default function ArtistEditForm({
                                     e.target.value,
                             })
                         }
-                        className="w-full rounded-xl bg-neutral-900 border border-neutral-700 p-3"
+                        className="w-full border border-white/15 bg-black p-3 text-white outline-none focus:border-[#b6ff3f]"
                     />
                 </div>
 
@@ -211,7 +211,7 @@ export default function ArtistEditForm({
                                     e.target.value,
                             })
                         }
-                        className="w-full rounded-xl bg-neutral-900 border border-neutral-700 p-3"
+                        className="w-full border border-white/15 bg-black p-3 text-white outline-none focus:border-[#b6ff3f]"
                     />
                 </div>
 
@@ -221,12 +221,13 @@ export default function ArtistEditForm({
                 onClick={save}
                 disabled={isPending}
                 className="
-                    bg-red-600
-                    hover:bg-red-500
+                    bg-[#b6ff3f]
+                    hover:bg-white
+                    text-black
                     px-6
                     py-3
-                    rounded-xl
-                    font-semibold
+                    font-black
+                    uppercase
                 "
             >
                 {isPending

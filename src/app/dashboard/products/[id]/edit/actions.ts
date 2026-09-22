@@ -12,6 +12,7 @@ const ALLOWED_CATEGORIES = [
     "hoodies",
     "hats",
     "tanks",
+    "bags",
     "posters",
     "vinyl",
     "accessories",
@@ -38,7 +39,7 @@ export async function updateProductAction(formData: FormData) {
 
     const { data: prod, error: productError } = await supabase
         .from("products")
-        .select("id, artist_id, production_status")
+        .select("id, artist_id, production_status, artist_archived_at")
         .eq("id", productId)
         .maybeSingle();
     if (productError) {
@@ -51,6 +52,7 @@ export async function updateProductAction(formData: FormData) {
     if (!prod || prod.artist_id !== artist.id) {
         throw new Error("You do not own this product");
     }
+    if (prod.artist_archived_at) throw new Error("This product has been removed.");
 
     const editAllowed = await checkDurableRateLimit(
         supabase,

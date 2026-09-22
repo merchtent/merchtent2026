@@ -118,9 +118,9 @@ export default function AngledPromoRail() {
 function PromoTicker() {
     return (
         <div className="overflow-hidden border-b border-neutral-300 bg-neutral-100">
-            <div className="flex whitespace-nowrap py-2 text-[11px] font-black tracking-[0.35em] animate-[marquee_34s_linear_infinite]">
+            <div data-marquee className="flex whitespace-nowrap py-2 text-[11px] font-black tracking-[0.35em] animate-[marquee_34s_linear_infinite]">
                 {[...tickerItems, ...tickerItems, ...tickerItems].map((item, index) => (
-                    <span key={`${item}-${index}`} className="mr-16">
+                    <span key={`${item}-${index}`} aria-hidden={index >= tickerItems.length} className="mr-16">
                         {item}
                     </span>
                 ))}

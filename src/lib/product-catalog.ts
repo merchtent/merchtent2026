@@ -24,11 +24,7 @@ export type CatalogProviderOption = {
     sizes: string[];
 };
 
-export type CatalogPrintArea = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+export type CatalogPrintArea = GeometryRect & {
     supplierPlacement: string;
 };
 
@@ -37,8 +33,8 @@ export type CatalogProduct = {
     name: string;
     brand: string;
     model: string;
-    category: "tees" | "hoodies" | "hats" | "tanks" | "posters" | "vinyl" | "accessories" | "other";
-    garmentKind: "tee" | "hoodie";
+    category: "tees" | "hoodies" | "hats" | "tanks" | "bags" | "posters" | "vinyl" | "accessories" | "other";
+    garmentKind: "tee" | "hoodie" | "tank";
     defaultPrice: string;
     supplier: {
         key: CatalogSupplierKey;
@@ -104,8 +100,22 @@ export const PRODUCT_CATALOG: CatalogProduct[] = [
             { label: "Forest", value: "#14532d", supplierColorName: "Forest Green" },
         ],
         printAreas: {
-            front: { x: 280, y: 315, width: 340, height: 430, supplierPlacement: "front" },
-            back: { x: 280, y: 300, width: 340, height: 460, supplierPlacement: "back" },
+            front: {
+                x: 280 / 900,
+                y: 315 / 1200,
+                width: 340 / 900,
+                height: 430 / 1200,
+                units: "ratio",
+                supplierPlacement: "front",
+            },
+            back: {
+                x: 280 / 900,
+                y: 300 / 1200,
+                width: 340 / 900,
+                height: 460 / 1200,
+                units: "ratio",
+                supplierPlacement: "back",
+            },
         },
         printAsset: {
             width: 2400,
@@ -128,3 +138,4 @@ export const DEFAULT_CATALOG_PRODUCT_KEY = PRODUCT_CATALOG[0].key;
 export function getCatalogProduct(key: string) {
     return PRODUCT_CATALOG.find((product) => product.key === key) ?? null;
 }
+import type { GeometryRect } from "./products/design-geometry";

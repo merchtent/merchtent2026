@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, Shirt } from "lucide-react";
 
@@ -346,6 +346,8 @@ export default function Hero() {
 }
 
 function GlitchText({ lines }: { lines: string[] }) {
+    const shouldReduceMotion = useReducedMotion();
+
     return (
         <div className="relative leading-[0.9] font-black select-none">
             {lines.map((t, i) => (
@@ -353,8 +355,8 @@ function GlitchText({ lines }: { lines: string[] }) {
                     <motion.span
                         aria-hidden
                         className="absolute left-0 top-0 blur-[1px] opacity-50 text-red-500"
-                        animate={{ x: [0, 2, -1, 0], y: [0, -1, 1, 0] }}
-                        transition={{ duration: 1.6, repeat: Infinity, ease: "linear", delay: i * 0.12 }}
+                        animate={shouldReduceMotion ? undefined : { x: [0, 2, -1, 0], y: [0, -1, 1, 0] }}
+                        transition={shouldReduceMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: "linear", delay: i * 0.12 }}
                     >
                         {t}
                     </motion.span>
@@ -362,8 +364,8 @@ function GlitchText({ lines }: { lines: string[] }) {
                     <motion.span
                         aria-hidden
                         className="absolute left-0 top-0 blur-[0.5px] opacity-40 text-cyan-400"
-                        animate={{ x: [0, -2, 1, 0], y: [0, 1, -1, 0] }}
-                        transition={{ duration: 1.8, repeat: Infinity, ease: "linear", delay: i * 0.2 }}
+                        animate={shouldReduceMotion ? undefined : { x: [0, -2, 1, 0], y: [0, 1, -1, 0] }}
+                        transition={shouldReduceMotion ? undefined : { duration: 1.8, repeat: Infinity, ease: "linear", delay: i * 0.2 }}
                     >
                         {t}
                     </motion.span>

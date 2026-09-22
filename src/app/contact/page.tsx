@@ -1,15 +1,22 @@
 // app/contact/page.tsx
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 import { checkDurableRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
-import { ArrowRight, Headphones, Mail, MessageSquare, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Headphones, MessageSquare, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
 
 export const revalidate = 0;
+
+export const metadata: Metadata = {
+    title: "Contact",
+    description: "Contact Merch Tent for order, artist account, checkout or payout support.",
+    alternates: { canonical: "/contact" },
+};
 
 const contactSchema = z.object({
     name: z.string().trim().min(1).max(200),

@@ -17,6 +17,7 @@ import {
     Search,
     ShoppingBag,
 } from "lucide-react";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 type Props = { initialEmail: string | null };
 
@@ -46,6 +47,7 @@ const nav = [
     { label: "Hoodies", href: "/category/hoodies", meta: "cold nights" },
     { label: "Hats", href: "/category/hats", meta: "top shelf" },
     { label: "Tank Tops", href: "/category/tanks", meta: "pit ready" },
+    { label: "Bags", href: "/category/bags", meta: "carry the scene" },
     { label: "Artists", href: "/artists", meta: "the scene" },
 ];
 
@@ -179,6 +181,7 @@ export default function HeaderClient({ initialEmail }: Props) {
     const submitSearch = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const q = searchQuery.trim();
+        if (q) trackMarketingEvent("search", { search_term: q });
         router.push(q ? `/new?q=${encodeURIComponent(q)}` : "/new");
         setSearchOpen(false);
         setMobileMenu(false);
@@ -200,6 +203,8 @@ export default function HeaderClient({ initialEmail }: Props) {
     };
 
     const navigateSearchResult = (href: string) => {
+        const product = searchResults.products.find((item) => href === `/product/${item.slug}`);
+        if (product) trackMarketingEvent("select_item", { item_list_name: "site_search", items: [{ item_id: product.id, item_name: product.title, price_cents: Math.round(product.price * 100), currency: "AUD" }] });
         router.push(href);
         closeSearchNavigation();
     };

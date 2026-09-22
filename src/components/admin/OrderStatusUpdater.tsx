@@ -22,6 +22,15 @@ export default function OrderStatusUpdater({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const router = useRouter();
     const toast = useToast();
+    const terminal = currentStatus === "cancelled" || currentStatus === "refunded";
+
+    if (terminal) {
+        return (
+            <p className="border border-neutral-800 bg-black px-4 py-3 text-sm text-neutral-400">
+                This order is {currentStatus}. Its status is locked.
+            </p>
+        );
+    }
 
     const save = () => {
         setErrorMessage(null);
@@ -72,7 +81,7 @@ export default function OrderStatusUpdater({
     return (
         <div className="flex flex-wrap items-center gap-3">
             {errorMessage ? (
-                <p className="basis-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <p className="basis-full border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                     {errorMessage}
                 </p>
             ) : null}
@@ -81,12 +90,14 @@ export default function OrderStatusUpdater({
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
                 className="
-                    bg-neutral-800
+                    bg-black
                     border
-                    border-neutral-700
-                    rounded-lg
+                    border-white/15
                     px-4
                     py-2
+                    text-white
+                    focus:border-[#b6ff3f]
+                    focus:outline-none
                 "
             >
                 <option value="pending">Pending</option>
@@ -107,18 +118,21 @@ export default function OrderStatusUpdater({
                             setTrackingNumber(e.target.value)
                         }
                         className="
-                bg-neutral-800
+                bg-black
                 border
-                border-neutral-700
-                rounded-lg
+                border-white/15
                 px-4
                 py-2
+                text-white
+                focus:border-[#b6ff3f]
+                focus:outline-none
             "
                     />
 
                     <select
                         value={carrier}
                         onChange={(e) => setCarrier(e.target.value)}
+                        className="border border-white/15 bg-black px-4 py-2 text-white focus:border-[#b6ff3f] focus:outline-none"
                     >
                         <option value="">Select Carrier</option>
                         <option value="Australia Post">
@@ -144,11 +158,12 @@ export default function OrderStatusUpdater({
                 className="
                     px-4
                     py-2
-                    rounded-lg
-                    bg-red-600
-                    hover:bg-red-500
+                    bg-[#b6ff3f]
+                    text-black
+                    hover:bg-white
                     transition
-                    font-semibold
+                    font-black
+                    uppercase
                     disabled:opacity-50
                 "
             >

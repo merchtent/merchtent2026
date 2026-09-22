@@ -1,97 +1,73 @@
-// app/privacy/page.tsx
 import Link from "next/link";
+import { ArrowRight, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Privacy Policy",
+    description: "How Merch Tent collects, uses and protects customer and artist information.",
+    alternates: { canonical: "/privacy" },
+};
 
 export const revalidate = 60;
 
+const sections = [
+    ["What we collect", "Account details, order details, shipping information, artist profile content, uploaded assets and basic analytics about how the platform is used."],
+    ["How we use it", "We use information to process orders, run artist accounts, support payouts, improve the platform, send service updates and send marketing only where permitted."],
+    ["Who helps us run it", "We work with trusted providers for payments, printing, fulfilment, email, hosting and analytics. We do not sell personal information."],
+    ["Security", "We use secured services and encrypted transport. No online service is risk-free, but we keep access limited to what is needed to operate Merch Tent."],
+    ["Cookies", "Cookies and similar tools help keep sessions working, understand traffic and improve product discovery. Browser settings can limit cookies, but some features may be affected."],
+    ["Your choices", "You can contact us to request access, correction or deletion where available under applicable law."],
+];
+
 export default function PrivacyPolicyPage() {
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            <nav className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-4 text-xs text-neutral-400">
-                <Link href="/" className="hover:underline">Home</Link> /{" "}
-                <span className="text-neutral-200">Privacy Policy</span>
-            </nav>
-
-            {/* Header */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-6xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">Legal</p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">Privacy Policy</h1>
-                        </div>
-                        <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">
-                            TRUST
-                        </span>
-                    </div>
+        <main className="min-h-screen bg-[#060606] text-white">
+            <section className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(180,255,55,0.14),transparent_30%),linear-gradient(180deg,#080808,#111)]">
+                <div className="mx-auto max-w-7xl px-4 py-14 md:px-8 md:py-20">
+                    <p className="text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">Legal</p>
+                    <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                        Privacy policy.
+                    </h1>
+                    <p className="mt-6 max-w-2xl text-base leading-7 text-white/68">
+                        How Merch Tent collects, uses and protects information when fans shop and artists run their stores.
+                    </p>
                 </div>
             </section>
 
-            {/* Content */}
-            <section className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-10 space-y-8">
-                <p className="text-neutral-300 leading-relaxed">
-                    This Privacy Policy explains how we collect, use, and protect your personal information when
-                    you use our website, shop with us, or sign up as an artist. We’re committed to respecting
-                    your privacy and keeping your data safe.
-                </p>
-
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 space-y-4"
-                    style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
-                    <h2 className="text-lg font-bold">1. Information We Collect</h2>
-                    <ul className="text-sm text-neutral-300 list-disc pl-5 space-y-1">
-                        <li>Account details (name, email, password) when you sign up or log in</li>
-                        <li>Payment and shipping details when you make a purchase</li>
-                        <li>Artist profile information (display name, artwork, merch details)</li>
-                        <li>Analytics data (cookies, device info, usage patterns)</li>
-                    </ul>
-                </article>
-
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 space-y-4"
-                    style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
-                    <h2 className="text-lg font-bold">2. How We Use Your Information</h2>
-                    <p className="text-sm text-neutral-300">
-                        We use your information to:
+            <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 md:grid-cols-[0.75fr_1.25fr] md:px-8 md:py-16">
+                <aside className="border border-white/10 bg-black p-6">
+                    <ShieldCheck className="h-8 w-8 text-[#b6ff3f]" />
+                    <h2 className="mt-5 text-4xl font-black uppercase leading-[0.9]">
+                        We keep data tied to the job it does.
+                    </h2>
+                    <p className="mt-4 text-sm leading-6 text-white/62">
+                        Orders need delivery data. Artist accounts need profile and payout context. We keep the policy readable so the trust part is not buried.
                     </p>
-                    <ul className="text-sm text-neutral-300 list-disc pl-5 space-y-1">
-                        <li>Process orders, payments, and deliveries</li>
-                        <li>Enable artist product creation, payouts, and reporting</li>
-                        <li>Improve our platform, services, and recommendations</li>
-                        <li>Send updates or marketing (only if you’ve opted in)</li>
-                    </ul>
-                </article>
+                    <a href="mailto:privacy@merchtent.com.au" className="mt-6 inline-flex items-center gap-2 text-sm font-black uppercase text-[#b6ff3f]">
+                        <Mail className="h-4 w-4" /> privacy@merchtent.com.au
+                    </a>
+                </aside>
 
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 space-y-4"
-                    style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
-                    <h2 className="text-lg font-bold">3. Sharing and Security</h2>
-                    <p className="text-sm text-neutral-300">
-                        We never sell your data. We only share information with trusted third parties needed to
-                        operate our service — like payment providers, printing partners, or analytics tools.
-                    </p>
-                    <p className="text-sm text-neutral-300 mt-2">
-                        All personal data is encrypted in transit and stored securely. You can request deletion or
-                        correction of your data anytime by emailing{" "}
-                        <a href="mailto:privacy@merchtent.example" className="underline">privacy@merchtent.example</a>.
-                    </p>
-                </article>
+                <div className="grid gap-px border border-white/10 bg-white/10 md:grid-cols-2">
+                    {sections.map(([title, body]) => (
+                        <article key={title} className="bg-[#f4f1e8] p-6 text-black">
+                            <LockKeyhole className="h-6 w-6 text-[#477a00]" />
+                            <h2 className="mt-4 text-2xl font-black uppercase leading-tight">{title}</h2>
+                            <p className="mt-3 text-sm leading-6 text-black/65">{body}</p>
+                        </article>
+                    ))}
+                </div>
+            </section>
 
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 space-y-4"
-                    style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
-                    <h2 className="text-lg font-bold">4. Cookies</h2>
-                    <p className="text-sm text-neutral-300">
-                        We use cookies to personalize your experience and analyze site traffic. You can disable
-                        cookies in your browser settings, but some features may not work as intended.
+            <section className="border-y border-white/10 bg-black">
+                <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 md:flex-row md:items-center md:justify-between md:px-8">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-white/45">
+                        Last updated: October 2025
                     </p>
-                </article>
-
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 space-y-4"
-                    style={{ clipPath: "polygon(1% 0,100% 0,98% 100%,0 100%)" }}>
-                    <h2 className="text-lg font-bold">5. Updates</h2>
-                    <p className="text-sm text-neutral-300">
-                        We may update this Privacy Policy to reflect platform or legal changes. Any updates will
-                        be posted here with a revised date.
-                    </p>
-                </article>
-
-                <p className="text-sm text-neutral-500">Last updated: October 2025</p>
+                    <Link href="/terms" className="inline-flex items-center gap-2 text-sm font-black uppercase text-[#b6ff3f]">
+                        Terms and conditions <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
             </section>
         </main>
     );

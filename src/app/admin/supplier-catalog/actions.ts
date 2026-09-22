@@ -9,11 +9,12 @@ import {
     listPrintifyVariants,
 } from "@/lib/printify/catalog";
 import { requireShippingMethodId } from "@/lib/shipping-methods";
+import { colorSwatchHex } from "@/lib/catalog/color-swatch";
 
 const SIZE_LABELS = new Set(["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]);
 const ALLOWED_SUPPLIERS = new Set(["printify", "printful", "local"]);
-const ALLOWED_CATEGORIES = new Set(["tees", "hoodies", "hats", "tanks", "posters", "vinyl", "accessories", "other"]);
-const ALLOWED_GARMENT_KINDS = new Set(["tee", "hoodie"]);
+const ALLOWED_CATEGORIES = new Set(["tees", "hoodies", "hats", "tanks", "bags", "posters", "vinyl", "accessories", "other"]);
+const ALLOWED_GARMENT_KINDS = new Set(["tee", "hoodie", "tank"]);
 const ALLOWED_DESTINATION_COUNTRIES = new Set(["AU"]);
 const ALLOWED_SHIPPING_SIZE_TYPES = new Set(["All"]);
 
@@ -44,18 +45,6 @@ function uniqueSorted(values: Array<string | null>) {
         if (sizeA >= 0 || sizeB >= 0) return (sizeA === -1 ? 999 : sizeA) - (sizeB === -1 ? 999 : sizeB);
         return a.localeCompare(b);
     });
-}
-
-function colorHex(label: string) {
-    const normalized = label.toLowerCase();
-    if (normalized.includes("white")) return "#f7f7f2";
-    if (normalized.includes("black")) return "#111111";
-    if (normalized.includes("navy")) return "#111827";
-    if (normalized.includes("red")) return "#b91c1c";
-    if (normalized.includes("green") || normalized.includes("forest")) return "#14532d";
-    if (normalized.includes("grey") || normalized.includes("gray")) return "#9ca3af";
-    if (normalized.includes("blue")) return "#1d4ed8";
-    return "#444444";
 }
 
 function isAustralia(value?: string | null) {
@@ -171,9 +160,17 @@ export async function importPrintifyCatalogueProductAction(formData: FormData) {
     const colorLabels = uniqueSorted(parsedVariants.map((item) => item.colorLabel));
     const colors = colorLabels.map((label) => ({
         label,
-        value: colorHex(label),
+        value: colorSwatchHex(label),
         supplierColorName: label,
     }));
+    const { data: existingCatalog, error: existingCatalogError } = await supabase
+        .from("supplier_catalog_products")
+        .select("colors")
+        .eq("supplier", "printify")
+        .eq("supplier_product_id", String(blueprintId))
+        .limit(1)
+        .maybeSingle();
+    if (existingCatalogError) throw new Error(existingCatalogError.message);
     const firstVariantWithPlaceholders = variants.find((variant) => variant.placeholders?.length);
     const supplierPrintAreas = firstVariantWithPlaceholders?.placeholders ?? [];
     const enabledVariantIds = variants
@@ -195,18 +192,70 @@ export async function importPrintifyCatalogueProductAction(formData: FormData) {
                 supplier_product_url: `https://printify.com/app/products/${blueprintId}`,
                 merch_tent_name: merchTentName || blueprint.title,
                 category,
-                garment_kind: category === "hoodies" ? "hoodie" : "tee",
+                garment_kind: category === "hoodies" ? "hoodie" : category === "tanks" ? "tank" : "tee",
                 default_price_cents: defaultPriceCents,
                 currency: "AUD",
                 cost_tax_mode: "ex_gst",
                 cost_tax_region: "AU",
                 cost_tax_rate_bps: 1000,
                 automation_mode: "create_on_sale",
-                print_areas: {
-                    front: { x: 280, y: 315, width: 340, height: 430, supplierPlacement: "front" },
-                    back: { x: 280, y: 300, width: 340, height: 460, supplierPlacement: "back" },
-                },
-                colors,
+                print_areas: category === "hoodies"
+                    ? {
+                        front: {
+                            x: 280 / 900,
+                            y: 480 / 1200,
+                            width: 340 / 900,
+                            height: 230 / 1200,
+                            units: "ratio",
+                            supplierPlacement: "front",
+                        },
+                        back: {
+                            x: 280 / 900,
+                            y: 450 / 1200,
+                            width: 340 / 900,
+                            height: 385 / 1200,
+                            units: "ratio",
+                            supplierPlacement: "back",
+                        },
+                    }
+                    : category === "tanks"
+                        ? {
+                            front: {
+                                x: 290 / 900,
+                                y: 250 / 1200,
+                                width: 320 / 900,
+                                height: 500 / 1200,
+                                units: "ratio",
+                                supplierPlacement: "front",
+                            },
+                            back: {
+                                x: 290 / 900,
+                                y: 235 / 1200,
+                                width: 320 / 900,
+                                height: 515 / 1200,
+                                units: "ratio",
+                                supplierPlacement: "back",
+                            },
+                        }
+                        : {
+                        front: {
+                            x: 280 / 900,
+                            y: 315 / 1200,
+                            width: 340 / 900,
+                            height: 430 / 1200,
+                            units: "ratio",
+                            supplierPlacement: "front",
+                        },
+                        back: {
+                            x: 280 / 900,
+                            y: 300 / 1200,
+                            width: 340 / 900,
+                            height: 460 / 1200,
+                            units: "ratio",
+                            supplierPlacement: "back",
+                        },
+                    },
+                colors: existingCatalog?.colors ?? colors,
                 sizes,
                 production_data: {
                     method: "DTG",
@@ -355,6 +404,53 @@ export async function updateSupplierCatalogProductPriceAction(formData: FormData
 
     revalidatePath("/admin/supplier-catalog");
     revalidatePath("/dashboard/products/designer");
+}
+
+export async function updateSupplierCatalogColorsAction(formData: FormData) {
+    const { supabase } = await requireAdminAction();
+    const supplier = String(formData.get("supplier") ?? "").trim();
+    const supplierProductId = String(formData.get("supplier_product_id") ?? "").trim();
+    const requested = formData.getAll("allowed_color").map((value) => String(value).trim().toLowerCase());
+    if (!ALLOWED_SUPPLIERS.has(supplier) || !supplierProductId) throw new Error("Catalogue product is required.");
+    if (!requested.length || requested.length > 100 || new Set(requested).size !== requested.length) {
+        throw new Error("Choose at least one available colour.");
+    }
+
+    const { data: rows, error: loadError } = await supabase
+        .from("supplier_catalog_products")
+        .select("colors, supplier_catalog_variants(color_label, is_enabled)")
+        .eq("supplier", supplier)
+        .eq("supplier_product_id", supplierProductId);
+    if (loadError || !rows?.length) throw new Error("Could not load catalogue colours.");
+
+    const enabledLabels = new Map<string, string>();
+    for (const row of rows) {
+        for (const variant of row.supplier_catalog_variants ?? []) {
+            if (variant.is_enabled !== false && variant.color_label) {
+                enabledLabels.set(variant.color_label.toLowerCase(), variant.color_label);
+            }
+        }
+    }
+    if (requested.some((label) => !enabledLabels.has(label))) {
+        throw new Error("One or more colours are no longer available from an enabled supplier variant.");
+    }
+    const existingColors = (rows[0].colors ?? []) as Array<{ label: string; value: string; supplierColorName?: string }>;
+    const colors = requested.map((label) => {
+        const name = enabledLabels.get(label)!;
+        const existing = existingColors.find((color) => (color.supplierColorName ?? color.label).toLowerCase() === label);
+        return existing ?? { label: name, value: colorSwatchHex(name), supplierColorName: name };
+    });
+    const { error: updateError } = await supabase
+        .from("supplier_catalog_products")
+        .update({ colors })
+        .eq("supplier", supplier)
+        .eq("supplier_product_id", supplierProductId);
+    if (updateError) throw new Error("Could not save allowed colours.");
+
+    revalidatePath("/admin/supplier-catalog");
+    revalidatePath(`/admin/supplier-catalog/${supplier}/${encodeURIComponent(supplierProductId)}`);
+    revalidatePath("/dashboard/products/designer");
+    redirect(`/admin/supplier-catalog/${supplier}/${encodeURIComponent(supplierProductId)}?saved=colors`);
 }
 
 export async function updateSupplierCatalogProductSettingsAction(formData: FormData) {

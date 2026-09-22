@@ -16,6 +16,10 @@ type OrderItem = {
     sku: string | null;
     color_label: string | null;
     size_label: string | null;
+    gross_unit_cents: number | null;
+    line_gross_cents: number | null;
+    line_net_cents: number | null;
+    line_gst_cents: number | null;
 };
 
 type OrderRow = {
@@ -38,6 +42,13 @@ type OrderRow = {
     tracking_code: string | null;
     tracking_carrier: string | null;
     tracking_url: string | null;
+    tax_registered: boolean;
+    tax_rate_bps: number;
+    gross_cents: number;
+    net_cents: number;
+    gst_cents: number;
+    seller_legal_name: string;
+    seller_abn: string | null;
     order_items: OrderItem[] | null;
 };
 
@@ -65,9 +76,9 @@ function formatDate(value: string | null | undefined) {
     });
 }
 
-function receiptFilename(orderLabel: string) {
+function receiptFilename(orderLabel: string, isTaxInvoice: boolean) {
     const safeLabel = orderLabel.replace(/[^a-z0-9-]/gi, "-").replace(/-+/g, "-");
-    return `merch-tent-receipt-${safeLabel || "order"}.html`;
+    return `merch-tent-${isTaxInvoice ? "tax-invoice" : "receipt"}-${safeLabel || "order"}.html`;
 }
 
 function createReceiptCspNonce() {
@@ -87,6 +98,7 @@ function receiptCsp(nonce: string) {
 function receiptHtml(order: OrderRow, nonce: string) {
     const items = Array.isArray(order.order_items) ? order.order_items : [];
     const orderLabel = order.order_number ?? order.id;
+    const documentTitle = order.tax_registered ? "Tax invoice" : "Receipt";
     const customerName = [order.first_name, order.last_name].filter(Boolean).join(" ");
     const addressLines = [
         order.line1,
@@ -111,8 +123,8 @@ function receiptHtml(order: OrderRow, nonce: string) {
     const itemRows = items
         .map((item) => {
             const qty = Math.max(Number(item.qty ?? 1), 1);
-            const unit = Number(item.unit_price_cents ?? 0);
-            const lineTotal = qty * unit;
+            const unit = Number(item.gross_unit_cents ?? item.unit_price_cents ?? 0);
+            const lineTotal = Number(item.line_gross_cents ?? qty * unit);
             const detail = [item.size_label, item.color_label, item.sku]
                 .filter(Boolean)
                 .join(" / ");
@@ -135,7 +147,7 @@ function receiptHtml(order: OrderRow, nonce: string) {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Receipt ${escapeHtml(orderLabel)}</title>
+    <title>${documentTitle} ${escapeHtml(orderLabel)}</title>
     <style nonce="${escapeHtml(nonce)}">
         body { color: #111; font-family: Arial, sans-serif; margin: 40px; }
         h1 { margin: 0 0 8px; }
@@ -152,7 +164,8 @@ function receiptHtml(order: OrderRow, nonce: string) {
 <body>
     <div class="header">
         <div>
-            <h1>Merch Tent Receipt</h1>
+            <h1>${escapeHtml(order.seller_legal_name || "Merch Tent")} ${documentTitle}</h1>
+            ${order.tax_registered && order.seller_abn ? `<div class="muted">ABN ${escapeHtml(order.seller_abn)}</div>` : ""}
             <div class="muted">Order ${escapeHtml(orderLabel)}</div>
             <div class="muted">Placed ${escapeHtml(formatDate(order.created_at))}</div>
             <div class="muted">Status ${escapeHtml(order.status ?? "unknown")}</div>
@@ -178,14 +191,19 @@ function receiptHtml(order: OrderRow, nonce: string) {
             <tr>
                 <th>Item</th>
                 <th>Qty</th>
-                <th>Unit</th>
-                <th>Total</th>
+                <th>Unit${order.tax_registered ? " incl. GST" : ""}</th>
+                <th>Total${order.tax_registered ? " incl. GST" : ""}</th>
             </tr>
         </thead>
         <tbody>${itemRows}</tbody>
     </table>
 
-    <p class="total">Total ${escapeHtml(formatMoney(order.total_cents ?? order.subtotal_cents, order.currency))}</p>
+    <div class="total">
+        ${order.tax_registered ? `<div class="muted">Net ${escapeHtml(formatMoney(order.net_cents, order.currency))}</div>` : ""}
+        ${order.tax_registered ? `<div class="muted">GST ${escapeHtml(formatMoney(order.gst_cents, order.currency))}</div>` : ""}
+        <p>Total ${escapeHtml(formatMoney(order.gross_cents ?? order.total_cents ?? order.subtotal_cents, order.currency))}</p>
+        ${order.tax_registered ? `<div class="muted">All prices include GST.</div>` : ""}
+    </div>
 </body>
 </html>`;
 }
@@ -207,7 +225,7 @@ export async function GET(
     const { data: order, error } = await supabase
         .from("orders")
         .select(
-            "id, order_number, created_at, status, currency, subtotal_cents, total_cents, email, first_name, last_name, line1, line2, city, state, postal_code, country, tracking_code, tracking_carrier, tracking_url, order_items ( title, qty, unit_price_cents, currency, sku, color_label, size_label )"
+            "id, order_number, created_at, status, currency, subtotal_cents, total_cents, email, first_name, last_name, line1, line2, city, state, postal_code, country, tracking_code, tracking_carrier, tracking_url, tax_registered, tax_rate_bps, gross_cents, net_cents, gst_cents, seller_legal_name, seller_abn, order_items ( title, qty, unit_price_cents, currency, sku, color_label, size_label, gross_unit_cents, line_gross_cents, line_net_cents, line_gst_cents )"
         )
         .eq("id", id)
         .eq("user_id", user.id)
@@ -261,7 +279,7 @@ export async function GET(
         headers: {
             ...NO_STORE_HEADERS,
             "Content-Type": "text/html; charset=utf-8",
-            "Content-Disposition": `inline; filename="${receiptFilename(orderLabel)}"`,
+            "Content-Disposition": `inline; filename="${receiptFilename(orderLabel, typedOrder.tax_registered)}"`,
             "Content-Security-Policy": receiptCsp(nonce),
             "X-Robots-Tag": "noindex, noarchive",
         },

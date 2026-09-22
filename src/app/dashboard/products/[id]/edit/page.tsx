@@ -8,6 +8,9 @@ import { ArrowLeft } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { requireArtistPage } from "@/lib/auth/artist";
 import { publicImageUrl } from "@/lib/storage";
+import { getDesignerCatalogProduct, listDesignerCatalogProducts } from "@/lib/supplier-catalog";
+import DesignerClient, { type DesignerInitialProduct } from "../../designer/DesignerClient";
+import { LogOut } from "lucide-react";
 
 export const revalidate = 0;
 
@@ -44,6 +47,7 @@ export default async function EditProductPage({
             )
             .eq("id", id)
             .eq("artist_id", artist.id)
+            .is("artist_archived_at", null)
             .maybeSingle();
         if (!error) {
             product = data;
@@ -62,6 +66,7 @@ export default async function EditProductPage({
             )
             .eq("id", id)
             .eq("artist_id", artist.id)
+            .is("artist_archived_at", null)
             .maybeSingle();
 
         if (error) {
@@ -81,6 +86,69 @@ export default async function EditProductPage({
 
     if (!product) {
         return notFound();
+    }
+
+    const { data: savedDesign } = await supabase
+        .from("product_designs")
+        .select("design_data")
+        .eq("product_id", id)
+        .eq("provider", "merch_tent")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    const designData = savedDesign?.design_data as {
+        catalogProduct?: { key?: string };
+        garment?: { color?: string; supplierColorName?: string; colorLabel?: string };
+        layers?: DesignerInitialProduct["layers"];
+    } | null;
+    const catalogProduct = designData?.catalogProduct?.key
+        ? await getDesignerCatalogProduct(designData.catalogProduct.key)
+        : (await listDesignerCatalogProducts()).find((item) =>
+            item.category === product.category && product.title.toLowerCase().endsWith(item.name.toLowerCase())
+        );
+
+    if (catalogProduct) {
+        const { data: existingSaleColors } = await supabase
+            .from("product_colors")
+            .select("label")
+            .eq("product_id", id)
+            .order("sort_order", { ascending: true });
+        const { data: referenceImage } = await supabase
+            .from("product_images")
+            .select("path")
+            .eq("product_id", id)
+            .order("sort_order", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+        return (
+            <main className="flex h-full min-h-0 flex-col overflow-hidden bg-black text-white">
+                <section className="flex shrink-0 items-center justify-between gap-4 border-b border-neutral-800 bg-black px-4 py-3">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">Product designer</p>
+                        <h1 className="mt-1 truncate text-xl font-black uppercase leading-tight md:text-2xl">
+                            {catalogProduct.brand} {catalogProduct.model} / {catalogProduct.name}
+                        </h1>
+                    </div>
+                    <Link href="/dashboard/products" className="inline-flex h-10 shrink-0 items-center gap-2 border border-neutral-700 bg-neutral-950 px-4 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:border-lime-300 hover:bg-lime-300 hover:text-black">
+                        <LogOut className="h-4 w-4" /> Exit designer
+                    </Link>
+                </section>
+                <DesignerClient
+                    catalogProduct={catalogProduct}
+                    artistName={artist.display_name}
+                    initialProduct={{
+                        id: product.id,
+                        title: product.title,
+                        description: product.description,
+                        color: designData?.garment?.color,
+                        colorLabel: designData?.garment?.supplierColorName ?? designData?.garment?.colorLabel,
+                        saleColorNames: existingSaleColors?.map((color) => color.label) ?? [],
+                        layers: Array.isArray(designData?.layers) ? designData.layers : [],
+                        referenceImageUrl: !designData ? publicImageUrl(referenceImage?.path) : null,
+                    }}
+                />
+            </main>
+        );
     }
 
     // 2) colours

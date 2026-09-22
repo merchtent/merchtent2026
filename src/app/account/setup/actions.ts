@@ -21,6 +21,13 @@ export async function completeAccountSetup(formData: FormData) {
     const accountType = readString(formData, "account_type");
     const displayName = readString(formData, "display_name").slice(0, 80);
     const artistName = readString(formData, "artist_name").slice(0, 60);
+    const attributionRaw = readString(formData, "marketing_attribution").slice(0, 4000);
+    let marketingAttribution: Record<string, unknown> = {};
+    try {
+        marketingAttribution = attributionRaw ? JSON.parse(attributionRaw) : {};
+    } catch {
+        marketingAttribution = {};
+    }
 
     if (!ACCOUNT_TYPES.has(accountType)) {
         throw new Error("Choose fan or artist account.");
@@ -44,6 +51,17 @@ export async function completeAccountSetup(formData: FormData) {
         });
         throw new Error("Could not complete account setup.");
     }
+
+    await supabase
+        .from("profiles")
+        .update({ marketing_attribution: marketingAttribution })
+        .eq("id", user.id);
+
+    await supabase.rpc("record_account_marketing_event", {
+        p_event_name: accountType === "artist" ? "artist_activation" : "sign_up",
+        p_attribution: marketingAttribution,
+        p_properties: { account_type: accountType },
+    });
 
     redirect("/dashboard");
 }

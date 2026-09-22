@@ -4,7 +4,9 @@
 import * as React from "react";
 import { placeOrderAndGoToStripe } from "./actions";
 import { useCart } from "@/components/CartProvider";
-import { SHIPPING_METHOD_OPTIONS, type ShippingMethodId } from "@/lib/shipping-methods";
+import { checkoutShippingAmountCents, SHIPPING_METHOD_OPTIONS, type ShippingMethodId } from "@/lib/shipping-methods";
+import { marketingAttributionJson } from "@/lib/marketing/attribution";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 const SHIPPING_OPTIONS = SHIPPING_METHOD_OPTIONS.map((option) => ({
     ...option,
@@ -91,6 +93,7 @@ type CheckoutFormClientProps = {
     canUseMerchCredits: boolean;
     useMerchCredits: boolean;
     setUseMerchCredits: (value: boolean) => void;
+    setShippingCountry: (country: string) => void;
 };
 
 export default function CheckoutFormClient({
@@ -104,6 +107,7 @@ export default function CheckoutFormClient({
     canUseMerchCredits,
     useMerchCredits,
     setUseMerchCredits,
+    setShippingCountry,
 }: CheckoutFormClientProps) {
     const { items: cartItems, subtotal_cents } = useCart();
     const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
@@ -144,9 +148,15 @@ export default function CheckoutFormClient({
         };
     }, [form]);
 
-    const selectedShipping =
-        SHIPPING_OPTIONS.find((s) => s.id === shippingMethod) ?? SHIPPING_OPTIONS[0];
-    const totalCents = subtotal_cents + selectedShipping.amount_cents;
+    const shippingCents = checkoutShippingAmountCents(
+        shippingMethod,
+        form.country,
+        cartItems.length,
+        cartItems.reduce((sum, item) => sum + item.qty, 0)
+    );
+    const totalCents = subtotal_cents + shippingCents;
+
+    React.useEffect(() => setShippingCountry(form.country), [form.country, setShippingCountry]);
 
     function update<K extends keyof Draft>(key: K, val: Draft[K]) {
         setForm((f) => ({ ...f, [key]: val }));
@@ -176,6 +186,21 @@ export default function CheckoutFormClient({
         fd.set("use_merch_credits", useMerchCredits ? "true" : "false");
         fd.set("cart_json", JSON.stringify(cartItems));
         fd.set("checkout_attempt_id", crypto.randomUUID());
+        fd.set("marketing_attribution", marketingAttributionJson());
+
+        trackMarketingEvent("begin_checkout", {
+            currency: "AUD",
+            value_cents: totalCents,
+            shipping_method: shippingMethod,
+            items: cartItems.map((item) => ({
+                item_id: item.product_id,
+                item_name: item.title,
+                price_cents: item.price_cents,
+                currency: item.currency,
+                quantity: item.qty,
+                item_variant: [item.size, item.color_label].filter(Boolean).join(" / "),
+            })),
+        });
 
         try {
             const res = await placeOrderAndGoToStripe(fd);
@@ -193,8 +218,8 @@ export default function CheckoutFormClient({
 
     return (
         <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-4">
-                <p className="text-xs uppercase tracking-wide text-neutral-400">
+            <div className="border border-white/10 bg-black p-5 space-y-4">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b6ff3f]">
                     Email Address
                 </p>
                 <input
@@ -204,50 +229,50 @@ export default function CheckoutFormClient({
                     value={form.email}
                     onChange={(e) => update("email", e.target.value)}
                     required
-                    className="w-full h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
+                    className="w-full h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
                 />
-                <p className="text-[11px] text-neutral-500">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">
                     No account needed — we’ll send your order confirmation via email
                 </p>
             </div>
 
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
-                <p className="text-xs uppercase tracking-wide text-neutral-400">
+            <div className="border border-white/10 bg-black p-5 space-y-3">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b6ff3f]">
                     Shipping address
                 </p>
                 <div className="grid md:grid-cols-2 gap-3">
                     <input
                         name="first_name"
                         placeholder="First name"
-                        value={form.first_name}
-                        onChange={(e) => update("first_name", e.target.value)}
-                        required
-                        className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
-                    />
+                    value={form.first_name}
+                    onChange={(e) => update("first_name", e.target.value)}
+                    required
+                    className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
+                />
                     <input
                         name="last_name"
                         placeholder="Last name"
-                        value={form.last_name}
-                        onChange={(e) => update("last_name", e.target.value)}
-                        required
-                        className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
-                    />
+                    value={form.last_name}
+                    onChange={(e) => update("last_name", e.target.value)}
+                    required
+                    className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
+                />
                 </div>
                 <input
                     name="line1"
                     placeholder="Address line 1"
-                    value={form.line1}
-                    onChange={(e) => update("line1", e.target.value)}
-                    required
-                    className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
-                />
+                value={form.line1}
+                onChange={(e) => update("line1", e.target.value)}
+                required
+                className="h-11 w-full border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
+            />
                 <input
                     name="line2"
                     placeholder="Address line 2 (optional)"
-                    value={form.line2}
-                    onChange={(e) => update("line2", e.target.value)}
-                    className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
-                />
+                value={form.line2}
+                onChange={(e) => update("line2", e.target.value)}
+                className="h-11 w-full border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
+            />
                 <div className="grid md:grid-cols-3 gap-3">
                     <input
                         name="city"
@@ -255,7 +280,7 @@ export default function CheckoutFormClient({
                         value={form.city}
                         onChange={(e) => update("city", e.target.value)}
                         required
-                        className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
+                        className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
                     />
                     <input
                         name="state"
@@ -263,7 +288,7 @@ export default function CheckoutFormClient({
                         value={form.state}
                         onChange={(e) => update("state", e.target.value)}
                         required
-                        className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
+                        className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
                     />
                     <input
                         name="postal_code"
@@ -271,7 +296,7 @@ export default function CheckoutFormClient({
                         value={form.postal_code}
                         onChange={(e) => update("postal_code", e.target.value)}
                         required
-                        className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm"
+                        className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
                     />
                 </div>
                 <input
@@ -280,27 +305,27 @@ export default function CheckoutFormClient({
                     onChange={(e) => update("country", e.target.value.toUpperCase().slice(0, 2))}
                     required
                     maxLength={2}
-                    pattern="[A-Za-z]{2}"
-                    aria-label="Country code"
-                    className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
-                />
+                pattern="[A-Za-z]{2}"
+                aria-label="Country code"
+                className="h-11 w-full border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
+            />
                 <input
                     name="phone"
                     placeholder="Phone (for delivery)"
                     value={form.phone}
                     onChange={(e) => update("phone", e.target.value)}
                     required
-                    className="h-10 rounded-lg bg-neutral-950 border border-neutral-700 px-3 text-sm w-full"
+                    className="h-11 w-full border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
                 />
             </div>
 
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
-                <p className="text-xs uppercase tracking-wide text-neutral-400">
+            <div className="border border-white/10 bg-black p-5 space-y-3">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b6ff3f]">
                     Shipping method
                 </p>
                 <div className="space-y-2">
                     {SHIPPING_OPTIONS.map((opt) => (
-                        <label key={opt.id} className="flex items-center gap-3 text-sm border rounded-lg px-3 py-2 hover:border-red-500 transition">
+                        <label key={opt.id} className="flex items-center gap-3 border border-white/10 bg-white/[0.03] px-3 py-3 text-sm transition hover:border-[#b6ff3f]">
                             <input
                                 type="radio"
                                 name="shipping"
@@ -309,22 +334,22 @@ export default function CheckoutFormClient({
                                 onChange={() => setShippingMethod(opt.id)}
                             />
                             <span>{opt.label}</span>
-                            <span className="ml-auto text-xs text-neutral-200">
-                                {(opt.amount_cents / 100).toLocaleString("en-AU", {
+                            <span className="ml-auto text-xs font-black text-white">
+                                {(shippingCents / 100).toLocaleString("en-AU", {
                                     style: "currency",
                                     currency: "AUD",
                                 })}
                             </span>
                         </label>
                     ))}
-                    <p className="text-[11px] text-neutral-500">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">
                         Printed when ordered. Shipping begins after production.
                     </p>
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
-                <p className="text-xs uppercase tracking-wide text-neutral-400">
+            <div className="border border-white/10 bg-black p-5 space-y-3">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b6ff3f]">
                     Merch credits
                 </p>
                 <label className="flex items-start gap-3 text-sm">
@@ -339,7 +364,7 @@ export default function CheckoutFormClient({
                         <span className="block text-neutral-100">
                             Use 20 credits for a free tee discount
                         </span>
-                        <span className="block text-xs text-neutral-500">
+                        <span className="block text-xs text-white/45">
                             {canUseMerchCredits
                                 ? `${merchCreditBalance} credits available. Credits are reserved for this checkout and only redeemed after payment succeeds.`
                                 : "Sign in to redeem merch credits."}
@@ -366,15 +391,15 @@ export default function CheckoutFormClient({
             </div> */}
 
             {errorMsg ? (
-                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">
+                <p className="border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                     {errorMsg}
                 </p>
             ) : null}
 
             <div className="flex items-center justify-between gap-3">
-                <div className="text-sm text-neutral-300">
+                <div className="text-sm text-white/65">
                     Total today:{" "}
-                    <span className="font-bold text-white">
+                    <span className="font-black text-[#b6ff3f]">
                         {(totalCents / 100).toLocaleString("en-AU", {
                             style: "currency",
                             currency: "AUD",

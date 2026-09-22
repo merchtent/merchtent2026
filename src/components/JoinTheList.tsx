@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
+import { marketingAttributionJson } from "@/lib/marketing/attribution";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 export default function JoinTheList() {
     const [email, setEmail] = useState("");
@@ -33,11 +35,14 @@ export default function JoinTheList() {
                     email,
                     name: name || undefined,
                     source: "homepage:join-the-list",
+                    utm: marketingAttributionJson(),
+                    consent: true,
                 }),
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json?.error || "Subscription failed");
             setOk(true);
+            trackMarketingEvent("newsletter_signup", { source: "homepage:join-the-list" });
             setEmail("");
             setName("");
         } catch (e: unknown) {
@@ -49,17 +54,18 @@ export default function JoinTheList() {
     }
 
     return (
-        <section className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16 text-center">
-            <h3 className="text-2xl font-semibold">Join the list</h3>
-            <p className="mt-2 text-neutral-300">First dibs on drops, sales &amp; news.</p>
+        <section className="mx-auto max-w-7xl border-y border-white/10 bg-black px-4 py-12 text-center text-white md:px-8 md:py-16">
+            <p className="text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">First dibs</p>
+            <h3 className="mt-3 text-4xl font-black uppercase leading-none md:text-6xl">Join the list.</h3>
+            <p className="mt-3 text-sm text-white/60">Drop alerts, artist news, and the odd thing worth opening.</p>
 
-            <form onSubmit={onSubmit} className="mt-5 flex flex-col sm:flex-row gap-2  mx-auto">
+            <form onSubmit={onSubmit} className="mx-auto mt-7 flex max-w-3xl flex-col gap-2 sm:flex-row">
                 <Input
                     type="text"
                     placeholder="Name (optional)"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="h-11 bg-neutral-900 border-neutral-800 text-neutral-100 placeholder:text-neutral-500"
+                    className="h-12 border-white/15 bg-[#080808] text-white placeholder:text-white/35"
                 />
                 <Input
                     type="email"
@@ -67,12 +73,9 @@ export default function JoinTheList() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-11 bg-neutral-900 border-neutral-800 text-neutral-100 placeholder:text-neutral-500"
+                    className="h-12 border-white/15 bg-[#080808] text-white placeholder:text-white/35"
                 />
-                <Button type="submit" disabled={loading} className="relative rounded-xl px-5 py-3 text-sm font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-50"
-                    style={{
-                        clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)",
-                    }}>
+                <Button type="submit" disabled={loading} className="h-12 border border-[#b6ff3f] bg-[#b6ff3f] px-6 text-sm font-black uppercase tracking-wide text-black hover:bg-white disabled:opacity-50">
                     {loading ? "Subscribing…" : "Subscribe"}
                 </Button>
             </form>

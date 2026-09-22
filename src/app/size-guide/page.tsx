@@ -1,211 +1,121 @@
-// app/size-guide/page.tsx
 import Link from "next/link";
+import { ArrowRight, Ruler, Shirt } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Band Merch Size Guide",
+    description: "Compare tee and hoodie measurements before ordering made-to-order band merch from Merch Tent.",
+    alternates: { canonical: "/size-guide" },
+};
 
 export const revalidate = 60;
 
+const teeRows = [
+    ["Width", "45.72", "50.80", "55.88", "60.96", "66.04"],
+    ["Length", "71.12", "73.66", "76.20", "78.74", "81.28"],
+    ["Sleeve", "20.90", "21.60", "22.20", "22.90", "23.50"],
+    ["Tolerance", "+/- 3.81", "+/- 3.81", "+/- 3.81", "+/- 3.81", "+/- 3.81"],
+];
+
+const hoodieRows = [
+    ["Width", "20.08", "22.05", "24.02", "25.98", "27.99", "29.92"],
+    ["Length", "27.17", "27.95", "29.13", "29.92", "31.10", "31.89"],
+    ["Sleeve", "33.50", "34.50", "35.50", "36.50", "37.50", "38.50"],
+    ["Tolerance", "+/- 1.50", "+/- 1.50", "+/- 1.50", "+/- 1.50", "+/- 1.50", "+/- 1.50"],
+];
+
 export default function SizeGuidePage() {
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* Breadcrumbs */}
-            <nav className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-4 text-xs text-neutral-400">
-                <Link href="/" className="hover:underline">Home</Link> /{" "}
-                <Link href="/#grid" className="hover:underline">Shop</Link> /{" "}
-                <span className="text-neutral-200">Size Guide</span>
-            </nav>
-
-            {/* Angled banner */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">Support</p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">Size Guide</h1>
-                        </div>
-                        <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">FIT</span>
-                    </div>
+        <main className="min-h-screen bg-[#060606] text-white">
+            <section className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(180,255,55,0.14),transparent_30%),linear-gradient(180deg,#080808,#111)]">
+                <div className="mx-auto max-w-7xl px-4 py-14 md:px-8 md:py-20">
+                    <p className="text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">Support</p>
+                    <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                        Size guide.
+                    </h1>
+                    <p className="mt-6 max-w-2xl text-base leading-7 text-white/68">
+                        Compare these measurements against something you already wear. Made-to-order pieces cannot be swapped for size changes.
+                    </p>
                 </div>
             </section>
 
-            <section className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-8 space-y-8">
-                {/* TEES */}
-                <article
-                    className="rounded-2xl border border-neutral-800 bg-neutral-900"
-                    style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
-                >
-                    <header className="px-5 md:px-6 py-5 border-b border-neutral-800">
-                        <h2 className="text-lg md:text-xl font-bold">Tee Shirts — Unisex</h2>
-                        <p className="text-sm text-neutral-400 mt-1">
-                            Measurements are taken garment-flat. For best results, compare to a tee you already own.
-                        </p>
-                    </header>
+            <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 md:grid-cols-[0.75fr_1.25fr] md:px-8 md:py-16">
+                <aside className="border border-white/10 bg-black p-6">
+                    <Ruler className="h-9 w-9 text-[#b6ff3f]" />
+                    <h2 className="mt-5 text-4xl font-black uppercase leading-[0.9]">
+                        Measure flat. Choose once.
+                    </h2>
+                    <p className="mt-4 text-sm leading-6 text-white/60">
+                        Width is armpit to armpit. Length is shoulder to hem. Sleeve is shoulder seam to hem unless noted.
+                    </p>
+                    <Link href="/shipping-and-returns" className="mt-6 inline-flex items-center gap-2 text-sm font-black uppercase text-[#b6ff3f]">
+                        Read return rules <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </aside>
+                <div className="space-y-8">
+                    <SizeTable title="Tee shirts - unisex" unit="cm" sizes={["S", "M", "L", "XL", "2XL"]} rows={teeRows} />
+                    <SizeTable title="Hoodies" unit="in" sizes={["S", "M", "L", "XL", "2XL", "3XL"]} rows={hoodieRows} />
+                </div>
+            </section>
 
-                    {/* Table */}
-                    <div className="px-5 md:px-6 py-5 overflow-x-auto">
-                        <table className="w-full text-sm border-collapse">
-                            <thead>
-                                <tr className="text-neutral-400 border-b border-neutral-800">
-                                    <th className="py-2 pr-3 text-left">Measurement (cm)</th>
-                                    <th className="py-2 px-3 text-right">S</th>
-                                    <th className="py-2 px-3 text-right">M</th>
-                                    <th className="py-2 px-3 text-right">L</th>
-                                    <th className="py-2 px-3 text-right">XL</th>
-                                    <th className="py-2 pl-3 text-right">2XL</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-neutral-200">
-                                <tr className="border-t border-neutral-800">
-                                    <td className="py-2 pr-3 text-neutral-300">Width</td>
-                                    <td className="py-2 px-3 text-right">45.72</td>
-                                    <td className="py-2 px-3 text-right">50.80</td>
-                                    <td className="py-2 px-3 text-right">55.88</td>
-                                    <td className="py-2 px-3 text-right">60.96</td>
-                                    <td className="py-2 pl-3 text-right">66.04</td>
-                                </tr>
-                                <tr className="border-t border-neutral-800">
-                                    <td className="py-2 pr-3 text-neutral-300">Length</td>
-                                    <td className="py-2 px-3 text-right">71.12</td>
-                                    <td className="py-2 px-3 text-right">73.66</td>
-                                    <td className="py-2 px-3 text-right">76.20</td>
-                                    <td className="py-2 px-3 text-right">78.74</td>
-                                    <td className="py-2 pl-3 text-right">81.28</td>
-                                </tr>
-                                <tr className="border-t border-neutral-800">
-                                    <td className="py-2 pr-3 text-neutral-300">Sleeve length</td>
-                                    <td className="py-2 px-3 text-right">20.90</td>
-                                    <td className="py-2 px-3 text-right">21.60</td>
-                                    <td className="py-2 px-3 text-right">22.20</td>
-                                    <td className="py-2 px-3 text-right">22.90</td>
-                                    <td className="py-2 pl-3 text-right">23.50</td>
-                                </tr>
-                                <tr className="border-t border-neutral-800">
-                                    <td className="py-2 pr-3 text-neutral-300">Size tolerance</td>
-                                    <td className="py-2 px-3 text-right">± 3.81</td>
-                                    <td className="py-2 px-3 text-right">± 3.81</td>
-                                    <td className="py-2 px-3 text-right">± 3.81</td>
-                                    <td className="py-2 px-3 text-right">± 3.81</td>
-                                    <td className="py-2 pl-3 text-right">± 3.81</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <p className="text-xs text-neutral-500 mt-3">
-                            <span className="font-medium text-neutral-400">Width</span> = armpit to armpit (half-chest).{" "}
-                            <span className="font-medium text-neutral-400">Length</span> = shoulder to hem.{" "}
-                            <span className="font-medium text-neutral-400">Sleeve</span> = shoulder seam to sleeve hem.{" "}
-                            Tolerance reflects normal manufacturing variance.
-                        </p>
-                    </div>
-
-                    {/* Fit tips rail */}
-                    <div className="px-5 md:px-6 py-5 border-t border-neutral-800 bg-neutral-900/70 grid md:grid-cols-2 gap-4">
-                        <div className="rounded-xl border border-neutral-800 p-4">
-                            <p className="text-sm text-neutral-300">
-                                Between sizes? For a relaxed/boxy fit, size up. For a closer fit, choose your usual size.
-                            </p>
-                        </div>
-                        <div className="rounded-xl border border-neutral-800 p-4">
-                            <p className="text-sm text-neutral-300">
-                                Still unsure? <Link href="/contact" className="underline">Contact us</Link> and we’ll help with fit.
-                            </p>
-                        </div>
-                    </div>
-                </article>
-
-                {/* Placeholder for Hoodies (add later) */}
-                <article
-                    className="rounded-2xl border border-neutral-800 bg-neutral-900 opacity-70"
-                    style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
-                >
-                    <div className="px-5 md:px-6 py-5">
-                        <h2 className="text-lg md:text-xl font-bold">Hoodies</h2>
-                        <p className="text-neutral-400 text-sm mt-1">
-                            Measurements are taken garment-flat. For best results, compare to a tee you already own.
-                        </p>
-                    </div>
-
-                    <div className="px-5 md:px-6 py-5 overflow-x-auto">
-                        <table className="w-full text-sm border-collapse">
-                            <thead>
-                                <tr className="text-neutral-400 border-b border-neutral-800">
-                                    <th className="py-2 pr-3 text-left">Measurement (in)</th>
-                                    <th className="py-2 px-3 text-right">S</th>
-                                    <th className="py-2 px-3 text-right">M</th>
-                                    <th className="py-2 px-3 text-right">L</th>
-                                    <th className="py-2 px-3 text-right">XL</th>
-                                    <th className="py-2 px-3 text-right">2XL</th>
-                                    <th className="py-2 pl-3 text-right">3XL</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-neutral-200">
-                                <tr className="border-t border-neutral-800">
-                                    <td className="py-2 pr-3 text-neutral-300">Width</td>
-                                    <td className="py-2 px-3 text-right">20.08</td>
-                                    <td className="py-2 px-3 text-right">22.05</td>
-                                    <td className="py-2 px-3 text-right">24.02</td>
-                                    <td className="py-2 px-3 text-right">25.98</td>
-                                    <td className="py-2 px-3 text-right">27.99</td>
-                                    <td className="py-2 pl-3 text-right">29.92</td>
-                                </tr>
-                                <tr className="border-t border-neutral-800">
-                                    <td className="py-2 pr-3 text-neutral-300">Length</td>
-                                    <td className="py-2 px-3 text-right">27.17</td>
-                                    <td className="py-2 px-3 text-right">27.95</td>
-                                    <td className="py-2 px-3 text-right">29.13</td>
-                                    <td className="py-2 px-3 text-right">29.92</td>
-                                    <td className="py-2 px-3 text-right">31.10</td>
-                                    <td className="py-2 pl-3 text-right">31.89</td>
-                                </tr>
-                                <tr className="border-t border-neutral-800">
-                                    <td className="py-2 pr-3 text-neutral-300">Sleeve length (center back)</td>
-                                    <td className="py-2 px-3 text-right">33.50</td>
-                                    <td className="py-2 px-3 text-right">34.50</td>
-                                    <td className="py-2 px-3 text-right">35.50</td>
-                                    <td className="py-2 px-3 text-right">36.50</td>
-                                    <td className="py-2 px-3 text-right">37.50</td>
-                                    <td className="py-2 pl-3 text-right">38.50</td>
-                                </tr>
-                                <tr className="border-t border-neutral-800">
-                                    <td className="py-2 pr-3 text-neutral-300">Size tolerance</td>
-                                    <td className="py-2 px-3 text-right">± 1.50</td>
-                                    <td className="py-2 px-3 text-right">± 1.50</td>
-                                    <td className="py-2 px-3 text-right">± 1.50</td>
-                                    <td className="py-2 px-3 text-right">± 1.50</td>
-                                    <td className="py-2 px-3 text-right">± 1.50</td>
-                                    <td className="py-2 pl-3 text-right">± 1.50</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <p className="text-xs text-neutral-500 mt-3">
-                            <span className="font-medium text-neutral-400">Width</span> = armpit to armpit (half-chest).{" "}
-                            <span className="font-medium text-neutral-400">Length</span> = shoulder to hem.{" "}
-                            <span className="font-medium text-neutral-400">Sleeve</span> = from center back of neck to sleeve hem.{" "}
-                            Tolerance reflects normal manufacturing variance.{" "}
-                            <span className="font-medium text-neutral-400">Units</span>: inches.
-                        </p>
-                    </div>
-
-                </article>
-
-                {/* Help rail */}
-                <section
-                    className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 flex items-center justify-between"
-                    style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
-                >
-                    <div>
-                        <p className="text-sm text-neutral-300">Need help choosing a size?</p>
-                        <p className="font-semibold">Our team can recommend the best fit.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <Link href="/contact" className="rounded-xl border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800">
-                            Contact Us
-                        </Link>
-                        <Link href="/shipping-and-returns" className="rounded-xl bg-red-600 text-white px-4 py-2 text-sm hover:bg-red-500">
-                            Shipping & Returns
-                        </Link>
-                    </div>
-                </section>
+            <section className="border-y border-white/10 bg-[#f4f1e8] text-black">
+                <div className="mx-auto grid max-w-7xl gap-px border-x border-black/10 bg-black/10 md:grid-cols-3">
+                    {[
+                        ["Relaxed fit", "Size up if you like a loose merch-table fit."],
+                        ["Closer fit", "Choose your usual size if you prefer a standard shape."],
+                        ["Still unsure", "Use the measurements above before ordering."],
+                    ].map(([title, body]) => (
+                        <article key={title} className="bg-[#f4f1e8] p-6">
+                            <Shirt className="h-6 w-6 text-[#477a00]" />
+                            <h3 className="mt-4 text-2xl font-black uppercase leading-none">{title}</h3>
+                            <p className="mt-3 text-sm leading-6 text-black/62">{body}</p>
+                        </article>
+                    ))}
+                </div>
             </section>
         </main>
+    );
+}
+
+function SizeTable({
+    title,
+    unit,
+    sizes,
+    rows,
+}: {
+    title: string;
+    unit: string;
+    sizes: string[];
+    rows: string[][];
+}) {
+    return (
+        <article className="border border-white/10 bg-black">
+            <header className="border-b border-white/10 p-5">
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">{unit}</p>
+                <h2 className="mt-2 text-3xl font-black uppercase leading-none">{title}</h2>
+            </header>
+            <div className="overflow-x-auto p-5">
+                <table className="w-full min-w-[520px] border-collapse text-sm">
+                    <thead>
+                        <tr className="border-b border-white/10 text-white/45">
+                            <th className="py-3 pr-3 text-left font-black uppercase tracking-[0.16em]">Measure</th>
+                            {sizes.map((size) => (
+                                <th key={size} className="px-3 py-3 text-right font-black uppercase tracking-[0.16em]">{size}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map(([label, ...values]) => (
+                            <tr key={label} className="border-b border-white/10 last:border-b-0">
+                                <td className="py-3 pr-3 font-black uppercase text-[#b6ff3f]">{label}</td>
+                                {values.map((value, index) => (
+                                    <td key={`${label}-${index}`} className="px-3 py-3 text-right text-white/75">{value}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </article>
     );
 }

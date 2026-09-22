@@ -60,21 +60,22 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
         };
     }, [artistId]);
 
-    if (!loading && reviews.length === 0) return null;
-
     return (
-        <section className="py-10 md:py-12 border-t border-neutral-800 bg-neutral-950">
+        <section className="border-t border-white/10 bg-[#060606] py-10 md:py-12">
 
             <div className="max-w-6xl mx-auto px-4">
 
                 {/* HEADER */}
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg md:text-xl font-semibold">
+                    <div>
+                        <p className="text-xs font-black uppercase tracking-[0.3em] text-[#b6ff3f]">Fan shouts</p>
+                        <h2 className="mt-2 text-3xl font-black uppercase leading-none md:text-4xl">
                         What fans are saying
-                    </h2>
+                        </h2>
+                    </div>
 
                     <div className="flex items-center gap-2">
-                        <Stars rating={Math.round(avgRating || 5)} />
+                        {avgRating ? <Stars rating={Math.round(avgRating)} /> : null}
                         <span className="text-xs text-neutral-400">
                             {avgRating?.toFixed(1)} ({count})
                         </span>
@@ -87,7 +88,7 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                         {Array.from({ length: 3 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="min-w-[260px] h-[110px] bg-neutral-800 rounded-2xl animate-pulse"
+                                className="h-[110px] min-w-[260px] animate-pulse border border-white/10 bg-white/10"
                             />
                         ))}
                     </div>
@@ -97,7 +98,14 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                 {!loading && (
                     <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto pb-2">
 
-                        {reviews.map((r, i) => {
+                        {reviews.length === 0 ? (
+                            <div className="min-w-full border border-white/10 bg-black p-6 md:col-span-3">
+                                <p className="text-lg font-black uppercase">No verified fan reviews yet.</p>
+                                <p className="mt-2 text-sm text-white/55">Customer reviews will appear after completed orders.</p>
+                            </div>
+                        ) : null}
+
+                        {reviews.map((r) => {
                             const artistObj = Array.isArray(r.artist) ? r.artist[0] : r.artist;
                             const productObj = Array.isArray(r.product) ? r.product[0] : r.product;
 
@@ -111,24 +119,18 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                                 <Link
                                     key={r.id}
                                     href={productObj?.slug ? `/product/${productObj.slug}` : "#"}
-                                    className="group min-w-[260px] md:min-w-0 relative rounded-2xl border border-neutral-800 bg-neutral-900 p-4 transition-all duration-300 hover:border-neutral-700 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/30"
-                                    style={{
-                                        clipPath:
-                                            i % 3 === 0
-                                                ? "polygon(1% 0,100% 0,98% 100%,0 100%)"
-                                                : undefined,
-                                    }}
+                                    className="group relative min-w-[260px] border border-white/10 bg-black p-4 transition-all duration-300 hover:border-[#b6ff3f] md:min-w-0"
                                 >
 
                                     {/* 🔥 PARALLAX PRODUCT IMAGE */}
-                                    <div className="absolute inset-0 overflow-hidden rounded-2xl opacity-20 pointer-events-none">
+                                    <div className="absolute inset-0 overflow-hidden opacity-15 pointer-events-none">
                                         {productAvatar && (
                                             <Image
                                                 src={productAvatar}
                                                 alt={productObj?.title ?? "Product"}
                                                 fill
                                                 sizes="260px"
-                                                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-1"
+                                                    className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                                             />
                                         )}
                                     </div>
@@ -140,7 +142,7 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                                         <div className="flex items-center gap-3 mb-3">
 
                                             {/* ARTIST */}
-                                            <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral-700">
+                                            <div className="h-10 w-10 overflow-hidden border border-white/10 bg-[#f4f1e8]">
                                                 {artistAvatar && (
                                                     <Image
                                                         src={artistAvatar}
@@ -153,7 +155,7 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
                                             </div>
 
                                             {/* PRODUCT */}
-                                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-800">
+                                            <div className="h-10 w-10 overflow-hidden border border-white/10 bg-[#f4f1e8]">
                                                 {productAvatar && (
                                                     <Image
                                                         src={productAvatar}
@@ -167,24 +169,24 @@ export default function ArtistReviews({ artistId }: { artistId: string }) {
 
                                             {/* NAME */}
                                             <div>
-                                                <p className="text-sm font-semibold">
+                                                    <p className="text-sm font-black uppercase">
                                                     {r.name}
                                                 </p>
                                                 <div className="flex items-center gap-1 mt-0.5">
-                                                    <Stars rating={r.rating ?? 5} />
+                                                    {typeof r.rating === "number" ? <Stars rating={r.rating} /> : null}
                                                 </div>
-                                                <p className="text-xs text-neutral-400">
+                                                <p className="text-xs text-white/45">
                                                     {artistObj?.display_name}
                                                 </p>
                                             </div>
 
                                         </div>
-                                        <p className="text-[10px] text-neutral-500 truncate">
+                                        <p className="truncate text-[10px] uppercase tracking-[0.14em] text-white/35">
                                             {productObj?.title}
                                         </p>
 
                                         {/* TEXT */}
-                                        <p className="text-sm text-neutral-300 leading-relaxed">
+                                        <p className="mt-2 text-sm leading-relaxed text-white/70">
                                             “{r.text}”
                                         </p>
 

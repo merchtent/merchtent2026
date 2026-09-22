@@ -1,16 +1,66 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import ArtistProductsGrid from "./ArtistProductsGrid";
+import StructuredData from "@/components/StructuredData";
 import TourSection from "@/components/TourSection";
 import ArtistReviews from "@/components/ArtistReviews";
 import SavedToggleButton from "@/components/SavedToggleButton";
 import { publicImageUrl, publicStorageUrl } from "@/lib/storage";
 import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
+import { publicEnv } from "@/lib/env";
 import { ArrowRight, CalendarDays, Camera, Disc3, Heart, ShoppingBag, Star } from "lucide-react";
 
 export const revalidate = 60;
+
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+    const { id } = await params;
+    const { data: artist } = await getPublicServerSupabase()
+        .from("artists")
+        .select("display_name, slug, hero_image_path, bio")
+        .eq("slug", id)
+        .eq("is_public", true)
+        .maybeSingle();
+
+    if (!artist) {
+        return {
+            title: "Artist not found",
+            robots: { index: false, follow: false },
+        };
+    }
+
+    const name = artist.display_name ?? "Local artist";
+    const description = artist.bio?.trim()
+        ? artist.bio.trim().replace(/\s+/g, " ").slice(0, 260)
+        : `Shop official merch from ${name}, an Australian local artist on Merch Tent.`;
+    const canonicalPath = `/artists/${artist.slug ?? id}`;
+    const image = publicStorageUrl("artist-images", artist.hero_image_path);
+
+    return {
+        title: `${name} Merch`,
+        description,
+        alternates: { canonical: canonicalPath },
+        openGraph: {
+            type: "profile",
+            url: canonicalPath,
+            title: `${name} Merch`,
+            description,
+            images: image ? [{ url: image, alt: name }] : undefined,
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: `${name} Merch`,
+            description,
+            images: image ? [image] : undefined,
+        },
+    };
+}
 
 type ProductImageRow = {
     path: string | null;
@@ -167,7 +217,58 @@ export default async function ArtistPage({
     );
     const featuredProducts = products.slice(0, 4);
 
+    const artistPath = `/artists/${artist.slug ?? id}`;
+    const artistUrl = `${publicEnv.siteUrl()}${artistPath}`;
+    const artistDescription = artist.bio?.trim()
+        ? artist.bio.trim().replace(/\s+/g, " ")
+        : `Shop official merch from ${artist.display_name} on Merch Tent.`;
+
     return (
+        <>
+        <StructuredData
+            data={[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "ProfilePage",
+                    "@id": `${artistUrl}#profile`,
+                    url: artistUrl,
+                    name: `${artist.display_name} Merch`,
+                    description: artistDescription,
+                    mainEntity: {
+                        "@type": "MusicGroup",
+                        "@id": `${artistUrl}#artist`,
+                        name: artist.display_name,
+                        url: artistUrl,
+                        description: artistDescription,
+                        ...(heroUrl ? { image: heroUrl } : {}),
+                    },
+                },
+                {
+                    "@context": "https://schema.org",
+                    "@type": "BreadcrumbList",
+                    itemListElement: [
+                        {
+                            "@type": "ListItem",
+                            position: 1,
+                            name: "Home",
+                            item: publicEnv.siteUrl(),
+                        },
+                        {
+                            "@type": "ListItem",
+                            position: 2,
+                            name: "Artists",
+                            item: `${publicEnv.siteUrl()}/artists`,
+                        },
+                        {
+                            "@type": "ListItem",
+                            position: 3,
+                            name: artist.display_name,
+                            item: artistUrl,
+                        },
+                    ],
+                },
+            ]}
+        />
         <main className="bg-black text-white">
             <section className="relative overflow-hidden border-b border-neutral-800 bg-black">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(190,242,100,0.16),transparent_25%),radial-gradient(circle_at_82%_18%,rgba(239,0,0,0.22),transparent_26%)]" />
@@ -345,7 +446,7 @@ export default async function ArtistPage({
             ) : null}
 
             <section id="products" className="border-b border-neutral-800 bg-black px-4 py-12 md:px-8 md:py-16">
-                <div className="mx-auto max-w-[1680px]">
+                <div className="mx-auto max-w-[1480px]">
                     <div className="mb-8 grid gap-5 md:grid-cols-[0.8fr_1.2fr] md:items-end">
                         <div>
                             <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-500">Artist shop</p>
@@ -438,6 +539,7 @@ export default async function ArtistPage({
                 </section>
             ) : null}
         </main>
+        </>
     );
 }
 

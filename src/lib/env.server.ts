@@ -47,18 +47,17 @@ export const serverEnv = {
     optionalPostmarkServerToken: () => optionalEnv("POSTMARK_SERVER_TOKEN"),
     optionalPostmarkFrom: () => optionalEnv("POSTMARK_FROM"),
     optionalPostmarkAdminTo: () => optionalEnv("POSTMARK_ADMIN_TO"),
-    postmarkCustomerTemplateAlias: () =>
-        optionalEnvWithDefault("POSTMARK_CUSTOMER_TEMPLATE_ALIAS", "order-confirmation"),
-    postmarkAdminTemplateAlias: () =>
-        optionalEnvWithDefault("POSTMARK_ADMIN_TEMPLATE_ALIAS", "order-admin-notify"),
     postmarkTestSecret: () => optionalEnv("POSTMARK_TEST_SECRET"),
     postmarkTestCustomerEmail: () => optionalEnv("POSTMARK_TEST_CUSTOMER_EMAIL"),
     postmarkSupportEmail: () =>
         optionalEnvWithDefault("POSTMARK_SUPPORT_EMAIL", "support@merchtent.com.au"),
+    emailAssetBaseUrl: () =>
+        optionalEnvWithDefault("EMAIL_ASSET_BASE_URL", "https://www.merchtent.com.au"),
     storeName: () => optionalEnvWithDefault("STORE_NAME", "Merch Tent"),
     companyAddress: () => optionalEnv("COMPANY_ADDRESS"),
     manageOrdersUrl: () => optionalEnv("MANAGE_ORDERS_URL"),
     operationalHealthSecret: () => requireEnv("OPERATIONAL_HEALTH_SECRET"),
+    sentryDsn: () => requireEnv("SENTRY_DSN"),
 };
 
 function requireOptionalValue<T>(key: string, value: T | null) {

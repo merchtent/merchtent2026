@@ -33,7 +33,7 @@ export default function FulfillmentJobActions({
                             await submitFulfillmentJobToPrintify(jobId);
                         });
                     }}
-                    className="rounded-md border border-sky-500/40 px-2 py-1 text-xs text-sky-200 hover:bg-sky-500/10 disabled:opacity-50"
+                    className="border border-[#b6ff3f]/60 px-2 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#b6ff3f] hover:bg-[#b6ff3f] hover:text-black disabled:opacity-50"
                 >
                     {isPending ? "Working..." : status === "failed" ? "Retry Printify" : "Submit Printify"}
                 </button>
@@ -48,7 +48,7 @@ export default function FulfillmentJobActions({
                             await updateFulfillmentJobStatus(jobId, action.status);
                         });
                     }}
-                    className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-200 hover:bg-red-500/10 disabled:opacity-50"
+                    className="border border-red-500/40 px-2 py-1 text-xs font-black uppercase tracking-[0.12em] text-red-200 hover:bg-red-600 hover:text-white disabled:opacity-50"
                 >
                     {isPending ? "Saving..." : action.label}
                 </button>

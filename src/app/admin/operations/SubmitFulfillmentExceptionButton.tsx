@@ -38,7 +38,7 @@ export default function SubmitFulfillmentExceptionButton({
                     }
                 });
             }}
-            className="mt-3 inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-700 px-3 py-2 text-xs font-semibold text-neutral-100 transition hover:border-sky-500 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-3 inline-flex items-center justify-center gap-2 border border-[#b6ff3f]/60 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#b6ff3f] transition hover:bg-[#b6ff3f] hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
         >
             <Send className="h-3.5 w-3.5" />
             {pending ? "Submitting..." : "Submit Printify"}

@@ -115,10 +115,9 @@ export default function TourDateModal({
                 className="
                     w-full
                     max-w-2xl
-                    bg-neutral-900
+                    bg-black
                     border
-                    border-neutral-800
-                    rounded-2xl
+                    border-white/10
                     p-6
                 "
             >
@@ -144,7 +143,7 @@ export default function TourDateModal({
 
                 <div className="space-y-5">
                     {errorMessage ? (
-                        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                        <p className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                             {errorMessage}
                         </p>
                     ) : null}
@@ -165,10 +164,9 @@ export default function TourDateModal({
                                 }
                                 className="
                                     w-full
-                                    bg-neutral-950
+                                    bg-[#080808]
                                     border
-                                    border-neutral-700
-                                    rounded-xl
+                                    border-white/15
                                     px-4
                                     py-3
                                 "
@@ -223,10 +221,9 @@ export default function TourDateModal({
                             }
                             className="
                                 w-full
-                                bg-neutral-950
+                                bg-[#080808]
                                 border
-                                border-neutral-700
-                                rounded-xl
+                                border-white/15
                                 px-4
                                 py-3
                             "
@@ -248,10 +245,9 @@ export default function TourDateModal({
                             }
                             className="
                                 w-full
-                                bg-neutral-950
+                                bg-[#080808]
                                 border
-                                border-neutral-700
-                                rounded-xl
+                                border-white/15
                                 px-4
                                 py-3
                             "
@@ -274,10 +270,9 @@ export default function TourDateModal({
                             }
                             className="
                                 w-full
-                                bg-neutral-950
+                                bg-[#080808]
                                 border
-                                border-neutral-700
-                                rounded-xl
+                                border-white/15
                                 px-4
                                 py-3
                             "
@@ -300,10 +295,9 @@ export default function TourDateModal({
                             placeholder="https://"
                             className="
                                 w-full
-                                bg-neutral-950
+                                bg-[#080808]
                                 border
-                                border-neutral-700
-                                rounded-xl
+                                border-white/15
                                 px-4
                                 py-3
                             "
@@ -319,9 +313,10 @@ export default function TourDateModal({
                         className="
                             px-4
                             py-3
-                            rounded-xl
-                            bg-neutral-800
-                            hover:bg-neutral-700
+                            border
+                            border-white/15
+                            bg-black
+                            hover:border-[#b6ff3f]
                         "
                     >
                         Cancel
@@ -333,10 +328,11 @@ export default function TourDateModal({
                         className="
                             px-5
                             py-3
-                            rounded-xl
-                            bg-red-600
-                            hover:bg-red-500
-                            font-semibold
+                            bg-[#b6ff3f]
+                            hover:bg-white
+                            text-black
+                            font-black
+                            uppercase
                         "
                     >
                         {isPending

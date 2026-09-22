@@ -3,20 +3,24 @@
 import { createHash, randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getServiceSupabase } from "@/lib/supabase/service";
 import { toSlug } from "@/lib/slug";
 import { z } from "zod";
-import { renderServerPrintAsset } from "@/lib/products/server-print-renderer";
+import { renderServerLifestyleMockups, renderServerMockup, renderServerPrintAsset } from "@/lib/products/server-print-renderer";
 import { logger } from "@/lib/logger";
 import { decodeStrictBase64ImagePayload, validateImageBytes } from "@/lib/uploads";
 import { recordPlatformEvent, type PlatformEventSeverity } from "@/lib/platform-events";
 import { checkDurableRateLimit } from "@/lib/rate-limit";
 import { requireArtistAction } from "@/lib/auth/artist";
+import { getLifestyleModelSets, type LifestyleModelSetId } from "@/lib/products/mockup-templates";
+import { getDesignerCatalogProduct } from "@/lib/supplier-catalog";
 
 const ALLOWED_CATEGORIES = [
     "tees",
     "hoodies",
     "hats",
     "tanks",
+    "bags",
     "posters",
     "vinyl",
     "accessories",
@@ -100,14 +104,21 @@ type DesignerPayload = {
         };
     printSideCount?: 1 | 2;
     garment: {
-        kind: string;
+        kind: "tee" | "hoodie" | "tank";
         color: string;
+        colorLabel?: string;
+        supplierColorName?: string;
     };
     printAreas: {
         front: PrintArea;
         back: PrintArea;
     };
+    normalizedPrintAreas?: {
+        front: PrintArea & { units: "ratio" };
+        back: PrintArea & { units: "ratio" };
+    };
     layers: DesignerLayer[];
+    listingModelSets?: { female: LifestyleModelSetId; male: LifestyleModelSetId };
 };
 
 type PrintArea = {
@@ -122,6 +133,14 @@ const printAreaSchema = z.object({
     y: z.number().finite().min(0).max(1200),
     width: z.number().finite().min(1).max(900),
     height: z.number().finite().min(1).max(1200),
+});
+
+const normalizedPrintAreaSchema = z.object({
+    x: z.number().finite().min(0).max(1),
+    y: z.number().finite().min(0).max(1),
+    width: z.number().finite().min(0.001).max(1),
+    height: z.number().finite().min(0.001).max(1),
+    units: z.literal("ratio"),
 });
 
 const layerSchema = z.object({
@@ -144,7 +163,7 @@ const layerSchema = z.object({
 
 const designPayloadSchema = z.object({
     version: z.literal(1),
-    templateKey: z.string().min(1).max(80).regex(/^merch-tent-(tee|hoodie)-v1$/),
+    templateKey: z.string().min(1).max(80).regex(/^merch-tent-(tee|hoodie|tank)-v1$/),
     catalogProduct: z.object({
         key: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/),
         name: z.string().min(1).max(160),
@@ -195,7 +214,7 @@ const designPayloadSchema = z.object({
     }).optional(),
     printSideCount: z.union([z.literal(1), z.literal(2)]).optional(),
     garment: z.object({
-        kind: z.enum(["tee", "hoodie"]),
+        kind: z.enum(["tee", "hoodie", "tank"]),
         color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
         colorLabel: z.string().max(80).optional(),
         supplierColorName: z.string().max(80).optional(),
@@ -204,10 +223,15 @@ const designPayloadSchema = z.object({
         front: printAreaSchema,
         back: printAreaSchema,
     }),
-    layers: z.array(layerSchema).min(1).max(30),
+    normalizedPrintAreas: z.object({
+        front: normalizedPrintAreaSchema,
+        back: normalizedPrintAreaSchema,
+    }).optional(),
+    layers: z.array(layerSchema).max(30),
 });
 
 const designedProductInputSchema = z.object({
+    productId: z.string().uuid().optional(),
     title: z.string().trim().min(1).max(120),
     description: z.string().trim().max(2_000),
     price: z.coerce.number().finite().min(1).max(2_000),
@@ -215,9 +239,8 @@ const designedProductInputSchema = z.object({
     publish: z.boolean(),
     garmentColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).catch("#111111"),
     garmentLabel: z.string().trim().max(80).catch("Designed"),
+    saleColorNamesRaw: z.string().max(2000),
     designRaw: z.string().min(1),
-    frontRender: z.string().min(1),
-    backRender: z.string().optional().catch(""),
     catalogProductKey: z.string().trim().max(120).optional().catch(undefined),
     supplierKey: z.enum(["printify", "printful", "local"]).optional().catch(undefined),
     supplierProductId: z.string().trim().max(120).optional().catch(undefined),
@@ -225,10 +248,32 @@ const designedProductInputSchema = z.object({
     printifyBlueprintId: z.coerce.number().int().positive().optional().catch(undefined),
     printifyPrintProviderId: z.coerce.number().int().positive().optional().catch(undefined),
     printifyVariantIds: z.string().trim().max(4_000).optional().catch(undefined),
+    femaleModelSet: z.enum([
+        "gig",
+        "crowd",
+        "outdoor",
+        "jazz",
+        "hoodie-rehearsal",
+        "hoodie-vinyl-press",
+        "hoodie-loading-dock",
+        "hoodie-radio-studio",
+    ]).optional(),
+    maleModelSet: z.enum([
+        "gig",
+        "crowd",
+        "outdoor",
+        "jazz",
+        "hoodie-rehearsal",
+        "hoodie-vinyl-press",
+        "hoodie-loading-dock",
+        "hoodie-radio-studio",
+    ]).optional(),
 });
 
 const DESIGNER_PRODUCT_CREATE_LIMIT = 8;
 const DESIGNER_PRODUCT_CREATE_WINDOW_MS = 60 * 60 * 1000;
+const DESIGNER_MOCKUP_PREVIEW_LIMIT = 40;
+const DESIGNER_MOCKUP_PREVIEW_WINDOW_MS = 60 * 60 * 1000;
 
 function sha256(buffer: Buffer | string) {
     return createHash("sha256").update(buffer).digest("hex");
@@ -286,6 +331,64 @@ function normaliseDesignPayload(raw: string): DesignerPayload {
     return parsed;
 }
 
+async function requireAvailableDesignerColor(design: DesignerPayload) {
+    const product = design.catalogProduct?.key
+        ? await getDesignerCatalogProduct(design.catalogProduct.key)
+        : null;
+    const selectedName = design.garment.supplierColorName ?? design.garment.colorLabel;
+    const color = product?.colors.find((item) =>
+        item.value.toLowerCase() === design.garment.color.toLowerCase() &&
+        (item.supplierColorName ?? item.label).toLowerCase() === selectedName?.toLowerCase()
+    );
+    if (!color) throw new Error("That tee colour is no longer available. Choose an allowed colour in the designer.");
+    return { product, color };
+}
+
+async function requireAvailableDesignerColors(design: DesignerPayload, names: string[]) {
+    if (!Array.isArray(names) || names.length < 1 || names.length > 6 ||
+        names.some((name) => typeof name !== "string" || !name.trim()) ||
+        new Set(names.map((name) => name.toLowerCase())).size !== names.length) {
+        throw new Error("Choose between one and six colours to sell.");
+    }
+    const { product, color: primaryColor } = await requireAvailableDesignerColor(design);
+    const colors = names.map((name) => product?.colors.find((item) =>
+        (item.supplierColorName ?? item.label).toLowerCase() === name.toLowerCase()
+    ));
+    if (colors.some((color) => !color) || !colors.some((color) => color === primaryColor)) {
+        throw new Error("One or more selected colours are no longer available.");
+    }
+    return { product: product!, colors: colors as NonNullable<(typeof colors)[number]>[] };
+}
+
+async function availablePrintifyVariantIds(
+    supabase: ReturnType<typeof getServerSupabase>,
+    supplierProductId: string,
+    preferredProviderId: number | null | undefined,
+    colorNames: string[]
+) {
+    const { data, error } = await supabase.from("supplier_catalog_products")
+        .select("supplier_provider_id, supplier_catalog_variants(supplier_variant_id, color_label, is_enabled)")
+        .eq("supplier", "printify")
+        .eq("supplier_product_id", supplierProductId)
+        .eq("status", "active");
+    if (error) throw new Error("Could not check supplier colour availability.");
+    const selected = new Set(colorNames.map((name) => name.toLowerCase()));
+    const providers = (data ?? []).map((row) => ({
+        id: Number(row.supplier_provider_id),
+        variants: (row.supplier_catalog_variants ?? []).filter((variant) =>
+            variant.is_enabled !== false && selected.has((variant.color_label ?? "").toLowerCase())
+        ),
+    }));
+    const matching = providers.filter((provider) =>
+        selected.size === new Set(provider.variants.map((variant) => variant.color_label?.toLowerCase())).size
+    );
+    const provider = matching.find((item) => item.id === preferredProviderId) ?? matching[0];
+    const ids = provider?.variants.map((variant) => Number(variant.supplier_variant_id))
+        .filter((id) => Number.isInteger(id) && id > 0) ?? [];
+    if (!provider || !ids.length) throw new Error("No supplier can fulfil every selected colour. Choose a different combination.");
+    return { providerId: provider.id, variantIds: ids };
+}
+
 function parsePrintifyVariantIds(raw?: string) {
     if (!raw) return null;
     const ids = raw
@@ -296,43 +399,21 @@ function parsePrintifyVariantIds(raw?: string) {
     return ids.length ? ids : null;
 }
 
-async function uploadDataUrl(
-    supabase: ReturnType<typeof getServerSupabase>,
-    path: string,
-    dataUrl: string
-) {
-    const image = parseDataUrl(dataUrl);
-    const { error } = await supabase.storage
-        .from("product-images")
-        .upload(path, image.buffer, {
-            contentType: image.contentType,
-            upsert: true,
-        });
-
-    if (error) {
-        failDesignerGeneration("designed product mockup upload failed", {
-            path,
-            error: error.message,
-        });
-    }
-
-    return image;
-}
-
 async function uploadImageBuffer(
-    supabase: ReturnType<typeof getServerSupabase>,
+    supabase: ReturnType<typeof getServiceSupabase>,
     path: string,
-    image: { buffer: Buffer; contentType: string }
+    image: { buffer: Buffer; contentType: string },
+    failureMessage = "designed product print asset upload failed"
 ) {
     const { error } = await supabase.storage
         .from("product-images")
         .upload(path, image.buffer, {
             contentType: image.contentType,
-            upsert: true,
+            upsert: false,
         });
 
     if (error) {
-        failDesignerGeneration("designed product print asset upload failed", {
+        failDesignerGeneration(failureMessage, {
             path,
             error: error.message,
         });
@@ -340,13 +421,18 @@ async function uploadImageBuffer(
 }
 
 async function replaceLayerAssets(
-    supabase: ReturnType<typeof getServerSupabase>,
+    supabase: ReturnType<typeof getServiceSupabase>,
     productId: string,
+    userId: string,
     design: DesignerPayload
 ) {
     const layers: DesignerLayer[] = [];
 
     for (const layer of design.layers) {
+        const isOwnedUploadedAsset = layer.src?.startsWith(`designer-assets/${userId}/`) ?? false;
+        if (layer.type === "image" && layer.src && !layer.src.startsWith("data:") && !layer.src.startsWith(`${productId}/design-assets/`) && !isOwnedUploadedAsset) {
+            throw new Error("The design contains an image from another product.");
+        }
         if (layer.type !== "image" || !layer.src?.startsWith("data:")) {
             layers.push(layer);
             continue;
@@ -359,7 +445,7 @@ async function replaceLayerAssets(
             .from("product-images")
             .upload(path, parsed.buffer, {
                 contentType: parsed.contentType,
-                upsert: true,
+                upsert: false,
             });
 
         if (error) {
@@ -389,7 +475,7 @@ function errorMessage(error: unknown) {
 
 function failDesignerGeneration(message: string, details: Record<string, unknown>): never {
     logger.error(message, details);
-    throw new Error("Designer product generation failed.");
+    throw new Error(`${message}: ${String(details.error ?? "unknown error")}`);
 }
 
 async function logDesignerGenerationPlatformEvent(
@@ -497,15 +583,95 @@ async function markDesignedProductGenerationFailed(
     });
 }
 
+export async function generateDesignerMockupPreviewAction(designRaw: string, saleColorNamesRaw?: string) {
+    const { user, artist } = await requireArtistAction();
+    const rateLimitSupabase = getServiceSupabase();
+    const previewAllowed = await checkDurableRateLimit(
+        rateLimitSupabase,
+        `designer_mockup_preview:${artist.id}:${user.id}`,
+        DESIGNER_MOCKUP_PREVIEW_LIMIT,
+        DESIGNER_MOCKUP_PREVIEW_WINDOW_MS,
+        "check_rate_limit",
+        { fallback: "deny" }
+    );
+
+    if (!previewAllowed) {
+        throw new Error("Too many mockup previews. Try again later.");
+    }
+
+    const design = normaliseDesignPayload(designRaw);
+    let requestedColors: string[];
+    try {
+        requestedColors = saleColorNamesRaw
+            ? JSON.parse(saleColorNamesRaw)
+            : [design.garment.supplierColorName ?? design.garment.colorLabel ?? ""];
+    } catch {
+        throw new Error("Choose the colours to sell again.");
+    }
+    const { product, colors } = await requireAvailableDesignerColors(design, requestedColors);
+    if (product.supplier.key === "printify") {
+        await availablePrintifyVariantIds(
+            getServerSupabase(),
+            product.supplier.externalProductId,
+            product.supplier.printify?.printProviderId,
+            colors.map((color) => color.supplierColorName ?? color.label)
+        );
+    }
+    const [renderedColors, lifestyle] = await Promise.all([
+        Promise.all(colors.map(async (color) => {
+            try {
+            const variantDesign = { ...design, garment: { ...design.garment, color: color.value } };
+            const [front, back] = await Promise.all([
+                renderServerMockup(variantDesign, "front"),
+                renderServerMockup(variantDesign, "back"),
+            ]);
+            return {
+                label: color.label,
+                value: color.value,
+                front: `data:${front.contentType};base64,${front.buffer.toString("base64")}`,
+                back: `data:${back.contentType};base64,${back.buffer.toString("base64")}`,
+            };
+            } catch (error: unknown) {
+                logger.error("designer colour mockup preview failed", {
+                    color: color.supplierColorName ?? color.label,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+                return null;
+            }
+        })),
+        renderServerLifestyleMockups(design).catch((error: unknown) => {
+            logger.error("designer lifestyle mockup preview failed", {
+                error: error instanceof Error ? error.message : String(error),
+            });
+            return [];
+        }),
+    ]);
+
+    const colorMockups = renderedColors.filter((color): color is NonNullable<typeof color> => Boolean(color));
+    const primary = colorMockups.find((color) => color.value.toLowerCase() === design.garment.color.toLowerCase()) ?? colorMockups[0];
+    if (!primary) throw new Error("No colour mockups could be generated. Return to the designer and try another colour.");
+    return JSON.stringify({
+        front: primary.front,
+        back: primary.back,
+        colorMockups,
+        lifestyle: lifestyle.map((mockup) => ({
+            id: mockup.id,
+            label: mockup.label,
+            src: `data:${mockup.contentType};base64,${mockup.buffer.toString("base64")}`,
+        })),
+    });
+}
+
 export async function createDesignedProductAction(formData: FormData) {
     const { supabase, user, artist } = await requireArtistAction();
+    const rateLimitSupabase = getServiceSupabase();
 
     const createAllowed = await checkDurableRateLimit(
-        supabase,
+        rateLimitSupabase,
         `designer_product_create:${artist.id}:${user.id}`,
         DESIGNER_PRODUCT_CREATE_LIMIT,
         DESIGNER_PRODUCT_CREATE_WINDOW_MS,
-        "check_public_rate_limit",
+        "check_rate_limit",
         { fallback: "deny" }
     );
 
@@ -514,6 +680,7 @@ export async function createDesignedProductAction(formData: FormData) {
     }
 
     const parsedInput = designedProductInputSchema.safeParse({
+        productId: formData.get("product_id") ?? undefined,
         title: formData.get("title"),
         description: formData.get("description") ?? "",
         price: formData.get("price"),
@@ -521,9 +688,8 @@ export async function createDesignedProductAction(formData: FormData) {
         publish: formData.get("publish") !== null,
         garmentColor: formData.get("garment_color") ?? "#111111",
         garmentLabel: formData.get("garment_label") ?? "Designed",
+        saleColorNamesRaw: formData.get("sale_color_names") ?? "[]",
         designRaw: formData.get("design_json"),
-        frontRender: formData.get("front_render"),
-        backRender: formData.get("back_render") ?? "",
         catalogProductKey: formData.get("catalog_product_key") ?? undefined,
         supplierKey: formData.get("supplier_key") ?? undefined,
         supplierProductId: formData.get("supplier_product_id") ?? undefined,
@@ -531,12 +697,15 @@ export async function createDesignedProductAction(formData: FormData) {
         printifyBlueprintId: formData.get("printify_blueprint_id") ?? undefined,
         printifyPrintProviderId: formData.get("printify_print_provider_id") ?? undefined,
         printifyVariantIds: formData.get("printify_variant_ids") ?? undefined,
+        femaleModelSet: formData.get("female_model_set") ?? undefined,
+        maleModelSet: formData.get("male_model_set") ?? undefined,
     });
     if (!parsedInput.success) {
-        throw new Error("Design and front render are required");
+        throw new Error("Design details are required");
     }
 
     const {
+        productId: editingProductId,
         title,
         description,
         price,
@@ -544,9 +713,8 @@ export async function createDesignedProductAction(formData: FormData) {
         publish,
         garmentColor,
         garmentLabel,
+        saleColorNamesRaw,
         designRaw,
-        frontRender,
-        backRender = "",
         catalogProductKey,
         supplierKey,
         supplierProductId,
@@ -554,28 +722,78 @@ export async function createDesignedProductAction(formData: FormData) {
         printifyBlueprintId,
         printifyPrintProviderId,
         printifyVariantIds,
+        femaleModelSet,
+        maleModelSet,
     } = parsedInput.data;
 
+    if (editingProductId) {
+        const { data: ownedProduct, error: ownershipError } = await supabase
+            .from("products")
+            .select("id")
+            .eq("id", editingProductId)
+            .eq("artist_id", artist.id)
+            .is("artist_archived_at", null)
+            .maybeSingle();
+        if (ownershipError || !ownedProduct) throw new Error("This product cannot be edited.");
+    }
+
     const design = normaliseDesignPayload(designRaw);
-    const parsedVariantIds = parsePrintifyVariantIds(printifyVariantIds);
+    let saleColorNames: string[];
+    try { saleColorNames = JSON.parse(saleColorNamesRaw); } catch { throw new Error("Choose the colours to sell again."); }
+    const { product: liveCatalogProduct, colors: saleColors } = await requireAvailableDesignerColors(design, saleColorNames);
+    const approvedColor = saleColors.find((color) =>
+        (color.supplierColorName ?? color.label).toLowerCase() === (design.garment.supplierColorName ?? design.garment.colorLabel)?.toLowerCase()
+    );
+    if (!approvedColor) throw new Error("Choose a valid main listing colour.");
+    const orderedSaleColors = [approvedColor, ...saleColors.filter((color) => color !== approvedColor)];
+    if (catalogProductKey !== design.catalogProduct?.key ||
+        supplierKey !== liveCatalogProduct.supplier.key ||
+        supplierProductId !== liveCatalogProduct.supplier.externalProductId ||
+        garmentColor.toLowerCase() !== approvedColor.value.toLowerCase() ||
+        garmentLabel.toLowerCase() !== approvedColor.label.toLowerCase()) {
+        throw new Error("Choose an allowed colour in the designer.");
+    }
+    if (design.layers.length === 0) {
+        throw new Error("Add artwork or text before saving the product.");
+    }
+    let supplierVariants = supplierKey === "printify" && supplierProductId
+        ? await availablePrintifyVariantIds(supabase, supplierProductId, liveCatalogProduct.supplier.printify?.printProviderId, saleColorNames)
+        : null;
+    let parsedVariantIds = supplierVariants?.variantIds ?? parsePrintifyVariantIds(printifyVariantIds);
+    const hasFrontDesign = design.layers.some((layer) => layer.side === "front");
     const hasBackDesign = design.layers.some((layer) => layer.side === "back");
+    const availableModelSets = getLifestyleModelSets(design.catalogProduct ?? {}, design.garment.color);
+    if (availableModelSets.length > 0 && (
+        !availableModelSets.some((set) => set.id === femaleModelSet && set.audience === "female") ||
+        !availableModelSets.some((set) => set.id === maleModelSet && set.audience === "male")
+    )) {
+        throw new Error("Choose one female and one male model set before saving.");
+    }
+    const chosenModelSets = availableModelSets.length > 0
+        ? [femaleModelSet!, maleModelSet!]
+        : [];
     const canonicalFrontPrintAsset = await renderServerPrintAsset(design, "front");
     const canonicalBackPrintAsset = hasBackDesign
         ? await renderServerPrintAsset(design, "back")
         : null;
+    const canonicalFrontMockup = await renderServerMockup(design, "front");
+    const canonicalBackMockup = await renderServerMockup(design, "back");
+    const lifestyleMockups = chosenModelSets.length > 0
+        ? await renderServerLifestyleMockups(design, { modelSets: chosenModelSets })
+        : [];
+    if (chosenModelSets.length > 0 && lifestyleMockups.length !== 4) {
+        throw new Error("Selected model mockups could not be generated. Try again before saving.");
+    }
     const baseSlug = toSlug(title) || "designed-product";
     const slug = `${baseSlug}-${randomUUID().slice(0, 8)}`;
     let productId: string | null = null;
     let productDesignId: string | null = null;
 
     try {
-        const { data: product, error: productError } = await supabase
-            .from("products")
-            .insert({
+        const productMutation = {
                 artist_id: artist.id,
                 title,
                 category,
-                slug,
                 description,
                 price_cents: Math.round(price * 100),
                 currency: "AUD",
@@ -584,9 +802,10 @@ export async function createDesignedProductAction(formData: FormData) {
                 production_status: "generating",
                 moderation_status: "draft",
                 readiness_notes: "Designer V1 product generation in progress.",
-            })
-            .select("id")
-            .single();
+        };
+        const { data: product, error: productError } = editingProductId
+            ? await supabase.from("products").update(productMutation).eq("id", editingProductId).eq("artist_id", artist.id).select("id").single()
+            : await supabase.from("products").insert({ ...productMutation, slug }).select("id").single();
 
         if (productError) {
             failDesignerGeneration("designed product insert failed", {
@@ -598,65 +817,62 @@ export async function createDesignedProductAction(formData: FormData) {
         if (!product?.id) throw new Error("Product creation failed");
         productId = product.id;
         const createdProductId = product.id;
+        const imageRows: Array<{ product_id: string; path: string; sort_order: number; side: "front" | "back" }> = [];
 
-        const frontPath = `${createdProductId}/designer/front-${randomUUID()}.png`;
-        const frontMockup = await uploadDataUrl(supabase, frontPath, frontRender);
+        const frontPath = `${createdProductId}/mockups/front-${randomUUID()}.${canonicalFrontMockup.extension}`;
+        await uploadImageBuffer(rateLimitSupabase, frontPath, canonicalFrontMockup, "designed product mockup upload failed");
+        const frontMockup = canonicalFrontMockup;
 
-        const { error: frontImageError } = await supabase
-            .from("product_images")
-            .insert({
+        imageRows.push({
                 product_id: createdProductId,
                 path: frontPath,
                 sort_order: 0,
-                side: "front",
+                side: "front" as const,
             });
-
-        if (frontImageError) {
-            failDesignerGeneration("designed product front image insert failed", {
-                artistId: artist.id,
-                productId: createdProductId,
-                path: frontPath,
-                error: frontImageError.message,
-            });
-        }
 
         let backPath: string | null = null;
-        if (backRender) {
-            backPath = `${createdProductId}/designer/back-${randomUUID()}.png`;
-            await uploadDataUrl(supabase, backPath, backRender);
+        backPath = `${createdProductId}/mockups/back-${randomUUID()}.${canonicalBackMockup.extension}`;
+        await uploadImageBuffer(rateLimitSupabase, backPath, canonicalBackMockup, "designed product mockup upload failed");
+        imageRows.push({
+            product_id: createdProductId,
+            path: backPath,
+            sort_order: 1,
+            side: "back",
+        });
 
-            const { error: backImageError } = await supabase
-                .from("product_images")
-                .insert({
-                    product_id: createdProductId,
-                    path: backPath,
-                    sort_order: 1,
-                    side: "back",
-                });
-
-            if (backImageError) {
-                failDesignerGeneration("designed product back image insert failed", {
-                    artistId: artist.id,
-                    productId: createdProductId,
-                    path: backPath,
-                    error: backImageError.message,
-                });
-            }
+        const lifestyleOrder = [
+            femaleModelSet && lifestyleMockups.find((mockup) => mockup.modelSetId === femaleModelSet && mockup.side === "front"),
+            femaleModelSet && lifestyleMockups.find((mockup) => mockup.modelSetId === femaleModelSet && mockup.side === "back"),
+            maleModelSet && lifestyleMockups.find((mockup) => mockup.modelSetId === maleModelSet && mockup.side === "front"),
+            maleModelSet && lifestyleMockups.find((mockup) => mockup.modelSetId === maleModelSet && mockup.side === "back"),
+        ].filter((mockup): mockup is NonNullable<typeof mockup> => Boolean(mockup));
+        for (const [index, mockup] of lifestyleOrder.entries()) {
+            const imagePath = `${createdProductId}/mockups/${mockup.id}-${randomUUID()}.webp`;
+            await uploadImageBuffer(rateLimitSupabase, imagePath, mockup, "designed product model mockup upload failed");
+            imageRows.push({
+                product_id: createdProductId,
+                path: imagePath,
+                sort_order: index + 2,
+                side: mockup.side,
+            });
         }
 
         const frontPrintAssetPath = `${createdProductId}/print-assets/front-${randomUUID()}.png`;
-        await uploadImageBuffer(supabase, frontPrintAssetPath, canonicalFrontPrintAsset);
+        await uploadImageBuffer(rateLimitSupabase, frontPrintAssetPath, canonicalFrontPrintAsset);
 
         let backPrintAssetPath: string | null = null;
         let backPrintHash: string | null = null;
         if (canonicalBackPrintAsset) {
             backPrintAssetPath = `${createdProductId}/print-assets/back-${randomUUID()}.png`;
-            await uploadImageBuffer(supabase, backPrintAssetPath, canonicalBackPrintAsset);
+            await uploadImageBuffer(rateLimitSupabase, backPrintAssetPath, canonicalBackPrintAsset);
             backPrintHash = canonicalBackPrintAsset.sha256;
         }
 
-        const savedDesign = await replaceLayerAssets(supabase, createdProductId, design);
-        savedDesign.printSideCount = hasBackDesign ? 2 : 1;
+        const savedDesign = await replaceLayerAssets(rateLimitSupabase, createdProductId, user.id, design);
+        savedDesign.printSideCount = hasFrontDesign && hasBackDesign ? 2 : 1;
+        if (femaleModelSet && maleModelSet && availableModelSets.length > 0) {
+            savedDesign.listingModelSets = { female: femaleModelSet, male: maleModelSet };
+        }
         const savedCatalogProduct = savedDesign.catalogProduct ?? {
             key: catalogProductKey ?? "unknown",
             name: title,
@@ -681,14 +897,74 @@ export async function createDesignedProductAction(formData: FormData) {
         };
         const designHash = sha256(JSON.stringify(savedDesign));
 
-        const { error: colorError } = await supabase.from("product_colors").insert({
-            product_id: createdProductId,
-            hex: garmentColor,
-            label: garmentLabel,
-            sort_order: 0,
-            front_image_path: frontPath,
-            back_image_path: backPath,
-        });
+        if (editingProductId) {
+            const { error: removeImagesError } = await supabase.from("product_images").delete().eq("product_id", createdProductId);
+            if (removeImagesError) failDesignerGeneration("designed product image replacement failed", { productId: createdProductId, error: removeImagesError.message });
+        }
+        const { error: imagesError } = await supabase.from("product_images").insert(imageRows);
+        if (imagesError) failDesignerGeneration("designed product images insert failed", { productId: createdProductId, error: imagesError.message });
+
+        const colorRows = [];
+        const renderedColorNames: string[] = [];
+        for (const [index, color] of orderedSaleColors.entries()) {
+            const supplierColorName = color.supplierColorName ?? color.label;
+            const isPrimary = (color.supplierColorName ?? color.label).toLowerCase() ===
+                (design.garment.supplierColorName ?? design.garment.colorLabel)?.toLowerCase();
+            if (isPrimary) {
+                colorRows.push({
+                    product_id: createdProductId,
+                    hex: color.value,
+                    label: color.label,
+                    sort_order: index,
+                    front_image_path: frontPath,
+                    back_image_path: backPath,
+                });
+                renderedColorNames.push(supplierColorName);
+                continue;
+            }
+            try {
+                const colorDesign = { ...design, garment: { ...design.garment, color: color.value } };
+                const [front, back] = await Promise.all([
+                    renderServerMockup(colorDesign, "front"),
+                    renderServerMockup(colorDesign, "back"),
+                ]);
+                const colorFrontPath = `${createdProductId}/mockups/front-${randomUUID()}.${front.extension}`;
+                const colorBackPath = `${createdProductId}/mockups/back-${randomUUID()}.${back.extension}`;
+                await Promise.all([
+                    uploadImageBuffer(rateLimitSupabase, colorFrontPath, front),
+                    uploadImageBuffer(rateLimitSupabase, colorBackPath, back),
+                ]);
+                colorRows.push({
+                    product_id: createdProductId,
+                    hex: color.value,
+                    label: color.label,
+                    sort_order: index,
+                    front_image_path: colorFrontPath,
+                    back_image_path: colorBackPath,
+                });
+                renderedColorNames.push(supplierColorName);
+            } catch (error: unknown) {
+                logger.error("designed product optional colour mockup skipped", {
+                    productId: createdProductId,
+                    color: supplierColorName,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            }
+        }
+        if (supplierKey === "printify" && supplierProductId && renderedColorNames.length !== saleColorNames.length) {
+            supplierVariants = await availablePrintifyVariantIds(
+                supabase,
+                supplierProductId,
+                supplierVariants?.providerId ?? liveCatalogProduct.supplier.printify?.printProviderId,
+                renderedColorNames
+            );
+            parsedVariantIds = supplierVariants.variantIds;
+        }
+        if (editingProductId) {
+            const { error: removeColorsError } = await supabase.from("product_colors").delete().eq("product_id", createdProductId);
+            if (removeColorsError) failDesignerGeneration("designed product color replacement failed", { productId: createdProductId, error: removeColorsError.message });
+        }
+        const { error: colorError } = await supabase.from("product_colors").insert(colorRows);
 
         if (colorError) {
             failDesignerGeneration("designed product color insert failed", {
@@ -698,7 +974,7 @@ export async function createDesignedProductAction(formData: FormData) {
             });
         }
 
-        const { data: productDesign, error: designError } = await supabase.from("product_designs").insert({
+        const designValues = {
             product_id: createdProductId,
             artist_id: artist.id,
             provider: "merch_tent",
@@ -709,7 +985,7 @@ export async function createDesignedProductAction(formData: FormData) {
             print_asset_front_path: frontPrintAssetPath,
             print_asset_back_path: backPrintAssetPath,
             printify_blueprint_id: printifyBlueprintId ?? savedDesign.catalogProduct?.supplier.printify?.blueprintId ?? null,
-            printify_print_provider_id: printifyPrintProviderId ?? savedDesign.catalogProduct?.supplier.printify?.printProviderId ?? null,
+            printify_print_provider_id: supplierVariants?.providerId ?? printifyPrintProviderId ?? savedDesign.catalogProduct?.supplier.printify?.printProviderId ?? null,
             printify_variant_ids: parsedVariantIds ?? savedDesign.catalogProduct?.supplier.printify?.variantIds ?? null,
             printify_status: "not_synced",
             printify_last_error: null,
@@ -719,7 +995,10 @@ export async function createDesignedProductAction(formData: FormData) {
             design_hash: designHash,
             print_asset_front_hash: canonicalFrontPrintAsset.sha256,
             print_asset_back_hash: backPrintHash,
-        }).select("id").single();
+        };
+        const { data: productDesign, error: designError } = await supabase.from("product_designs")
+            .upsert(designValues, { onConflict: "product_id,provider" })
+            .select("id").single();
 
         if (designError) {
             failDesignerGeneration("designed product design insert failed", {
@@ -747,6 +1026,7 @@ export async function createDesignedProductAction(formData: FormData) {
                 front_mockup_hash: frontMockup.sha256,
                 front_print_asset_hash: canonicalFrontPrintAsset.sha256,
                 back_print_asset_hash: backPrintHash,
+                listing_model_sets: savedDesign.listingModelSets ?? null,
                 server_canonical_render: true,
             },
         });
@@ -800,6 +1080,7 @@ export async function createDesignedProductAction(formData: FormData) {
                 front_mockup_hash: frontMockup.sha256,
                 front_print_asset_hash: canonicalFrontPrintAsset.sha256,
                 back_print_asset_hash: backPrintHash,
+                listing_model_sets: savedDesign.listingModelSets ?? null,
                 server_canonical_render: true,
             },
         });

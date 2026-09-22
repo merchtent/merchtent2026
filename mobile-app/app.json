@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Merch Tent",
+    "slug": "merch-tent",
+    "scheme": "merchtent",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "au.com.merchtent.app",
+      "permissions": ["CAMERA"],
+      "edgeToEdgeEnabled": true
+    },
+    "ios": {
+      "bundleIdentifier": "au.com.merchtent.app",
+      "supportsTablet": true
+    },
+    "plugins": [
+      ["expo-image-picker", {
+        "photosPermission": "Choose photos for your Merch Tent products.",
+        "cameraPermission": "Take photos for your Merch Tent products.",
+        "microphonePermission": false
+      }]
+    ]
+  }
+}

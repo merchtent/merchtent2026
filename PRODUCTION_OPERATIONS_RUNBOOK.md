@@ -20,6 +20,8 @@ Recommended monitors:
 - Alert immediately on two consecutive HTTP 503 responses.
 - Alert immediately on any `/api/health/operations` HTTP 503 response.
 - Alert on any 5xx spike from `/api/stripe/webhook`, `/checkout`, `/api/stripe/connect/*`, or `/api/track/page-view`.
+- Route unhandled server, edge, route-handler, and browser exceptions to Sentry. Configure new-issue and regression alerts plus threshold alerts for checkout, Stripe webhook, fulfilment, payout, and supplier-sync errors.
+- Keep Sentry event PII disabled. Application logger context is redacted before error events are forwarded.
 
 ## Daily Operator Checklist
 
@@ -121,6 +123,9 @@ Rules:
 - A paid physical order should not be considered operationally ready without a fulfillment job.
 - Every fulfillment status change should create a `fulfillment_job_events` row.
 - Shipping status changes should create an `order_status_events` row.
+- Returns, reprints, refunds, and cancellations must have an `order_service_cases` record with an operator note and immutable case events.
+- Reprints use `order_reprint_jobs`; never reopen or overwrite the original completed fulfilment record.
+- Urgent cases older than four hours, high-priority cases older than one day, and all open cases older than three days appear as operational exceptions.
 
 ## Credits Reconciliation
 

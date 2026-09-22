@@ -194,6 +194,7 @@ export default function EditProductFormClient({
                     <option value="hoodies">Hoodies</option>
                     <option value="hats">Hats</option>
                     <option value="tanks">Tanks</option>
+                    <option value="bags">Bags</option>
                     <option value="posters">Posters</option>
                     <option value="vinyl">Vinyl</option>
                     <option value="accessories">Accessories</option>

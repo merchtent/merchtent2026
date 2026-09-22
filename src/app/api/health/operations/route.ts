@@ -108,6 +108,7 @@ export async function GET(request: NextRequest) {
         merchCreditExceptions,
         merchCreditBalanceReconciliationExceptions,
         severePlatformEvents,
+        serviceCaseExceptions,
     ] = await Promise.all([
         supabase
             .from("orders_operational_exceptions")
@@ -177,6 +178,9 @@ export async function GET(request: NextRequest) {
             .select("*", { count: "exact", head: true })
             .in("severity", ["error", "critical"])
             .gte("created_at", severePlatformEventCutoff),
+        supabase
+            .from("order_service_case_operational_exceptions")
+            .select("*", { count: "exact", head: true }),
     ]);
 
     const checks = [
@@ -197,6 +201,7 @@ export async function GET(request: NextRequest) {
         toCheck("merch_credit_exceptions", merchCreditExceptions),
         toCheck("merch_credit_balance_reconciliation_exceptions", merchCreditBalanceReconciliationExceptions),
         toCheck("recent_severe_platform_events", severePlatformEvents),
+        toCheck("service_case_sla_exceptions", serviceCaseExceptions),
     ];
     const ok = checks.every((check) => check.ok);
 

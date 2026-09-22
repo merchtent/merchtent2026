@@ -17,8 +17,8 @@ export default async function ProductDesignerPage() {
                         Choose a product.
                     </h1>
                     <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-                        Start with a supplier-backed blank, then open the designer with the right print areas,
-                        colours, sizes and automation metadata already attached.
+                        Compare products, prices, colours and your profit per sale, then choose one to start
+                        designing.
                     </p>
                 </div>
             </section>

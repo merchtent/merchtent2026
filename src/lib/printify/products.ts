@@ -1,5 +1,6 @@
 import "server-only";
 import { printifyRequest, printifyShopId } from "@/lib/printify/client";
+import type { PrintifyProductSnapshot } from "@/lib/printify/product-contract";
 
 export type PrintifyCreateProductVariant = {
     id: number;
@@ -41,17 +42,10 @@ export type PrintifyUploadedImage = {
     upload_time: string;
 };
 
-export type PrintifyProduct = {
+export type PrintifyProduct = PrintifyProductSnapshot & {
     id: string;
     title: string;
     description: string;
-    variants?: Array<{
-        id: number;
-        sku?: string | null;
-        title?: string | null;
-        is_enabled?: boolean | null;
-        options?: number[] | null;
-    }>;
 };
 
 export async function uploadPrintifyImageFromUrl(fileName: string, url: string) {
@@ -69,4 +63,10 @@ export async function createPrintifyProduct(payload: PrintifyCreateProductPayloa
         method: "POST",
         body: payload,
     });
+}
+
+export async function getPrintifyProduct(productId: string) {
+    return printifyRequest<PrintifyProduct>(
+        `/shops/${printifyShopId()}/products/${encodeURIComponent(productId)}.json`
+    );
 }

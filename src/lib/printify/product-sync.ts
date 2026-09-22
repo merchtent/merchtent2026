@@ -2,9 +2,15 @@ import "server-only";
 
 import {
     createPrintifyProduct,
+    getPrintifyProduct,
     uploadPrintifyImageFromUrl,
     type PrintifyCreateProductPayload,
 } from "@/lib/printify/products";
+import {
+    isPrintifyProductContract,
+    verifyPrintifyProductContract,
+    type PrintifyContractVerification,
+} from "@/lib/printify/product-contract";
 import { serverEnv } from "@/lib/env.server";
 import { publicImageUrl } from "@/lib/storage";
 import { getServiceSupabase } from "@/lib/supabase/service";
@@ -48,6 +54,7 @@ type SyncResult = {
 };
 
 const PRINTIFY_PRODUCT_SYNC_IN_FLIGHT_MINUTES = 30;
+const PRINTIFY_MOCKUP_POLL_DELAYS_MS = [0, 750, 1_500, 3_000] as const;
 
 function productImagePublicUrl(path: string) {
     const url = publicImageUrl(path);
@@ -112,6 +119,38 @@ function isStalePrintifyProductSync(updatedAt?: string | null) {
     if (!Number.isFinite(updatedAtMs)) return true;
 
     return Date.now() - updatedAtMs > PRINTIFY_PRODUCT_SYNC_IN_FLIGHT_MINUTES * 60 * 1000;
+}
+
+function wait(milliseconds: number) {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+export async function verifyPrintifyProductForOrder(
+    printifyProductId: string,
+    expectedPayload: unknown,
+): Promise<PrintifyContractVerification> {
+    if (!isPrintifyProductContract(expectedPayload)) {
+        throw new Error("Saved Printify product payload is missing its production contract.");
+    }
+
+    let lastVerification: PrintifyContractVerification | null = null;
+    for (const delay of PRINTIFY_MOCKUP_POLL_DELAYS_MS) {
+        if (delay) await wait(delay);
+
+        const product = await getPrintifyProduct(printifyProductId);
+        const verification = verifyPrintifyProductContract(product, expectedPayload);
+        if (verification.ok) return verification;
+
+        lastVerification = verification;
+        const onlyMockupsPending = verification.issues.every((issue) =>
+            issue.startsWith("Printify did not generate a ")
+        );
+        if (!onlyMockupsPending) break;
+    }
+
+    throw new Error(
+        `Printify product verification failed: ${lastVerification?.issues.join("; ") || "unknown mismatch"}.`
+    );
 }
 
 async function writePrintifySyncEvent(
@@ -365,6 +404,8 @@ export async function syncProductToPrintify(input: {
             throw new Error("Printify product created, but local sync state could not be saved.");
         }
 
+        const verification = await verifyPrintifyProductForOrder(printifyProduct.id, payload);
+
         const variantRows = (printifyProduct.variants ?? []).map((variant) => {
             const parsed = parseVariantTitle(variant.title);
 
@@ -403,6 +444,10 @@ export async function syncProductToPrintify(input: {
                 printify_status: "synced",
                 printify_last_error: null,
                 printify_synced_at: new Date().toISOString(),
+                printify_payload: {
+                    ...payload,
+                    verification,
+                },
             })
             .eq("id", typedDesign.id);
 
@@ -427,7 +472,10 @@ export async function syncProductToPrintify(input: {
                 actor_user_id: input.actorUserId ?? null,
                 payload,
             },
-            response_payload: printifyProduct,
+            response_payload: {
+                product: printifyProduct,
+                verification,
+            },
         });
 
         return {
@@ -525,7 +573,7 @@ export async function ensurePrintifyProductForRoute(input: {
     const typedDesign = design as DesignWithAssetsRow;
     const { data: existingRoute, error: routeLookupError } = await serviceSupabase
         .from("product_supplier_routes")
-        .select("id, supplier_external_product_id, sync_status")
+        .select("id, supplier_external_product_id, sync_status, sync_payload")
         .eq("product_design_id", typedDesign.id)
         .eq("supplier", "printify")
         .eq("supplier_provider_id", input.route.supplierProviderId)
@@ -535,6 +583,10 @@ export async function ensurePrintifyProductForRoute(input: {
         throw new Error(routeLookupError.message);
     }
     if (existingRoute?.supplier_external_product_id && existingRoute.sync_status === "synced") {
+        await verifyPrintifyProductForOrder(
+            String(existingRoute.supplier_external_product_id),
+            existingRoute.sync_payload,
+        );
         return {
             productDesignId: typedDesign.id,
             printifyProductId: String(existingRoute.supplier_external_product_id),
@@ -619,12 +671,16 @@ export async function ensurePrintifyProductForRoute(input: {
         };
 
         const printifyProduct = await createPrintifyProduct(payload);
+        const verification = await verifyPrintifyProductForOrder(printifyProduct.id, payload);
         const { error: updateError } = await serviceSupabase
             .from("product_supplier_routes")
             .update({
                 supplier_external_product_id: printifyProduct.id,
                 sync_status: "synced",
-                sync_payload: payload,
+                sync_payload: {
+                    ...payload,
+                    verification,
+                },
                 last_error: null,
                 synced_at: new Date().toISOString(),
             })

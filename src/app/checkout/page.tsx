@@ -1,7 +1,7 @@
 // app/checkout/page.tsx
 import { getServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LockKeyhole, Truck } from "lucide-react";
 import CheckoutShellClient from "./CheckoutShellClient";
 
 export const revalidate = 0;
@@ -28,41 +28,57 @@ export default async function CheckoutPage() {
         : [{ data: null }, { data: null }];
 
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-            {/* angled banner */}
-            <section className="relative py-0 mb-6">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-5xl mx-auto px-4 py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">
-                                Checkout
-                            </p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">
-                                Shipping &amp; Payment
-                            </h1>
-                            <div className="text-[12px] text-neutral-400 mt-2 space-y-1">
-                                <p>• Secure payment powered by Stripe</p>
-                                <p>• Printed locally in Australia</p>
-                                <p>• Tracked delivery on all orders</p>
-                            </div>
-                        </div>
+        <main className="min-h-screen bg-[#060606] text-white">
+            <section className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(180,255,55,0.14),transparent_28%),linear-gradient(180deg,#080808,#111)]">
+                <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 md:grid-cols-[1.2fr_0.8fr] md:px-8 md:py-16">
+                    <div>
                         <Link
                             href="/cart"
-                            className="inline-flex items-center gap-2 text-xs border px-3 py-1 rounded-lg"
+                            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-white/55 hover:text-[#b6ff3f]"
                         >
                             <ArrowLeft className="h-3.5 w-3.5" /> Back to cart
                         </Link>
+                        <p className="mt-8 text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">
+                            Checkout
+                        </p>
+                        <h1 className="mt-3 text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                            Shipping and payment.
+                        </h1>
+                        <p className="mt-5 max-w-2xl text-sm leading-6 text-white/65">
+                            Secure payment, made-to-order fulfilment, and delivery updates once your merch leaves production.
+                        </p>
+                    </div>
+                    <div className="grid content-end border border-white/10 bg-black/45">
+                        <div className="grid grid-cols-2 border-b border-white/10">
+                            <div className="border-r border-white/10 p-5">
+                                <LockKeyhole className="h-5 w-5 text-[#b6ff3f]" />
+                                <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-white/45">
+                                    Stripe secured
+                                </p>
+                            </div>
+                            <div className="p-5">
+                                <Truck className="h-5 w-5 text-red-500" />
+                                <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-white/45">
+                                    Tracked delivery
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-5">
+                            <p className="text-2xl font-black uppercase leading-tight">
+                                Printed after checkout. No stock guessing.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <div className="max-w-5xl mx-auto px-4 mt-6 mb-4">
-                <div className="flex items-center gap-2 text-[11px] text-neutral-400">
-                    <span className="text-white">Cart</span>
+            <div className="mx-auto max-w-7xl px-4 pt-8 md:px-8">
+                <div className="flex items-center gap-2 border-y border-white/10 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white/40">
+                    <span className="text-[#b6ff3f]">Cart</span>
                     <span>→</span>
-                    <span className="text-white">Details</span>
+                    <span className="text-[#b6ff3f]">Details</span>
                     <span>→</span>
-                    <span className="text-neutral-500">Payment</span>
+                    <span>Payment</span>
                 </div>
             </div>
 

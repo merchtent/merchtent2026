@@ -1,7 +1,18 @@
 import "server-only";
 
 import { createHash } from "crypto";
-import sharp, { type OverlayOptions } from "sharp";
+import { readFile } from "fs/promises";
+import path from "path";
+import sharp, { type OverlayOptions, type Sharp } from "sharp";
+import { getLifestyleMockupTemplates, getMockupTemplate, type LifestyleModelSetId } from "@/lib/products/mockup-templates";
+import { clipMockupPlacement, mapCanvasRectToMockupPlacement } from "@/lib/products/mockup-placement";
+import { warpArtworkOntoPhoto } from "@/lib/products/lifestyle-warp";
+import {
+    DESIGN_CANVAS_HEIGHT,
+    DESIGN_CANVAS_WIDTH,
+    resolveGeometryRect,
+    type GeometryRect,
+} from "@/lib/products/design-geometry";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { decodeStrictBase64ImagePayload, validateImageBytes } from "@/lib/uploads";
 import { logger } from "@/lib/logger";
@@ -26,21 +37,27 @@ type DesignerLayer = {
     src?: string;
 };
 
-type PrintArea = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-};
+type PrintArea = GeometryRect;
 
 export type DesignerPayload = {
     printAreas: Record<Side, PrintArea>;
     layers: DesignerLayer[];
+    catalogProduct?: {
+        key?: string;
+        brand?: string;
+        model?: string;
+    };
+    garment?: {
+        kind?: "tee" | "hoodie" | "tank";
+        color?: string;
+    };
 };
 
 const PRINT_WIDTH = 2400;
 const PRINT_HEIGHT = 3200;
 const MAX_LAYER_SOURCE_BYTES = 12 * 1024 * 1024;
+const MOCKUP_WIDTH = 1200;
+const MOCKUP_HEIGHT = 1600;
 
 function hashBuffer(buffer: Buffer) {
     return createHash("sha256").update(buffer).digest("hex");
@@ -121,17 +138,30 @@ async function layerToBuffer(layer: DesignerLayer, width: number, height: number
             .toBuffer();
     }
 
-    const text = escapeXml(layer.text ?? "");
-    const lines = text.split("\n").slice(0, 4);
-    const fontSize = Math.max(12, Math.min(220, layer.fontSize ?? 72));
+    const lines = (layer.text ?? "").split("\n");
+    const canvasWidth = Math.max(1, Math.round(layer.width ?? width));
+    const canvasHeight = Math.max(1, Math.round(layer.height ?? height));
+    if (lines.every((line) => !line.trim())) {
+        return sharp({ create: { width, height, channels: 4, background: "#00000000" } }).png().toBuffer();
+    }
+
+    const renderScale = Math.max(1, Math.min(width / canvasWidth, height / canvasHeight));
+    const longestLine = Math.max(...lines.map((line) => line.length), 1);
+    const fontSize = Math.min(
+        Math.max(12, Math.min(220, layer.fontSize ?? 72)) * renderScale,
+        4096 / (longestLine * 1.2 + 2),
+        4096 / (lines.length * 1.12 + 2)
+    );
     const lineHeight = fontSize * 1.12;
-    const startY = height / 2 - ((lines.length - 1) * lineHeight) / 2;
+    const sourceWidth = Math.ceil(Math.max(width, longestLine * fontSize * 1.2 + fontSize * 2));
+    const sourceHeight = Math.ceil(lines.length * lineHeight + fontSize * 2);
+    const startY = fontSize * 1.5;
     const tspans = lines
-        .map((line, index) => `<tspan x="50%" y="${startY + index * lineHeight}">${line}</tspan>`)
+        .map((line, index) => `<tspan x="50%" y="${startY + index * lineHeight}">${escapeXml(line)}</tspan>`)
         .join("");
 
     const svg = `
-        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+        <svg width="${sourceWidth}" height="${sourceHeight}" viewBox="0 0 ${sourceWidth} ${sourceHeight}" xmlns="http://www.w3.org/2000/svg">
             <text
                 text-anchor="middle"
                 dominant-baseline="middle"
@@ -142,11 +172,24 @@ async function layerToBuffer(layer: DesignerLayer, width: number, height: number
             >${tspans}</text>
         </svg>`;
 
-    return sharp(Buffer.from(svg)).png().toBuffer();
+    const trimmed = await sharp(Buffer.from(svg)).trim().png().toBuffer();
+    const inset = Math.max(1, Math.round(8 * renderScale));
+    const fitted = await sharp(trimmed)
+        .resize(Math.max(1, width - inset * 2), Math.max(1, height - inset * 2), {
+            fit: "inside",
+            withoutEnlargement: true,
+        })
+        .png()
+        .toBuffer({ resolveWithObject: true });
+
+    return sharp({ create: { width, height, channels: 4, background: "#00000000" } })
+        .composite([{ input: fitted.data, left: Math.round((width - fitted.info.width) / 2), top: Math.round((height - fitted.info.height) / 2) }])
+        .png()
+        .toBuffer();
 }
 
 export async function renderServerPrintAsset(design: DesignerPayload, side: Side) {
-    const area = design.printAreas[side];
+    const area = resolveGeometryRect(design.printAreas[side]);
     const scaleX = PRINT_WIDTH / area.width;
     const scaleY = PRINT_HEIGHT / area.height;
     const composites: OverlayOptions[] = [];
@@ -179,17 +222,16 @@ export async function renderServerPrintAsset(design: DesignerPayload, side: Side
         });
     }
 
-    const buffer = await sharp({
+    let renderer = sharp({
         create: {
             width: PRINT_WIDTH,
             height: PRINT_HEIGHT,
             channels: 4,
             background: { r: 0, g: 0, b: 0, alpha: 0 },
         },
-    })
-        .composite(composites)
-        .png()
-        .toBuffer();
+    });
+    if (composites.length > 0) renderer = renderer.composite(composites);
+    const buffer = await renderer.png().toBuffer();
 
     return {
         buffer,
@@ -199,4 +241,279 @@ export async function renderServerPrintAsset(design: DesignerPayload, side: Side
         width: PRINT_WIDTH,
         height: PRINT_HEIGHT,
     };
+}
+
+type GarmentKind = "tee" | "hoodie" | "tank";
+
+function garmentPath(kind: GarmentKind) {
+    if (kind === "hoodie") {
+        return "M318 190 Q450 76 582 190 L646 324 L758 425 L662 595 L612 1000 Q450 1065 288 1000 L238 595 L142 425 L254 324 Z";
+    }
+
+    if (kind === "tank") {
+        return "M325 150 C360 136 390 120 407 105 C420 175 480 175 493 105 C510 120 540 136 575 150 L625 195 C585 265 565 340 585 980 Q450 1038 315 980 C335 340 315 265 275 195 Z";
+    }
+
+    return "M318 160 Q450 96 582 160 L742 300 L646 472 L590 980 Q450 1038 310 980 L254 472 L158 300 Z";
+}
+
+function garmentBaseSvg(kind: GarmentKind, side: Side, color: string) {
+    const path = garmentPath(kind);
+    const neckline = kind === "hoodie"
+        ? side === "front"
+            ? '<path d="M350 225 Q450 320 550 225 Q506 355 450 390 Q394 355 350 225" fill="rgba(0,0,0,.2)"/>'
+            : '<path d="M326 245 Q450 318 574 245" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5"/>'
+        : kind === "tank"
+            ? side === "front"
+                ? '<path d="M385 130 Q450 205 515 130" fill="none" stroke="rgba(255,255,255,.17)" stroke-width="6"/>'
+                : '<path d="M392 128 Q450 174 508 128" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="5"/>'
+            : side === "front"
+                ? '<path d="M358 171 Q450 252 542 171" fill="none" stroke="rgba(255,255,255,.17)" stroke-width="6"/>'
+                : '<path d="M326 196 Q450 250 574 196" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="5"/>';
+    const pocket = kind === "hoodie" && side === "front"
+        ? '<path d="M365 700 Q450 750 535 700 L535 820 Q450 870 365 820 Z" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="5"/>'
+        : "";
+
+    return Buffer.from(`
+        <svg width="${MOCKUP_WIDTH}" height="${MOCKUP_HEIGHT}" viewBox="0 0 ${DESIGN_CANVAS_WIDTH} ${DESIGN_CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#f7f5ef"/>
+                    <stop offset="1" stop-color="#dedbd3"/>
+                </linearGradient>
+                <linearGradient id="garment" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#ffffff" stop-opacity=".18"/>
+                    <stop offset=".32" stop-color="${color}"/>
+                    <stop offset=".72" stop-color="${color}"/>
+                    <stop offset="1" stop-color="#000000" stop-opacity=".3"/>
+                </linearGradient>
+                <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+                    <feDropShadow dx="0" dy="30" stdDeviation="26" flood-color="#000000" flood-opacity=".32"/>
+                </filter>
+            </defs>
+            <rect width="900" height="1200" fill="url(#background)"/>
+            <ellipse cx="450" cy="1045" rx="285" ry="58" fill="#000000" opacity=".16"/>
+            <path d="${path}" fill="url(#garment)" stroke="rgba(0,0,0,.35)" stroke-width="5" filter="url(#shadow)"/>
+            ${neckline}
+            ${pocket}
+        </svg>
+    `);
+}
+
+function garmentFinishSvg(kind: GarmentKind) {
+    const path = garmentPath(kind);
+    return Buffer.from(`
+        <svg width="${MOCKUP_WIDTH}" height="${MOCKUP_HEIGHT}" viewBox="0 0 ${DESIGN_CANVAS_WIDTH} ${DESIGN_CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="fabric" x="-10%" y="-10%" width="120%" height="120%">
+                    <feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="17" result="noise"/>
+                    <feColorMatrix in="noise" type="saturate" values="0" result="grey"/>
+                    <feComponentTransfer in="grey">
+                        <feFuncA type="table" tableValues="0 .12"/>
+                    </feComponentTransfer>
+                </filter>
+                <linearGradient id="light" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stop-color="#ffffff" stop-opacity=".2"/>
+                    <stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+                    <stop offset="1" stop-color="#000000" stop-opacity=".22"/>
+                </linearGradient>
+                <clipPath id="garmentClip"><path d="${path}"/></clipPath>
+            </defs>
+            <g clip-path="url(#garmentClip)">
+                <rect width="900" height="1200" fill="url(#light)"/>
+                <rect width="900" height="1200" fill="#ffffff" filter="url(#fabric)" opacity=".42"/>
+                <path d="M285 245 Q350 360 325 935" fill="none" stroke="#ffffff" stroke-opacity=".09" stroke-width="22"/>
+                <path d="M615 245 Q550 360 575 935" fill="none" stroke="#000000" stroke-opacity=".12" stroke-width="24"/>
+            </g>
+            <path d="${path}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3"/>
+        </svg>
+    `);
+}
+
+export async function renderServerMockup(design: DesignerPayload, side: Side) {
+    const kind: GarmentKind = design.garment?.kind === "hoodie"
+        ? "hoodie"
+        : design.garment?.kind === "tank"
+            ? "tank"
+            : "tee";
+    const color = /^#[0-9a-fA-F]{6}$/.test(design.garment?.color ?? "")
+        ? design.garment?.color ?? "#111111"
+        : "#111111";
+    const area = resolveGeometryRect(design.printAreas[side]);
+    const scaleX = MOCKUP_WIDTH / DESIGN_CANVAS_WIDTH;
+    const scaleY = MOCKUP_HEIGHT / DESIGN_CANVAS_HEIGHT;
+    const template = getMockupTemplate(design.catalogProduct ?? {}, color, side);
+    const printAsset = await renderServerPrintAsset(design, side);
+
+    let renderer: Sharp;
+    if (template) {
+        const placement = resolveGeometryRect(template.canvasPlacement);
+        const renderedPlacement = {
+            left: Math.round(placement.x * scaleX),
+            top: Math.round(placement.y * scaleY),
+            width: Math.round(placement.width * scaleX),
+            height: Math.round(placement.height * scaleY),
+        };
+        const clippedPlacement = clipMockupPlacement(renderedPlacement, MOCKUP_WIDTH, MOCKUP_HEIGHT);
+        if (!clippedPlacement) throw new Error("Mockup template falls outside the output canvas.");
+        const artworkPlacement = template.artworkPlacement
+            ? (() => {
+                const calibrated = resolveGeometryRect(template.artworkPlacement);
+                return {
+                    left: Math.round(calibrated.x * scaleX),
+                    top: Math.round(calibrated.y * scaleY),
+                    width: Math.max(1, Math.round(calibrated.width * scaleX)),
+                    height: Math.max(1, Math.round(calibrated.height * scaleY)),
+                };
+            })()
+            : mapCanvasRectToMockupPlacement(
+                area,
+                renderedPlacement,
+                DESIGN_CANVAS_WIDTH,
+                DESIGN_CANVAS_HEIGHT,
+            );
+        const artwork = await sharp(printAsset.buffer)
+            .resize(artworkPlacement.width, artworkPlacement.height, { fit: "fill" })
+            .png()
+            .toBuffer();
+        const templatePath = path.join(
+            process.cwd(),
+            "public",
+            template.publicPath.replace(/^\//, "")
+        );
+        let templateRenderer = sharp(await readFile(templatePath))
+            .resize(
+                renderedPlacement.width,
+                renderedPlacement.height,
+                { fit: template.fit, position: "centre" }
+            );
+        if (
+            clippedPlacement.sourceLeft !== 0
+            || clippedPlacement.sourceTop !== 0
+            || clippedPlacement.width !== renderedPlacement.width
+            || clippedPlacement.height !== renderedPlacement.height
+        ) {
+            templateRenderer = templateRenderer.extract({
+                left: clippedPlacement.sourceLeft,
+                top: clippedPlacement.sourceTop,
+                width: clippedPlacement.width,
+                height: clippedPlacement.height,
+            });
+        }
+        const templateImage = await templateRenderer.toBuffer();
+
+        renderer = sharp({
+            create: {
+                width: MOCKUP_WIDTH,
+                height: MOCKUP_HEIGHT,
+                channels: 3,
+                background: template.background,
+            },
+        }).composite([
+            {
+                input: templateImage,
+                left: clippedPlacement.destinationLeft,
+                top: clippedPlacement.destinationTop,
+            },
+            {
+                input: artwork,
+                left: artworkPlacement.left,
+                top: artworkPlacement.top,
+            },
+        ]);
+    } else {
+        const artwork = await sharp(printAsset.buffer)
+            .resize(Math.round(area.width * scaleX), Math.round(area.height * scaleY), { fit: "fill" })
+            .png()
+            .toBuffer();
+        renderer = sharp(garmentBaseSvg(kind, side, color)).composite([
+            {
+                input: artwork,
+                left: Math.round(area.x * scaleX),
+                top: Math.round(area.y * scaleY),
+            },
+            { input: garmentFinishSvg(kind), blend: "over" },
+        ]);
+    }
+
+    const buffer = await renderer.webp({ quality: 92, effort: 5 }).toBuffer();
+
+    return {
+        buffer,
+        contentType: "image/webp",
+        extension: "webp",
+        sha256: hashBuffer(buffer),
+        width: MOCKUP_WIDTH,
+        height: MOCKUP_HEIGHT,
+    };
+}
+
+export async function renderServerLifestyleMockups(
+    design: DesignerPayload,
+    options?: { modelSets?: LifestyleModelSetId[]; includeBack?: boolean }
+) {
+    const templates = getLifestyleMockupTemplates(
+        design.catalogProduct ?? {},
+        design.garment?.color ?? "#111111",
+        options?.modelSets
+    ).filter((template) => options?.includeBack !== false || template.side === "front");
+    if (templates.length === 0) return [];
+
+    const [frontPrintAsset, backPrintAsset] = await Promise.all([
+        renderServerPrintAsset(design, "front"),
+        renderServerPrintAsset(design, "back"),
+    ]);
+    const [frontArtwork, backArtwork] = await Promise.all(
+        [frontPrintAsset, backPrintAsset].map((asset) =>
+            sharp(asset.buffer).resize(600, 800).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+        )
+    );
+    const artworkBySide = { front: frontArtwork, back: backArtwork };
+    const results = await Promise.all(templates.map(async (template) => {
+        try {
+            const photoPath = path.join(process.cwd(), "public", template.publicPath.replace(/^\//, ""));
+            const photoBuffer = await readFile(photoPath);
+            const photo = await sharp(photoBuffer)
+                .resize(template.imageWidth, template.imageHeight)
+                .ensureAlpha()
+                .raw()
+                .toBuffer({ resolveWithObject: true });
+            const overlay = warpArtworkOntoPhoto(
+                { data: photo.data, width: photo.info.width, height: photo.info.height },
+                {
+                    data: artworkBySide[template.side].data,
+                    width: artworkBySide[template.side].info.width,
+                    height: artworkBySide[template.side].info.height,
+                },
+                template.printMesh
+            );
+            const buffer = await sharp(photoBuffer)
+                .resize(template.imageWidth, template.imageHeight)
+                .composite([{
+                    input: overlay,
+                    raw: { width: template.imageWidth, height: template.imageHeight, channels: 4 },
+                    left: 0,
+                    top: 0,
+                }])
+                .webp({ quality: 90, effort: 5 })
+                .toBuffer();
+
+            return {
+                id: template.id,
+                label: template.label,
+                side: template.side,
+                modelSetId: template.modelSetId,
+                buffer,
+                contentType: "image/webp",
+            };
+        } catch (error) {
+            logger.error("designer lifestyle mockup render failed", {
+                templateId: template.id,
+                error: error instanceof Error ? error.message : String(error),
+            });
+            return null;
+        }
+    }));
+
+    return results.filter((result): result is NonNullable<typeof result> => result !== null);
 }

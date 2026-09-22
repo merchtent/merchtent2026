@@ -15,6 +15,7 @@ export async function GET() {
         id,
         title,
         slug,
+        category,
         price_cents,
         currency,
         is_published,

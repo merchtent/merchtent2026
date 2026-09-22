@@ -2,64 +2,21 @@
 import { ServerClient } from "postmark";
 import { serverEnv } from "@/lib/env.server";
 import { logger } from "@/lib/logger";
+import {
+    renderAdminOrderEmail,
+    renderCustomerOrderEmail,
+} from "@/lib/email/order-emails";
+import type {
+    OrderEmailItem,
+    OrderEmailPayload,
+} from "@/lib/email/order-email-types";
 
-/**
- * One order line for the email.
- * Matches your Postmark template: {{#items}} ... {{/items}}
- */
-export type OrderEmailItem = {
-    title: string;
-    qty: number;
-    unit_price: string;   // e.g. "A$30.00"
-    line_total: string;   // e.g. "A$60.00"
-    size: string | null;
-    color_label: string | null;
-    sku: string | null;
-    product_id: string;
-};
-
-/**
- * Top-level payload for the email.
- * Field names MUST match exactly what the template uses.
- */
-export type OrderEmailPayload = {
-    order_number: string;
-    order_date: string;
-
-    subtotal: string;
-    shipping_amount: string;
-    discount_amount: string | null;
-    total: string;
-
-    shipping_method: string | null;
-
-    customer_name: string | null;
-    customer_email: string | null;
-
-    shipping_address_1: string | null;
-    shipping_address_2: string | null;
-    shipping_city: string | null;
-    shipping_state: string | null;
-    shipping_postcode: string | null;
-    shipping_country: string | null;
-
-    payment_method: string | null;
-    last4: string | null;
-
-    support_email: string | null;
-    store_name: string | null;
-    company_address: string | null;
-    manage_orders_url: string | null;
-
-    items: OrderEmailItem[];
-};
+export type { OrderEmailItem, OrderEmailPayload } from "@/lib/email/order-email-types";
 
 // ---- Postmark client wiring ----
 
 const POSTMARK_SERVER_TOKEN = serverEnv.optionalPostmarkServerToken();
 const POSTMARK_FROM = serverEnv.optionalPostmarkFrom();
-const POSTMARK_CUSTOMER_TEMPLATE_ALIAS = serverEnv.postmarkCustomerTemplateAlias();
-const POSTMARK_ADMIN_TEMPLATE_ALIAS = serverEnv.postmarkAdminTemplateAlias();
 const POSTMARK_ADMIN_TO = serverEnv.optionalPostmarkAdminTo();
 
 // optional convenience envs
@@ -67,6 +24,8 @@ const STORE_NAME = serverEnv.storeName();
 const COMPANY_ADDRESS = serverEnv.companyAddress();
 const MANAGE_ORDERS_URL = serverEnv.manageOrdersUrl();
 const POSTMARK_SUPPORT_EMAIL = serverEnv.postmarkSupportEmail() || POSTMARK_FROM;
+const SITE_URL = serverEnv.siteUrl();
+const EMAIL_ASSET_BASE_URL = serverEnv.emailAssetBaseUrl();
 
 // single shared client (or null if not configured)
 const client = POSTMARK_SERVER_TOKEN
@@ -198,9 +157,7 @@ export function buildOrderEmailPayloadFromStripe(args: {
     };
 }
 
-/**
- * Actually send both emails (customer + admin) using the SAME TemplateModel.
- */
+/** Send the branded customer receipt and optional internal order alert. */
 export async function sendOrderEmails(args: {
     customerEmail: string | null;
     payload: OrderEmailPayload;
@@ -227,47 +184,52 @@ export async function sendOrderEmails(args: {
 
     const sends: OrderEmailSendTask[] = [];
 
-    if (customerEmail && POSTMARK_CUSTOMER_TEMPLATE_ALIAS) {
+    if (customerEmail) {
+        const email = renderCustomerOrderEmail(model, {
+            siteUrl: SITE_URL,
+            assetBaseUrl: EMAIL_ASSET_BASE_URL,
+        });
         sends.push({
             channel: "customer",
             required: true,
-            send: client.sendEmailWithTemplate({
+            send: client.sendEmail({
                 From: POSTMARK_FROM,
                 To: customerEmail,
-                TemplateAlias: POSTMARK_CUSTOMER_TEMPLATE_ALIAS,
-                TemplateModel: model, // <<— NO extra nesting, no renaming
+                ReplyTo: POSTMARK_SUPPORT_EMAIL ?? undefined,
+                Subject: email.subject,
+                HtmlBody: email.htmlBody,
+                TextBody: email.textBody,
+                MessageStream: "outbound",
+                Tag: "order-confirmation",
             }),
         });
-    } else if (customerEmail) {
-        logger.error("Postmark customer template alias is not configured.", {
-            has_customer_email: true,
-        });
-        throw new Error("Postmark customer email is not configured.");
     }
 
-    if (POSTMARK_ADMIN_TO && POSTMARK_ADMIN_TEMPLATE_ALIAS) {
+    if (POSTMARK_ADMIN_TO) {
+        const email = renderAdminOrderEmail(model, {
+            siteUrl: SITE_URL,
+            assetBaseUrl: EMAIL_ASSET_BASE_URL,
+        });
         sends.push({
             channel: "admin",
             required: false,
-            send: client.sendEmailWithTemplate({
+            send: client.sendEmail({
                 From: POSTMARK_FROM,
                 To: POSTMARK_ADMIN_TO,
-                TemplateAlias: POSTMARK_ADMIN_TEMPLATE_ALIAS,
-                TemplateModel: {
-                    ...model,
-                    // you can add admin-specific fields here if you like
-                    admin: true,
-                },
+                ReplyTo: POSTMARK_SUPPORT_EMAIL ?? undefined,
+                Subject: email.subject,
+                HtmlBody: email.htmlBody,
+                TextBody: email.textBody,
+                MessageStream: "outbound",
+                Tag: "order-admin-notify",
             }),
         });
     }
 
     if (!sends.length) {
-        logger.warn("No valid Postmark aliases or recipients configured; skipping order emails.", {
+        logger.warn("No valid Postmark recipients configured; skipping order emails.", {
             has_customer_email: Boolean(customerEmail),
-            has_customer_template: Boolean(POSTMARK_CUSTOMER_TEMPLATE_ALIAS),
             has_admin_to: Boolean(POSTMARK_ADMIN_TO),
-            has_admin_template: Boolean(POSTMARK_ADMIN_TEMPLATE_ALIAS),
         });
         return;
     }

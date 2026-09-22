@@ -2,10 +2,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import OrderStatusUpdater from "@/components/admin/OrderStatusUpdater";
+import OrderTerminalActions from "@/components/admin/OrderTerminalActions";
+import OrderServiceCases from "@/components/admin/OrderServiceCases";
 
 
 import { getServerSupabase } from "@/lib/supabase/server";
 import { normaliseExternalUrl } from "@/lib/urls";
+import { recordSupplierTax } from "./supplier-tax-actions";
 
 function money(cents?: number | null) {
     return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format((cents ?? 0) / 100);
@@ -18,6 +21,8 @@ function StatusBadge({ status }: { status: string }) {
         in_production: "bg-purple-500/20 text-purple-400",
         shipped: "bg-green-500/20 text-green-400",
         delivered: "bg-green-500/20 text-green-400",
+        cancelled: "bg-red-500/20 text-red-300",
+        refunded: "bg-red-500/20 text-red-300",
         default: "bg-neutral-700 text-neutral-300",
     };
 
@@ -38,6 +43,11 @@ type OrderItem = {
     size?: string | null;
     unit_price_cents?: number | null;
     qty?: number | null;
+    supplier_cost_ex_gst_cents?: number | null;
+    supplier_cost_gst_cents?: number | null;
+    supplier_cost_inc_gst_cents?: number | null;
+    supplier_tax_invoice_reference?: string | null;
+    supplier_tax_recorded_at?: string | null;
     artists?: { display_name?: string | null } | { display_name?: string | null }[] | null;
 };
 
@@ -47,6 +57,31 @@ type OrderStatusEvent = {
     to_status: string;
     reason: string | null;
     metadata: Record<string, unknown> | null;
+    created_at: string;
+};
+
+type OrderServiceCase = {
+    id: string;
+    case_number: string;
+    case_type: "return" | "reprint" | "refund" | "cancellation";
+    status: "open" | "awaiting_customer" | "awaiting_supplier" | "approved" | "in_progress" | "resolved" | "rejected" | "cancelled";
+    priority: "low" | "normal" | "high" | "urgent";
+    summary: string;
+    customer_request: string | null;
+    resolution: string | null;
+    supplier_reference: string | null;
+    order_item_ids: string[];
+    created_at: string;
+    updated_at: string;
+};
+
+type OrderServiceCaseEvent = {
+    id: string;
+    service_case_id: string;
+    event_type: string;
+    from_status: string | null;
+    to_status: string | null;
+    note: string | null;
     created_at: string;
 };
 
@@ -90,6 +125,16 @@ export default async function OrderViewPage({
         .order("created_at", { ascending: false });
 
     const timeline = (statusEvents ?? []) as OrderStatusEvent[];
+    const { data: serviceCases } = await supabase
+        .from("order_service_cases")
+        .select("id, case_number, case_type, status, priority, summary, customer_request, resolution, supplier_reference, order_item_ids, created_at, updated_at")
+        .eq("order_id", id)
+        .order("created_at", { ascending: false });
+    const { data: serviceCaseEvents } = await supabase
+        .from("order_service_case_events")
+        .select("id, service_case_id, event_type, from_status, to_status, note, created_at")
+        .eq("order_id", id)
+        .order("created_at", { ascending: false });
     const trackingUrl = normaliseExternalUrl(order.tracking_url);
 
     const itemsSubtotal =
@@ -177,7 +222,27 @@ export default async function OrderViewPage({
                         currentCarrier={order.tracking_carrier}
                     />
 
+                    <OrderTerminalActions
+                        orderId={order.id}
+                        currentStatus={order.status}
+                        hasPayment={Boolean(order.stripe_payment_intent)}
+                    />
+
                 </section>
+
+                <OrderServiceCases
+                    orderId={order.id}
+                    cases={(serviceCases ?? []) as OrderServiceCase[]}
+                    items={(order.order_items ?? [])
+                        .filter((item: OrderItem) => !item.title?.toLowerCase().includes("shipping"))
+                        .map((item: OrderItem) => ({
+                            id: item.id,
+                            title: item.title ?? null,
+                            size: item.size ?? null,
+                            colorLabel: item.color_label ?? null,
+                        }))}
+                    events={(serviceCaseEvents ?? []) as OrderServiceCaseEvent[]}
+                />
 
                 {/* Top Row */}
 
@@ -342,6 +407,53 @@ export default async function OrderViewPage({
                                     </div>
 
                                 </div>
+
+                                <form action={recordSupplierTax} className="mt-4 grid gap-3 border-t border-neutral-800 pt-4 md:grid-cols-[1fr_1fr_1.4fr_auto] md:items-end">
+                                    <input type="hidden" name="order_id" value={order.id} />
+                                    <input type="hidden" name="order_item_id" value={item.id} />
+                                    <label className="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400">
+                                        Supplier cost ex GST
+                                        <input
+                                            name="supplier_cost_ex_gst"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            defaultValue={item.supplier_cost_ex_gst_cents == null ? "" : (item.supplier_cost_ex_gst_cents / 100).toFixed(2)}
+                                            required
+                                            className="mt-2 w-full border border-neutral-700 bg-black px-3 py-2 text-white"
+                                        />
+                                    </label>
+                                    <label className="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400">
+                                        Supplier GST
+                                        <input
+                                            name="supplier_cost_gst"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            defaultValue={item.supplier_cost_gst_cents == null ? "" : (item.supplier_cost_gst_cents / 100).toFixed(2)}
+                                            required
+                                            className="mt-2 w-full border border-neutral-700 bg-black px-3 py-2 text-white"
+                                        />
+                                    </label>
+                                    <label className="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400">
+                                        Supplier tax invoice
+                                        <input
+                                            name="supplier_tax_invoice_reference"
+                                            defaultValue={item.supplier_tax_invoice_reference ?? ""}
+                                            placeholder="Invoice number or file reference"
+                                            required
+                                            className="mt-2 w-full border border-neutral-700 bg-black px-3 py-2 text-white"
+                                        />
+                                    </label>
+                                    <button type="submit" className="border border-lime-400 px-4 py-2 text-xs font-black uppercase text-lime-300 hover:bg-lime-300 hover:text-black">
+                                        Record GST
+                                    </button>
+                                    {item.supplier_tax_recorded_at ? (
+                                        <p className="text-xs text-lime-300 md:col-span-4">
+                                            Recorded {new Date(item.supplier_tax_recorded_at).toLocaleString()} · Total supplier charge {money(item.supplier_cost_inc_gst_cents)}
+                                        </p>
+                                    ) : null}
+                                </form>
                             </div>
                             );
                         })}
@@ -461,6 +573,22 @@ export default async function OrderViewPage({
 
                             </div>
 
+                            {order.tax_registered ? (
+                                <div className="space-y-2 border-t border-neutral-800 pt-3 text-sm">
+                                    <div className="flex justify-between text-neutral-400">
+                                        <span>Net sales</span>
+                                        <span>{money(order.net_cents)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-neutral-400">
+                                        <span>GST collected</span>
+                                        <span>{money(order.gst_cents)}</span>
+                                    </div>
+                                    <div className="text-xs text-neutral-500">Gross total is GST-inclusive. ABN {order.seller_abn}</div>
+                                </div>
+                            ) : (
+                                <div className="border-t border-neutral-800 pt-3 text-xs text-neutral-500">Order created before GST registration applied.</div>
+                            )}
+
                         </div>
 
                     </div>
@@ -503,6 +631,7 @@ export default async function OrderViewPage({
                                     </div>
                                 ))}
                             </div>
+
                         )}
 
                     </div>

@@ -69,8 +69,7 @@ export default function MiniCartDrawer() {
             <aside
                 role="dialog"
                 aria-label="Shopping cart"
-                className="fixed right-0 top-0 z-[70] h-dvh w-full max-w-md translate-x-0 bg-neutral-950 text-neutral-100 shadow-2xl border-l border-neutral-800 will-change-transform"
-                style={{ clipPath: "polygon(1% 0,100% 0,100% 100%,0 100%)" }}
+                className="fixed right-0 top-0 z-[70] h-dvh w-full max-w-md translate-x-0 border-l border-white/10 bg-[#060606] text-white shadow-2xl will-change-transform"
             >
                 {/* subtle noise */}
                 <div
@@ -85,15 +84,15 @@ export default function MiniCartDrawer() {
 
                 <div className="relative flex h-full flex-col">
                     {/* Header */}
-                    <header className="px-4 py-4 border-b border-neutral-800 bg-neutral-900/60 backdrop-blur flex items-center justify-between">
-                        <h2 className="text-sm uppercase tracking-[0.25em] text-neutral-300">
+                    <header className="flex items-center justify-between border-b border-white/10 bg-black/70 px-4 py-4 backdrop-blur">
+                        <h2 className="text-sm font-black uppercase tracking-[0.28em] text-[#b6ff3f]">
                             Your Bag
                         </h2>
                         <div className="flex items-center gap-2">
                             {!!items.length && (
                                 <button
                                     onClick={clear}
-                                    className="text-xs text-neutral-400 hover:text-white underline"
+                                    className="text-xs font-black uppercase tracking-[0.16em] text-white/45 underline decoration-red-500 underline-offset-4 hover:text-red-400"
                                     aria-label="Clear cart"
                                 >
                                     Clear
@@ -101,7 +100,7 @@ export default function MiniCartDrawer() {
                             )}
                             <button
                                 onClick={close}
-                                className="h-8 w-8 grid place-items-center rounded-full border border-neutral-700 hover:border-neutral-500"
+                                className="grid h-8 w-8 place-items-center border border-white/15 hover:border-[#b6ff3f]"
                                 aria-label="Close"
                             >
                                 <X className="h-4 w-4" />
@@ -112,23 +111,23 @@ export default function MiniCartDrawer() {
                     {/* Items */}
                     <div className="flex-1 overflow-auto">
                         {items.length === 0 ? (
-                            <div className="p-6 text-neutral-400">Your bag is empty.</div>
+                            <div className="p-6 text-white/50">Your bag is empty.</div>
                         ) : (
-                            <ul className="divide-y divide-neutral-800">
+                            <ul className="divide-y divide-white/10">
                                 {items.map((item) => {
                                     const lineId = item.sku ?? item.product_id;
                                     const variantLine = item.sku || item.color_label || item.size;
                                     const resolvedImg = publicProductImageUrlOrSource(item.image_path);
 
                                     return (
-                                        <li key={lineId} className="p-4 flex items-center gap-4">
-                                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-neutral-900 border border-neutral-800">
+                                        <li key={lineId} className="flex items-center gap-4 p-4">
+                                            <div className="relative h-16 w-16 shrink-0 overflow-hidden border border-white/10 bg-[#f4f1e8]">
                                                 {resolvedImg ? (
                                                     <Image
                                                         src={resolvedImg}
                                                         alt={item.title}
                                                         fill
-                                                        className="object-cover"
+                                                        className="object-contain p-1"
                                                         sizes="64px"
                                                     />
                                                 ) : (
@@ -139,15 +138,15 @@ export default function MiniCartDrawer() {
                                             </div>
 
                                             <div className="min-w-0 flex-1">
-                                                <div className="font-medium truncate">{item.title}</div>
-                                                <div className="text-sm text-neutral-400">
+                                                <div className="truncate font-black uppercase leading-tight">{item.title}</div>
+                                                <div className="text-sm font-black text-[#b6ff3f]">
                                                     {fmt(item.price_cents, item.currency)}
                                                 </div>
 
                                                 {variantLine ? (
-                                                    <div className="mt-1 text-[11px] text-neutral-500 space-x-2">
+                                                    <div className="mt-1 space-x-2 text-[11px] uppercase tracking-[0.14em] text-white/40">
                                                         {item.sku ? (
-                                                            <span className="inline-block bg-neutral-900/40 px-1.5 py-0.5 rounded-sm border border-neutral-800/60">
+                                                            <span className="inline-block border border-white/10 bg-white/5 px-1.5 py-0.5">
                                                                 {item.sku}
                                                             </span>
                                                         ) : null}
@@ -158,12 +157,12 @@ export default function MiniCartDrawer() {
 
                                                 {/* qty controls */}
                                                 <div className="mt-2 flex items-center gap-2">
-                                                    <span className="text-xs text-neutral-500">Qty</span>
-                                                    <div className="inline-flex items-center rounded-lg border border-neutral-700 overflow-hidden">
+                                                    <span className="text-xs font-black uppercase tracking-[0.14em] text-white/40">Qty</span>
+                                                    <div className="inline-flex items-center overflow-hidden border border-white/15">
                                                         <button
                                                             type="button"
                                                             aria-label="Decrease quantity"
-                                                            className="h-8 w-8 grid place-items-center hover:bg-neutral-900"
+                                                            className="grid h-8 w-8 place-items-center hover:bg-white/10"
                                                             onClick={() =>
                                                                 setQty(
                                                                     lineId,
@@ -186,12 +185,12 @@ export default function MiniCartDrawer() {
                                                                     { by: item.sku ? "sku" : "product_id" }
                                                                 )
                                                             }
-                                                            className="h-8 w-12 bg-neutral-950 text-center text-sm outline-none"
+                                                            className="h-8 w-12 bg-black text-center text-sm outline-none"
                                                         />
                                                         <button
                                                             type="button"
                                                             aria-label="Increase quantity"
-                                                            className="h-8 w-8 grid place-items-center hover:bg-neutral-900"
+                                                            className="grid h-8 w-8 place-items-center hover:bg-white/10"
                                                             onClick={() =>
                                                                 setQty(
                                                                     lineId,
@@ -205,7 +204,7 @@ export default function MiniCartDrawer() {
                                                     </div>
 
                                                     <button
-                                                        className="ml-2 text-xs underline text-neutral-400 hover:text-white"
+                                                        className="ml-2 text-xs font-black uppercase tracking-[0.14em] text-white/45 underline decoration-red-500 underline-offset-4 hover:text-red-400"
                                                         onClick={() =>
                                                             remove(lineId, {
                                                                 by: item.sku ? "sku" : "product_id",
@@ -224,10 +223,10 @@ export default function MiniCartDrawer() {
                     </div>
 
                     {/* Footer */}
-                    <footer className="sticky bottom-0 bg-neutral-950 border-t border-neutral-800 p-4">
+                    <footer className="sticky bottom-0 border-t border-white/10 bg-black p-4">
                         <div className="mb-3 flex items-center justify-between">
-                            <span className="text-neutral-300">Subtotal</span>
-                            <span className="text-lg font-black text-red-400">
+                            <span className="text-white/55">Subtotal</span>
+                            <span className="text-lg font-black text-[#b6ff3f]">
                                 {fmt(subtotal_cents, currency)}
                             </span>
                         </div>
@@ -236,23 +235,20 @@ export default function MiniCartDrawer() {
                             <Link
                                 href="/cart"
                                 onClick={close}
-                                className="flex-1 text-center rounded-xl border border-neutral-700 px-4 py-3 text-sm hover:bg-neutral-900"
+                                className="flex-1 border border-white/15 px-4 py-3 text-center text-sm font-black uppercase hover:border-[#b6ff3f]"
                             >
                                 View cart
                             </Link>
 
                             <Link
                                 href="/checkout"
-                                className="relative rounded-xl px-5 py-3 text-sm font-black tracking-wide bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 border border-red-500 disabled:opacity-50"
-                                style={{
-                                    clipPath: "polygon(6% 0,100% 0,94% 100%,0 100%)",
-                                }}
+                                className="relative bg-[#b6ff3f] px-5 py-3 text-sm font-black uppercase tracking-wide text-black hover:bg-white disabled:opacity-50"
                             >
                                 Checkout
                             </Link>
                         </div>
 
-                        <p className="mt-3 text-[11px] text-neutral-500">
+                        <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-white/40">
                             Shipping & taxes calculated at checkout.
                         </p>
                     </footer>

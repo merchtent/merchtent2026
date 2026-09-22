@@ -1,11 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     AlignCenter,
+    AlignCenterHorizontal,
+    AlignCenterVertical,
+    ArrowLeft,
+    ArrowRight,
+    Eye,
     Image as ImageIcon,
     Layers,
     Loader2,
+    MoveDown,
+    MoveHorizontal,
+    MoveLeft,
+    MoveRight,
+    MoveUp,
+    MoveVertical,
     RotateCw,
     Save,
     Shirt,
@@ -13,16 +25,33 @@ import {
     Type,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { publicImageUrl } from "@/lib/storage";
 import type { CatalogProduct } from "@/lib/product-catalog";
-import { createDesignedProductAction } from "./actions";
+import {
+    DESIGN_CANVAS_HEIGHT,
+    DESIGN_CANVAS_WIDTH,
+    normalizeGeometryAreas,
+    resolveGeometryAreas,
+    resolveGeometryRect,
+    type PixelRect,
+} from "@/lib/products/design-geometry";
+import { getLifestyleModelSets, getMockupTemplate, type LifestyleModelSetId } from "@/lib/products/mockup-templates";
+import { createDesignedProductAction, generateDesignerMockupPreviewAction } from "./actions";
+import {
+    fitImageToPrintArea,
+    getLayerPositionPatch,
+    getLayerQuickActionPatch,
+    type LayerQuickAction,
+} from "./layer-quick-actions";
+import DesignerListingReview, { type DesignerMockupPreview } from "./DesignerListingReview";
 
-const CANVAS_WIDTH = 900;
-const CANVAS_HEIGHT = 1200;
+const CANVAS_WIDTH = DESIGN_CANVAS_WIDTH;
+const CANVAS_HEIGHT = DESIGN_CANVAS_HEIGHT;
 const PRINT_ASSET_WIDTH = 2400;
 const PRINT_ASSET_HEIGHT = 3200;
 
 type Side = "front" | "back";
-type GarmentKind = "tee" | "hoodie";
+type GarmentKind = "tee" | "hoodie" | "tank";
 type ToolPanel = "product" | "blank" | "layers" | "selection";
 
 type DesignLayer = {
@@ -41,22 +70,52 @@ type DesignLayer = {
     fontFamily?: string;
     fontWeight?: string;
     src?: string;
+    aspectRatio?: number;
+};
+
+export type DesignerInitialProduct = {
+    id: string;
+    title: string;
+    description: string | null;
+    color?: string;
+    colorLabel?: string;
+    saleColorNames?: string[];
+    layers: DesignLayer[];
+    referenceImageUrl?: string | null;
 };
 
 type DragState = {
     id: string;
+    mode: "move";
     offsetX: number;
     offsetY: number;
+} | {
+    id: string;
+    mode: "resize";
+    centerX: number;
+    centerY: number;
+    startDistance: number;
+    startWidth: number;
+    startHeight: number;
+} | {
+    id: string;
+    mode: "rotate";
+    centerX: number;
+    centerY: number;
+    startAngle: number;
+    startRotation: number;
 };
+
+const imageCache = new Map<string, Promise<HTMLImageElement>>();
 
 function uid() {
     return globalThis.crypto.randomUUID();
 }
 
-function priceWithPrintSides(basePrice: string, hasBackDesign: boolean, additionalPrintSideRetailCents?: number) {
+function priceWithPrintSides(basePrice: string, hasTwoPrintSides: boolean, additionalPrintSideRetailCents?: number) {
     const parsed = Number(basePrice);
     const baseCents = Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-    const extraCents = hasBackDesign ? additionalPrintSideRetailCents ?? 0 : 0;
+    const extraCents = hasTwoPrintSides ? additionalPrintSideRetailCents ?? 0 : 0;
     return ((baseCents + extraCents) / 100).toFixed(2);
 }
 
@@ -65,10 +124,6 @@ function formatMoneyFromCents(cents: number) {
         style: "currency",
         currency: "AUD",
     });
-}
-
-function formatPercent(partCents: number, totalCents: number) {
-    return totalCents > 0 ? `${((partCents / totalCents) * 100).toFixed(1)}%` : "0.0%";
 }
 
 function buildLockedProductTitle(artistName: string, title: string) {
@@ -82,12 +137,103 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function loadImage(src: string) {
-    return new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
+    const cached = imageCache.get(src);
+    if (cached) return cached;
+
+    const request = new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new window.Image();
         image.onload = () => resolve(image);
-        image.onerror = reject;
-        image.src = src;
+        image.onerror = () => {
+            imageCache.delete(src);
+            reject(new Error("Could not load design image."));
+        };
+        const imageUrl = src.startsWith("data:") || src.startsWith("http") || src.startsWith("/")
+            ? src
+            : publicImageUrl(src) ?? src;
+        if (imageUrl.startsWith("http")) image.crossOrigin = "anonymous";
+        image.src = imageUrl;
     });
+    imageCache.set(src, request);
+    return request;
+}
+
+function readFileAsDataUrl(file: File) {
+    return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.onerror = () => reject(new Error("Could not read that artwork file."));
+        reader.readAsDataURL(file);
+    });
+}
+
+function drawImageCover(
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+) {
+    const sourceRatio = image.naturalWidth / image.naturalHeight;
+    const targetRatio = width / height;
+    let sourceX = 0;
+    let sourceY = 0;
+    let sourceWidth = image.naturalWidth;
+    let sourceHeight = image.naturalHeight;
+
+    if (sourceRatio > targetRatio) {
+        sourceWidth = image.naturalHeight * targetRatio;
+        sourceX = (image.naturalWidth - sourceWidth) / 2;
+    } else {
+        sourceHeight = image.naturalWidth / targetRatio;
+        sourceY = (image.naturalHeight - sourceHeight) / 2;
+    }
+
+    ctx.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        x,
+        y,
+        width,
+        height
+    );
+}
+
+function rotatePoint(x: number, y: number, centerX: number, centerY: number, degrees: number) {
+    const radians = (degrees * Math.PI) / 180;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    const dx = x - centerX;
+    const dy = y - centerY;
+    return {
+        x: centerX + dx * cos - dy * sin,
+        y: centerY + dx * sin + dy * cos,
+    };
+}
+
+function layerHandles(layer: DesignLayer) {
+    const centerX = layer.x + layer.width / 2;
+    const centerY = layer.y + layer.height / 2;
+    return {
+        centerX,
+        centerY,
+        resize: rotatePoint(layer.x + layer.width, layer.y + layer.height, centerX, centerY, layer.rotation),
+        rotate: rotatePoint(centerX, layer.y - 50, centerX, centerY, layer.rotation),
+    };
+}
+
+function pointHitsLayer(point: { x: number; y: number }, layer: DesignLayer) {
+    const centerX = layer.x + layer.width / 2;
+    const centerY = layer.y + layer.height / 2;
+    const local = rotatePoint(point.x, point.y, centerX, centerY, -layer.rotation);
+    return local.x >= layer.x && local.x <= layer.x + layer.width && local.y >= layer.y && local.y <= layer.y + layer.height;
+}
+
+function pointNear(point: { x: number; y: number }, target: { x: number; y: number }, radius = 28) {
+    return Math.hypot(point.x - target.x, point.y - target.y) <= radius;
 }
 
 function drawGarment(
@@ -143,6 +289,24 @@ function drawGarment(
         ctx.quadraticCurveTo(450, 870, 365, 820);
         ctx.closePath();
         ctx.stroke();
+    } else if (kind === "tank") {
+        ctx.beginPath();
+        ctx.moveTo(325, 150);
+        ctx.bezierCurveTo(360, 136, 390, 120, 407, 105);
+        ctx.bezierCurveTo(420, 175, 480, 175, 493, 105);
+        ctx.bezierCurveTo(510, 120, 540, 136, 575, 150);
+        ctx.lineTo(625, 195);
+        ctx.bezierCurveTo(585, 265, 565, 340, 585, 980);
+        ctx.quadraticCurveTo(450, 1038, 315, 980);
+        ctx.bezierCurveTo(335, 340, 315, 265, 275, 195);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(255,255,255,0.14)";
+        ctx.beginPath();
+        ctx.arc(450, side === "front" ? 145 : 132, side === "front" ? 74 : 58, 0.08 * Math.PI, 0.92 * Math.PI);
+        ctx.stroke();
     } else {
         ctx.beginPath();
         ctx.moveTo(318, 160);
@@ -166,8 +330,10 @@ function drawGarment(
     if (side === "back") {
         ctx.strokeStyle = "rgba(255,255,255,0.12)";
         ctx.beginPath();
-        ctx.moveTo(326, kind === "hoodie" ? 245 : 196);
-        ctx.quadraticCurveTo(450, kind === "hoodie" ? 318 : 250, 574, kind === "hoodie" ? 245 : 196);
+        const backNeckY = kind === "hoodie" ? 245 : kind === "tank" ? 150 : 196;
+        const backNeckDepth = kind === "hoodie" ? 318 : kind === "tank" ? 185 : 250;
+        ctx.moveTo(326, backNeckY);
+        ctx.quadraticCurveTo(450, backNeckDepth, 574, backNeckY);
         ctx.stroke();
     }
 
@@ -184,11 +350,16 @@ async function drawLayer(ctx: CanvasRenderingContext2D, layer: DesignLayer) {
         ctx.fillStyle = layer.fill ?? "#ffffff";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.font = `${layer.fontWeight ?? "800"} ${layer.fontSize ?? 72}px ${layer.fontFamily ?? "Arial"}`;
+        const fontSize = layer.fontSize ?? 72;
+        ctx.font = `${layer.fontWeight ?? "800"} ${fontSize}px ${layer.fontFamily ?? "Arial"}`;
         const text = layer.text ?? "";
         const lines = text.split("\n");
+        const textWidth = Math.max(...lines.map((line) => ctx.measureText(line).width), 1);
+        const textHeight = fontSize + (lines.length - 1) * fontSize * 1.12;
+        const scale = Math.min(1, (layer.width - 16) / textWidth, (layer.height - 16) / textHeight);
+        ctx.scale(Math.max(scale, 0.01), Math.max(scale, 0.01));
         lines.forEach((line, index) => {
-            ctx.fillText(line, 0, (index - (lines.length - 1) / 2) * (layer.fontSize ?? 72) * 1.12);
+            ctx.fillText(line, 0, (index - (lines.length - 1) / 2) * fontSize * 1.12);
         });
     } else if (layer.src) {
         const image = await loadImage(layer.src);
@@ -198,21 +369,60 @@ async function drawLayer(ctx: CanvasRenderingContext2D, layer: DesignLayer) {
     ctx.restore();
 }
 
+function drawSelection(ctx: CanvasRenderingContext2D, layer: DesignLayer) {
+    const { centerX, centerY, resize, rotate } = layerHandles(layer);
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate((layer.rotation * Math.PI) / 180);
+    ctx.strokeStyle = "#b7ff3c";
+    ctx.lineWidth = 4;
+    ctx.setLineDash([12, 8]);
+    ctx.strokeRect(-layer.width / 2, -layer.height / 2, layer.width, layer.height);
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(0, -layer.height / 2);
+    ctx.lineTo(0, -layer.height / 2 - 50);
+    ctx.stroke();
+    ctx.restore();
+
+    for (const [point, fill] of [[resize, "#b7ff3c"], [rotate, "#ef4444"]] as const) {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 15, 0, Math.PI * 2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+    }
+}
+
 async function renderDesign(
     canvas: HTMLCanvasElement,
     layers: DesignLayer[],
     side: Side,
     kind: GarmentKind,
     garmentColor: string,
-    printAreas: CatalogProduct["printAreas"],
-    showGuides: boolean
+    catalogProduct: Pick<CatalogProduct, "key" | "brand" | "model">,
+    printAreas: Record<Side, PixelRect>,
+    showGuides: boolean,
+    selectedLayerId?: string | null
 ) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
-    drawGarment(ctx, kind, side, garmentColor);
+    const template = getMockupTemplate(catalogProduct, garmentColor, side);
+    if (template) {
+        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.fillStyle = template.background;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const background = await loadImage(template.publicPath);
+        const placement = resolveGeometryRect(template.canvasPlacement, CANVAS_WIDTH, CANVAS_HEIGHT);
+        drawImageCover(ctx, background, placement.x, placement.y, placement.width, placement.height);
+    } else {
+        drawGarment(ctx, kind, side, garmentColor);
+    }
 
     for (const layer of layers.filter((item) => item.side === side)) {
         await drawLayer(ctx, layer);
@@ -226,114 +436,165 @@ async function renderDesign(
         ctx.lineWidth = 4;
         ctx.strokeRect(area.x, area.y, area.width, area.height);
         ctx.restore();
+
+        const selectedLayer = layers.find((layer) => layer.id === selectedLayerId && layer.side === side);
+        if (selectedLayer) drawSelection(ctx, selectedLayer);
     }
 }
 
-async function renderPrintAsset(layers: DesignLayer[], side: Side, printAreas: CatalogProduct["printAreas"]) {
-    const canvas = document.createElement("canvas");
-    const area = printAreas[side];
-    const scaleX = PRINT_ASSET_WIDTH / area.width;
-    const scaleY = PRINT_ASSET_HEIGHT / area.height;
-    const scale = Math.min(scaleX, scaleY);
-    const offsetX = (PRINT_ASSET_WIDTH - area.width * scale) / 2;
-    const offsetY = (PRINT_ASSET_HEIGHT - area.height * scale) / 2;
-    const ctx = canvas.getContext("2d");
-
-    canvas.width = PRINT_ASSET_WIDTH;
-    canvas.height = PRINT_ASSET_HEIGHT;
-
-    if (!ctx) return canvas.toDataURL("image/png");
-
-    ctx.clearRect(0, 0, PRINT_ASSET_WIDTH, PRINT_ASSET_HEIGHT);
-    ctx.save();
-    ctx.translate(offsetX - area.x * scale, offsetY - area.y * scale);
-    ctx.scale(scale, scale);
-    ctx.beginPath();
-    ctx.rect(area.x, area.y, area.width, area.height);
-    ctx.clip();
-
-    for (const layer of layers.filter((item) => item.side === side)) {
-        await drawLayer(ctx, layer);
-    }
-
-    ctx.restore();
-    return canvas.toDataURL("image/png");
+function presentCanvas(target: HTMLCanvasElement, frame: HTMLCanvasElement) {
+    target.width = CANVAS_WIDTH;
+    target.height = CANVAS_HEIGHT;
+    const ctx = target.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.drawImage(frame, 0, 0);
 }
 
 export default function DesignerClient({
     catalogProduct,
     artistName,
+    initialProduct,
 }: {
     catalogProduct: CatalogProduct;
     artistName: string;
+    initialProduct?: DesignerInitialProduct;
 }) {
-    const frontCanvasRef = useRef<HTMLCanvasElement | null>(null);
-    const backCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const dragRef = useRef<DragState | null>(null);
+    const layersRef = useRef<DesignLayer[]>([]);
+    const renderGenerationRef = useRef(0);
+    const dragFrameRef = useRef<number | null>(null);
+    const pendingDragUpdateRef = useRef<{ id: string; patch: Partial<DesignLayer> } | null>(null);
     const saveModeRef = useRef<"draft" | "publish">("draft");
 
-    const [title, setTitle] = useState(catalogProduct.name);
-    const [description, setDescription] = useState("");
+    const [title, setTitle] = useState(() => initialProduct?.title.startsWith(`${artistName} `)
+        ? initialProduct.title.slice(artistName.length + 1)
+        : initialProduct?.title ?? catalogProduct.name);
+    const [description, setDescription] = useState(initialProduct?.description ?? "");
     const category = catalogProduct.category;
     const [activeSide, setActiveSide] = useState<Side>("front");
     const [activeToolPanel, setActiveToolPanel] = useState<ToolPanel>("product");
     const garmentKind = catalogProduct.garmentKind;
-    const [garmentColor, setGarmentColor] = useState(catalogProduct.colors[0]?.value ?? "#111111");
-    const [layers, setLayers] = useState<DesignLayer[]>([]);
+    const [selectedColorName, setSelectedColorName] = useState(() => {
+        const matching = catalogProduct.colors.find((item) =>
+            (item.supplierColorName ?? item.label) === initialProduct?.colorLabel
+        ) ?? catalogProduct.colors.find((item) => item.value === initialProduct?.color);
+        const black = catalogProduct.colors.find((item) =>
+            (item.supplierColorName ?? item.label).trim().toLowerCase() === "black"
+        );
+        return matching?.supplierColorName ?? matching?.label ?? black?.supplierColorName ?? black?.label
+            ?? catalogProduct.colors[0]?.supplierColorName ?? catalogProduct.colors[0]?.label ?? "";
+    });
+    const selectedColor = catalogProduct.colors.find((item) => (item.supplierColorName ?? item.label) === selectedColorName)
+        ?? catalogProduct.colors[0];
+    const garmentColor = selectedColor?.value ?? "#111111";
+    const [saleColorNames, setSaleColorNames] = useState<string[]>(() => initialProduct?.saleColorNames?.length
+        ? initialProduct.saleColorNames
+        : [selectedColor?.supplierColorName ?? selectedColor?.label ?? ""]);
+    const saleColors = catalogProduct.colors.filter((item) => saleColorNames.includes(item.supplierColorName ?? item.label));
+    const listingColor = saleColors.find((item) => (item.supplierColorName ?? item.label).toLowerCase() === "black") ?? saleColors[0];
+    const [layers, setLayers] = useState<DesignLayer[]>(initialProduct?.layers ?? []);
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
-    const [newText, setNewText] = useState("BAND NAME");
     const [isSaving, setIsSaving] = useState(false);
     const [savingMode, setSavingMode] = useState<"draft" | "publish">("draft");
     const [error, setError] = useState<string | null>(null);
+    const [activeView, setActiveView] = useState<"designer" | "colors" | "mockups" | "review">("designer");
+    const [isGeneratingMockups, setIsGeneratingMockups] = useState(false);
+    const [isUploadingArtwork, setIsUploadingArtwork] = useState(false);
+    const [mockupPreview, setMockupPreview] = useState<DesignerMockupPreview | null>(null);
+    const [femaleModelSet, setFemaleModelSet] = useState<LifestyleModelSetId | null>(null);
+    const [maleModelSet, setMaleModelSet] = useState<LifestyleModelSetId | null>(null);
+    const printAreas = useMemo(
+        () => resolveGeometryAreas(catalogProduct.printAreas, CANVAS_WIDTH, CANVAS_HEIGHT),
+        [catalogProduct.printAreas]
+    );
 
     const selectedLayer = useMemo(
         () => layers.find((layer) => layer.id === selectedLayerId) ?? null,
         [layers, selectedLayerId]
     );
     const activeLayers = layers.filter((layer) => layer.side === activeSide);
+    const hasFrontDesign = layers.some((layer) => layer.side === "front");
     const hasBackDesign = layers.some((layer) => layer.side === "back");
-    const printSideCount = hasBackDesign ? 2 : 1;
+    const hasTwoPrintSides = hasFrontDesign && hasBackDesign;
+    const printSideCount = hasTwoPrintSides ? 2 : 1;
     const additionalPrintSideRetailCents =
         catalogProduct.production.includedPrintSides && catalogProduct.production.includedPrintSides >= 2
             ? 0
             : catalogProduct.production.additionalPrintSideRetailCents ?? catalogProduct.production.additionalPrintSideCents ?? 0;
     const price = useMemo(
-        () => priceWithPrintSides(catalogProduct.defaultPrice, hasBackDesign, additionalPrintSideRetailCents),
-        [additionalPrintSideRetailCents, catalogProduct.defaultPrice, hasBackDesign]
+        () => priceWithPrintSides(catalogProduct.defaultPrice, hasTwoPrintSides, additionalPrintSideRetailCents),
+        [additionalPrintSideRetailCents, catalogProduct.defaultPrice, hasTwoPrintSides]
     );
     const singlePriceCents = useMemo(() => {
         const parsed = Number(catalogProduct.defaultPrice);
         return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
     }, [catalogProduct.defaultPrice]);
     const doublePriceCents = singlePriceCents + additionalPrintSideRetailCents;
-    const activePriceCents = hasBackDesign ? doublePriceCents : singlePriceCents;
+    const activePriceCents = hasTwoPrintSides ? doublePriceCents : singlePriceCents;
     const artistProfitCents = catalogProduct.production.artistProfitCents ?? 0;
     const productTitlePreview = useMemo(() => {
         return buildLockedProductTitle(artistName, title);
     }, [artistName, title]);
+    const modelSets = getLifestyleModelSets(catalogProduct, listingColor?.value ?? garmentColor);
+    const femaleOptions = modelSets.filter((set) => set.audience === "female");
+    const maleOptions = modelSets.filter((set) => set.audience === "male");
+    const canSaveReview = Boolean(mockupPreview) && (modelSets.length === 0 || (
+        femaleOptions.some((set) => set.id === femaleModelSet && mockupPreview?.lifestyle.some((image) => image.id === set.frontTemplateId) && mockupPreview?.lifestyle.some((image) => image.id === set.backTemplateId)) &&
+        maleOptions.some((set) => set.id === maleModelSet && mockupPreview?.lifestyle.some((image) => image.id === set.frontTemplateId) && mockupPreview?.lifestyle.some((image) => image.id === set.backTemplateId))
+    ));
 
     useEffect(() => {
-        let cancelled = false;
+        layersRef.current = layers;
+    }, [layers]);
+
+    useEffect(() => {
+        const generation = ++renderGenerationRef.current;
 
         async function render() {
-            if (frontCanvasRef.current) {
-                await renderDesign(frontCanvasRef.current, layers, "front", garmentKind, garmentColor, catalogProduct.printAreas, activeSide === "front");
-            }
-            if (backCanvasRef.current) {
-                await renderDesign(backCanvasRef.current, layers, "back", garmentKind, garmentColor, catalogProduct.printAreas, activeSide === "back");
+            const frame = document.createElement("canvas");
+            await renderDesign(
+                frame,
+                layers,
+                activeSide,
+                garmentKind,
+                garmentColor,
+                catalogProduct,
+                printAreas,
+                true,
+                selectedLayerId
+            );
+            if (generation === renderGenerationRef.current && canvasRef.current) {
+                presentCanvas(canvasRef.current, frame);
             }
         }
 
         render().catch((err) => {
-            if (!cancelled) {
+            if (generation === renderGenerationRef.current) {
                 setError(err instanceof Error ? err.message : "Could not render design preview");
             }
         });
+    }, [activeSide, catalogProduct, garmentColor, garmentKind, layers, printAreas, selectedLayerId]);
 
-        return () => {
-            cancelled = true;
-        };
-    }, [activeSide, catalogProduct.printAreas, garmentColor, garmentKind, layers]);
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            const target = event.target as HTMLElement | null;
+            if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+            if ((event.key === "Delete" || event.key === "Backspace") && selectedLayerId) {
+                event.preventDefault();
+                setLayers((current) => current.filter((layer) => layer.id !== selectedLayerId));
+                setSelectedLayerId(null);
+            }
+        }
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedLayerId]);
+
+    useEffect(() => () => {
+        if (dragFrameRef.current !== null) cancelAnimationFrame(dragFrameRef.current);
+    }, []);
 
     function updateLayer(id: string, patch: Partial<DesignLayer>) {
         setLayers((current) =>
@@ -352,7 +613,7 @@ export default function DesignerClient({
             height: 120,
             rotation: 0,
             opacity: 1,
-            text: newText,
+            text: "BAND NAME",
             fill: "#ffffff",
             fontSize: 76,
             fontFamily: "Arial",
@@ -361,36 +622,65 @@ export default function DesignerClient({
 
         setLayers((current) => [...current, layer]);
         setSelectedLayerId(layer.id);
+        setActiveToolPanel("selection");
     }
 
-    function addImageLayer(file: File | null) {
+    async function addImageLayer(file: File | null) {
         if (!file) return;
+        setIsUploadingArtwork(true);
+        setError(null);
+        try {
+            const previewSource = await readFileAsDataUrl(file);
+            const image = await loadImage(previewSource);
+            const upload = new FormData();
+            upload.set("file", file);
+            const response = await fetch("/api/designer/artwork", {
+                method: "POST",
+                body: upload,
+            });
+            const result = await response.json() as { path?: unknown; error?: unknown };
+            if (!response.ok || typeof result.path !== "string") {
+                throw new Error(typeof result.error === "string" ? result.error : "Could not upload artwork.");
+            }
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            const src = String(reader.result || "");
+            const fitted = fitImageToPrintArea(
+                image.naturalWidth,
+                image.naturalHeight,
+                printAreas[activeSide],
+            );
             const layer: DesignLayer = {
                 id: uid(),
                 side: activeSide,
                 type: "image",
-                x: 315,
-                y: 365,
-                width: 270,
-                height: 270,
+                x: fitted.x,
+                y: fitted.y,
+                width: fitted.width,
+                height: fitted.height,
                 rotation: 0,
                 opacity: 1,
-                src,
+                src: result.path,
+                aspectRatio: image.naturalWidth / image.naturalHeight,
             };
             setLayers((current) => [...current, layer]);
             setSelectedLayerId(layer.id);
-        };
-        reader.readAsDataURL(file);
+            setActiveToolPanel("selection");
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Could not load that image. Try a PNG, JPEG or WebP file.");
+        } finally {
+            setIsUploadingArtwork(false);
+        }
     }
 
     function removeSelectedLayer() {
         if (!selectedLayerId) return;
         setLayers((current) => current.filter((layer) => layer.id !== selectedLayerId));
         setSelectedLayerId(null);
+    }
+
+    function applyQuickAction(action: LayerQuickAction) {
+        if (!selectedLayer) return;
+        const area = printAreas[selectedLayer.side];
+        updateLayer(selectedLayer.id, getLayerQuickActionPatch(selectedLayer, area, action));
     }
 
     function getCanvasPoint(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -402,17 +692,69 @@ export default function DesignerClient({
         };
     }
 
+    function queueDragUpdate(id: string, patch: Partial<DesignLayer>) {
+        pendingDragUpdateRef.current = { id, patch };
+        if (dragFrameRef.current !== null) return;
+        dragFrameRef.current = requestAnimationFrame(() => {
+            const pending = pendingDragUpdateRef.current;
+            pendingDragUpdateRef.current = null;
+            dragFrameRef.current = null;
+            if (!pending) return;
+            setLayers((current) =>
+                current.map((layer) => layer.id === pending.id ? { ...layer, ...pending.patch } : layer)
+            );
+        });
+    }
+
+    function flushDragUpdate() {
+        if (dragFrameRef.current !== null) {
+            cancelAnimationFrame(dragFrameRef.current);
+            dragFrameRef.current = null;
+        }
+        const pending = pendingDragUpdateRef.current;
+        pendingDragUpdateRef.current = null;
+        if (!pending) return;
+        setLayers((current) =>
+            current.map((layer) => layer.id === pending.id ? { ...layer, ...pending.patch } : layer)
+        );
+    }
+
     function handlePointerDown(event: React.PointerEvent<HTMLCanvasElement>) {
         const point = getCanvasPoint(event);
+        const currentSelected = activeLayers.find((layer) => layer.id === selectedLayerId);
+
+        if (currentSelected) {
+            const handles = layerHandles(currentSelected);
+            if (pointNear(point, handles.rotate)) {
+                dragRef.current = {
+                    id: currentSelected.id,
+                    mode: "rotate",
+                    centerX: handles.centerX,
+                    centerY: handles.centerY,
+                    startAngle: Math.atan2(point.y - handles.centerY, point.x - handles.centerX),
+                    startRotation: currentSelected.rotation,
+                };
+                event.currentTarget.setPointerCapture(event.pointerId);
+                return;
+            }
+            if (pointNear(point, handles.resize)) {
+                dragRef.current = {
+                    id: currentSelected.id,
+                    mode: "resize",
+                    centerX: handles.centerX,
+                    centerY: handles.centerY,
+                    startDistance: Math.max(1, Math.hypot(point.x - handles.centerX, point.y - handles.centerY)),
+                    startWidth: currentSelected.width,
+                    startHeight: currentSelected.height,
+                };
+                event.currentTarget.setPointerCapture(event.pointerId);
+                return;
+            }
+        }
+
         const hit = [...activeLayers]
             .reverse()
-            .find(
-                (layer) =>
-                    point.x >= layer.x &&
-                    point.x <= layer.x + layer.width &&
-                    point.y >= layer.y &&
-                    point.y <= layer.y + layer.height
-            );
+            .find((layer) => pointHitsLayer(point, layer));
 
         if (!hit) {
             setSelectedLayerId(null);
@@ -420,8 +762,10 @@ export default function DesignerClient({
         }
 
         setSelectedLayerId(hit.id);
+        setActiveToolPanel("selection");
         dragRef.current = {
             id: hit.id,
+            mode: "move",
             offsetX: point.x - hit.x,
             offsetY: point.y - hit.y,
         };
@@ -432,31 +776,165 @@ export default function DesignerClient({
         const drag = dragRef.current;
         if (!drag) return;
         const point = getCanvasPoint(event);
-        const layer = layers.find((item) => item.id === drag.id);
+        const layer = layersRef.current.find((item) => item.id === drag.id);
         if (!layer) return;
 
-        updateLayer(drag.id, {
-            x: clamp(point.x - drag.offsetX, 0, CANVAS_WIDTH - layer.width),
-            y: clamp(point.y - drag.offsetY, 0, CANVAS_HEIGHT - layer.height),
-        });
+        if (drag.mode === "move") {
+            queueDragUpdate(drag.id, {
+                x: clamp(point.x - drag.offsetX, 0, CANVAS_WIDTH - layer.width),
+                y: clamp(point.y - drag.offsetY, 0, CANVAS_HEIGHT - layer.height),
+            });
+            return;
+        }
+
+        if (drag.mode === "resize") {
+            const distance = Math.hypot(point.x - drag.centerX, point.y - drag.centerY);
+            const scale = clamp(distance / drag.startDistance, 0.2, 4);
+            const width = clamp(drag.startWidth * scale, 60, 650);
+            const height = clamp(drag.startHeight * scale, 40, 760);
+            queueDragUpdate(drag.id, {
+                width,
+                height,
+                x: drag.centerX - width / 2,
+                y: drag.centerY - height / 2,
+            });
+            return;
+        }
+
+        const angle = Math.atan2(point.y - drag.centerY, point.x - drag.centerX);
+        const rotation = drag.startRotation + ((angle - drag.startAngle) * 180) / Math.PI;
+        queueDragUpdate(drag.id, { rotation: Math.round(rotation) });
     }
 
     function handlePointerUp(event: React.PointerEvent<HTMLCanvasElement>) {
+        flushDragUpdate();
         dragRef.current = null;
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
         }
     }
 
-    async function renderForSave(side: Side) {
-        const canvas = document.createElement("canvas");
-        await renderDesign(canvas, layers, side, garmentKind, garmentColor, catalogProduct.printAreas, false);
-        return canvas.toDataURL("image/png");
+    function buildDesignPayload(color = selectedColor) {
+        return {
+            version: 1 as const,
+            templateKey: `merch-tent-${garmentKind}-v1`,
+            catalogProduct: {
+                key: catalogProduct.key,
+                name: catalogProduct.name,
+                brand: catalogProduct.brand,
+                model: catalogProduct.model,
+                category: catalogProduct.category,
+                supplier: catalogProduct.supplier,
+                providerOptions: catalogProduct.providerOptions ?? [],
+                sizes: catalogProduct.sizes,
+                colors: catalogProduct.colors,
+                production: catalogProduct.production,
+            },
+            printSideCount,
+            canvas: {
+                width: CANVAS_WIDTH,
+                height: CANVAS_HEIGHT,
+            },
+            printAsset: {
+                width: PRINT_ASSET_WIDTH,
+                height: PRINT_ASSET_HEIGHT,
+                format: "image/png" as const,
+            },
+            garment: {
+                kind: garmentKind,
+                color: color?.value ?? garmentColor,
+                colorLabel: color?.label ?? "Designed",
+                supplierColorName: color?.supplierColorName ?? color?.label ?? "Designed",
+            },
+            printAreas,
+            normalizedPrintAreas: normalizeGeometryAreas(printAreas, CANVAS_WIDTH, CANVAS_HEIGHT),
+            layers,
+        };
+    }
+
+    function chooseModelSets(preview: DesignerMockupPreview) {
+        const randomItem = <T,>(items: T[]) => {
+            const values = new Uint32Array(1);
+            crypto.getRandomValues(values);
+            return items[values[0] % items.length];
+        };
+        const available = (audience: "female" | "male") => modelSets.filter((set) =>
+            set.audience === audience &&
+            preview.lifestyle.some((image) => image.id === set.frontTemplateId) &&
+            preview.lifestyle.some((image) => image.id === set.backTemplateId)
+        );
+        const females = available("female");
+        const males = available("male");
+        if (females.length) {
+            setFemaleModelSet((current) => females.some((set) => set.id === current)
+                ? current
+                : randomItem(females).id);
+        }
+        if (males.length) {
+            setMaleModelSet((current) => males.some((set) => set.id === current)
+                ? current
+                : randomItem(males).id);
+        }
+        if (modelSets.length && (!females.length || !males.length)) {
+            setError("Some model photos could not be generated. Try again before saving.");
+        }
+    }
+
+    async function openPreview(view: "mockups" | "review") {
+        if (isGeneratingMockups || isUploadingArtwork) return;
+        if (saleColors.length === 0) {
+            setError("Choose at least one colour to sell.");
+            setActiveView("colors");
+            return;
+        }
+        if (view === "review" && (layers.length === 0 || !title.trim())) {
+            setError("Add artwork and a product name before reviewing the listing.");
+            return;
+        }
+        if (view === "review" && activeView === "mockups" && mockupPreview) {
+            chooseModelSets(mockupPreview);
+            setActiveView("review");
+            return;
+        }
+        setActiveView(view);
+        setIsGeneratingMockups(true);
+        setMockupPreview(null);
+        setError(null);
+
+        try {
+            const preview = JSON.parse(await generateDesignerMockupPreviewAction(
+                JSON.stringify(buildDesignPayload(listingColor)),
+                JSON.stringify(saleColorNames)
+            )) as DesignerMockupPreview;
+            setMockupPreview(preview);
+            if (view === "review") chooseModelSets(preview);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Could not generate mockups");
+        } finally {
+            setIsGeneratingMockups(false);
+        }
+    }
+
+    function handleViewMockups() {
+        setError(null);
+        setActiveView("colors");
     }
 
     async function handleSave(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (isSaving) return;
+        if (isSaving || isUploadingArtwork) return;
+        if (activeView !== "review") {
+            setActiveView("colors");
+            return;
+        }
+        if (layers.length === 0) {
+            setError("Add artwork or text before saving the product.");
+            return;
+        }
+        if (!canSaveReview) {
+            setError("Choose one available female and male model set before saving.");
+            return;
+        }
 
         const shouldPublish = saveModeRef.current === "publish";
         setSavingMode(saveModeRef.current);
@@ -464,63 +942,27 @@ export default function DesignerClient({
         setError(null);
 
         try {
-            const frontRender = await renderForSave("front");
-            const backRender = hasBackDesign ? await renderForSave("back") : "";
-            const frontPrintAsset = await renderPrintAsset(layers, "front", catalogProduct.printAreas);
-            const backPrintAsset = hasBackDesign ? await renderPrintAsset(layers, "back", catalogProduct.printAreas) : "";
-            const selectedColor = catalogProduct.colors.find((item) => item.value === garmentColor);
-            const designPayload = {
-                version: 1,
-                templateKey: `merch-tent-${garmentKind}-v1`,
-                catalogProduct: {
-                    key: catalogProduct.key,
-                    name: catalogProduct.name,
-                    brand: catalogProduct.brand,
-                    model: catalogProduct.model,
-                    category: catalogProduct.category,
-                    supplier: catalogProduct.supplier,
-                    providerOptions: catalogProduct.providerOptions ?? [],
-                    sizes: catalogProduct.sizes,
-                    colors: catalogProduct.colors,
-                    production: catalogProduct.production,
-                },
-                printSideCount,
-                canvas: {
-                    width: CANVAS_WIDTH,
-                    height: CANVAS_HEIGHT,
-                },
-                printAsset: {
-                    width: PRINT_ASSET_WIDTH,
-                    height: PRINT_ASSET_HEIGHT,
-                    format: "image/png",
-                },
-                garment: {
-                    kind: garmentKind,
-                    color: garmentColor,
-                    colorLabel: selectedColor?.label ?? "Designed",
-                    supplierColorName: selectedColor?.supplierColorName ?? selectedColor?.label ?? "Designed",
-                },
-                printAreas: catalogProduct.printAreas,
-                layers,
-            };
+            const designPayload = buildDesignPayload(listingColor);
 
             const formData = new FormData();
+            if (initialProduct) formData.set("product_id", initialProduct.id);
             formData.set("title", productTitlePreview);
             formData.set("description", description);
             formData.set("price", price);
             formData.set("category", category);
-            formData.set("garment_color", garmentColor);
-            formData.set("garment_label", selectedColor?.label ?? "Designed");
+            formData.set("garment_color", listingColor.value);
+            formData.set("garment_label", listingColor.label);
+            formData.set("sale_color_names", JSON.stringify(saleColorNames));
             formData.set("design_json", JSON.stringify(designPayload));
-            formData.set("front_render", frontRender);
-            formData.set("back_render", backRender);
-            formData.set("front_print_asset", frontPrintAsset);
-            formData.set("back_print_asset", backPrintAsset);
             formData.set("catalog_product_key", catalogProduct.key);
             formData.set("supplier_key", catalogProduct.supplier.key);
             formData.set("supplier_product_id", catalogProduct.supplier.externalProductId);
             formData.set("supplier_automation_mode", catalogProduct.supplier.automationMode);
             formData.set("provider_options_json", JSON.stringify(catalogProduct.providerOptions ?? []));
+            if (modelSets.length > 0 && femaleModelSet && maleModelSet) {
+                formData.set("female_model_set", femaleModelSet);
+                formData.set("male_model_set", maleModelSet);
+            }
             if (catalogProduct.supplier.printify) {
                 formData.set("printify_blueprint_id", String(catalogProduct.supplier.printify.blueprintId));
                 if (catalogProduct.supplier.printify.printProviderId) {
@@ -542,8 +984,129 @@ export default function DesignerClient({
     return (
         <form
             onSubmit={handleSave}
-            className="grid max-h-[100vh] min-h-[720px] gap-0 overflow-hidden border border-neutral-800 bg-black xl:grid-cols-[360px_minmax(0,1fr)_320px]"
+            className="relative grid h-full min-h-0 flex-1 gap-0 overflow-hidden border border-neutral-800 bg-black xl:grid-cols-[360px_minmax(0,1fr)_320px]"
         >
+            {activeView !== "designer" ? (
+                <section className="absolute inset-0 z-30 flex min-h-0 flex-col bg-black">
+                    <div className="flex shrink-0 items-center justify-between gap-4 border-b border-neutral-800 bg-neutral-950 p-4">
+                        <button
+                            type="button"
+                            onClick={() => setActiveView(activeView === "review" ? "mockups" : activeView === "mockups" ? "colors" : "designer")}
+                            className="inline-flex h-10 items-center gap-2 border border-neutral-700 px-4 text-sm font-black text-white transition hover:border-lime-300 hover:text-lime-300"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="sm:hidden">Back</span>
+                            <span className="hidden sm:inline">Back</span>
+                        </button>
+                        <div className="flex items-center gap-4">
+                            {activeView === "mockups" && mockupPreview ? (
+                                <button
+                                    type="button"
+                                    onClick={() => void openPreview("review")}
+                                    className="inline-flex h-10 items-center gap-2 bg-lime-300 px-4 text-sm font-black text-black hover:bg-lime-200"
+                                >
+                                    Review listing <ArrowRight className="h-4 w-4" />
+                                </button>
+                            ) : null}
+                            <div className="hidden text-right sm:block">
+                                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-lime-300">{activeView === "review" ? "Final review" : activeView === "colors" ? "Colours to sell" : "Store preview"}</p>
+                                <p className="mt-1 text-sm font-black uppercase text-white">{activeView === "review" ? "Choose photos and check the listing" : activeView === "colors" ? "Choose the final range" : "Generated by Merch Tent"}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex min-h-0 flex-1">
+                        {activeView === "colors" ? (
+                            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-8 md:px-10">
+                                <div className="mx-auto max-w-4xl">
+                                    <p className="text-xs font-black uppercase text-lime-300">Colours to sell</p>
+                                    <h2 className="mt-2 text-3xl font-black uppercase">Choose the final colours.</h2>
+                                    <p className="mt-3 text-sm text-neutral-400">Your front and back artwork is shared across every selected colour. The colour you used while designing was only a preview.</p>
+                                    <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                        {catalogProduct.colors.map((item) => {
+                                            const name = item.supplierColorName ?? item.label;
+                                            const checked = saleColorNames.includes(name);
+                                            return <label key={name} className={`flex items-center gap-3 border p-4 ${checked ? "cursor-pointer border-lime-300 bg-lime-300/10" : saleColorNames.length >= 6 ? "cursor-not-allowed border-neutral-800 bg-neutral-950 opacity-50" : "cursor-pointer border-neutral-700 bg-neutral-950"}`}>
+                                                <input type="checkbox" checked={checked} disabled={!checked && saleColorNames.length >= 6} onChange={() => { setSaleColorNames((current) => checked ? current.filter((value) => value !== name) : [...current, name]); setMockupPreview(null); setError(null); }} className="h-5 w-5 accent-lime-300" />
+                                                <span className="h-7 w-7 shrink-0 border border-white/30" style={{ backgroundColor: item.value }} />
+                                                <span className="text-sm font-bold">{item.label}</span>
+                                            </label>;
+                                        })}
+                                    </div>
+                                    <p className="mt-5 text-xs text-neutral-400">Choose up to six colours. Black has photographed model mockups. Other colours use flat front and back garment previews.</p>
+                                    {error ? <p className="mt-4 text-sm text-red-300" role="alert">{error}</p> : null}
+                                    <button type="button" disabled={!saleColors.length || isGeneratingMockups || isUploadingArtwork} onClick={() => void openPreview("mockups")} className="mt-7 inline-flex h-11 items-center gap-2 bg-lime-300 px-5 text-sm font-black text-black disabled:opacity-50">Generate mockups <ArrowRight className="h-4 w-4" /></button>
+                                </div>
+                            </div>
+                        ) : isGeneratingMockups ? (
+                            <div className="m-5 grid w-full place-items-center border border-neutral-800 bg-neutral-950">
+                                <div className="text-center">
+                                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-lime-300" />
+                                    <p className="mt-4 text-sm font-black uppercase tracking-[0.16em]">Generating mockups</p>
+                                    <p className="mt-2 text-xs text-neutral-500">Applying artwork, colour, lighting and texture.</p>
+                                </div>
+                            </div>
+                        ) : mockupPreview ? activeView === "mockups" ? (
+                            <MockupGallery preview={mockupPreview} />
+                        ) : (
+                            <DesignerListingReview
+                                preview={mockupPreview}
+                                modelSets={modelSets}
+                                femaleModelSet={femaleModelSet}
+                                maleModelSet={maleModelSet}
+                                onSelectFemale={setFemaleModelSet}
+                                onSelectMale={setMaleModelSet}
+                                artistName={artistName}
+                                title={productTitlePreview}
+                                description={description}
+                                category={category}
+                                priceCents={activePriceCents}
+                                sizes={catalogProduct.sizes}
+                                hasFrontDesign={hasFrontDesign}
+                                hasBackDesign={hasBackDesign}
+                            />
+                        ) : (
+                            <div className="m-5 grid w-full place-items-center border border-red-500/30 bg-red-500/10 p-6 text-center">
+                                <div>
+                                    <p className="text-lg font-black uppercase text-red-100">Mockup could not be generated</p>
+                                    <p className="mt-2 text-sm text-red-200/70">{error ?? "Return to the designer and try again."}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => void openPreview(activeView)}
+                                        className="mt-5 bg-lime-300 px-5 py-3 text-sm font-black text-black hover:bg-lime-200"
+                                    >
+                                        Try again
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    {activeView === "review" && mockupPreview && !isGeneratingMockups ? (
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-neutral-800 bg-neutral-950 p-4">
+                            {error ? <p className="mr-auto text-sm text-red-300" role="alert">{error}</p> : null}
+                            <Button
+                                type="submit"
+                                onClick={() => { saveModeRef.current = "draft"; }}
+                                disabled={isSaving || isUploadingArtwork || !canSaveReview}
+                                className="h-11 border border-neutral-700 bg-black px-5 font-black hover:bg-neutral-900"
+                            >
+                                {isSaving && savingMode === "draft" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Save draft
+                            </Button>
+                            <Button
+                                type="submit"
+                                onClick={() => { saveModeRef.current = "publish"; }}
+                                disabled={isSaving || isUploadingArtwork || !canSaveReview}
+                                className="h-11 bg-lime-300 px-5 font-black text-black hover:bg-lime-200"
+                            >
+                                {isSaving && savingMode === "publish" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Save and publish to shop
+                            </Button>
+                        </div>
+                    ) : null}
+                </section>
+            ) : null}
+
             <section className="flex min-h-0 flex-col border-b border-neutral-800 bg-neutral-950 xl:border-b-0 xl:border-r">
                 <div className="grid grid-cols-4 border-b border-neutral-800">
                     {([
@@ -569,6 +1132,13 @@ export default function DesignerClient({
                 <div className="min-h-0 flex-1 overflow-y-auto p-4">
                     {activeToolPanel === "product" ? (
                         <div className="space-y-4">
+                            {initialProduct?.referenceImageUrl && layers.length === 0 ? (
+                                <div className="border border-amber-500/50 bg-amber-500/10 p-3">
+                                    <p className="text-sm font-bold text-amber-200">Artwork needs to be added again</p>
+                                    <p className="mt-1 text-xs leading-5 text-neutral-300">This product saved a mockup, but its editable layers were lost when generation failed. Use the image below as a reference, then add your artwork or text to the canvas.</p>
+                                    <Image src={initialProduct.referenceImageUrl} alt="Previous product mockup for reference" width={320} height={320} className="mt-3 w-full object-contain" unoptimized />
+                                </div>
+                            ) : null}
                             <div>
                                 <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">
                                     Product details
@@ -631,12 +1201,11 @@ export default function DesignerClient({
                                 </p>
                                 <h2 className="mt-2 text-2xl font-black uppercase">{catalogProduct.name}</h2>
                                 <p className="mt-2 text-xs uppercase tracking-[0.18em] text-neutral-500">
-                                    {catalogProduct.brand} {catalogProduct.model} / {catalogProduct.supplier.name}
+                                    {catalogProduct.brand} {catalogProduct.model}
                                 </p>
                             </div>
                             <p className="border border-neutral-800 bg-black p-3 text-xs leading-5 text-neutral-400">
-                                {catalogProduct.production.method} print. Product stays Merch Tent-first, with supplier
-                                data saved for fulfilment on the first sale.
+                                {catalogProduct.production.method} print. Made to order after the first sale.
                             </p>
                             <div className="grid grid-cols-3 gap-2 text-center text-xs">
                                 <div className="border border-neutral-800 bg-black p-2">
@@ -655,11 +1224,11 @@ export default function DesignerClient({
                             <div className="grid grid-cols-2 gap-2">
                                 {catalogProduct.colors.map((item) => (
                                     <button
-                                        key={item.value}
+                                        key={item.supplierColorName ?? item.label}
                                         type="button"
-                                        onClick={() => setGarmentColor(item.value)}
+                                        onClick={() => setSelectedColorName(item.supplierColorName ?? item.label)}
                                         className={`flex h-10 items-center gap-2 border px-2 text-xs ${
-                                            garmentColor === item.value
+                                            selectedColorName === (item.supplierColorName ?? item.label)
                                                 ? "border-lime-300 bg-lime-300/15"
                                                 : "border-neutral-700 bg-black"
                                         }`}
@@ -714,21 +1283,27 @@ export default function DesignerClient({
                     {activeToolPanel === "selection" ? (
                         <LayerEditor
                             selectedLayer={selectedLayer}
+                            printArea={printAreas[activeSide]}
                             updateLayer={updateLayer}
+                            applyQuickAction={applyQuickAction}
                             removeSelectedLayer={removeSelectedLayer}
                         />
                     ) : null}
                 </div>
             </section>
 
-            <section className="min-h-0 min-w-0 space-y-4 overflow-y-auto p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 border border-neutral-800 bg-neutral-950 p-3">
+            <section className="flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden p-4">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border border-neutral-800 bg-neutral-950 p-3">
                     <div className="inline-flex border border-neutral-800 bg-black p-1">
                         {(["front", "back"] as Side[]).map((side) => (
                             <button
                                 key={side}
                                 type="button"
-                                onClick={() => setActiveSide(side)}
+                                onClick={() => {
+                                    setActiveSide(side);
+                                    const selected = layersRef.current.find((layer) => layer.id === selectedLayerId);
+                                    if (selected?.side !== side) setSelectedLayerId(null);
+                                }}
                                 className={`h-9 px-4 text-sm font-black capitalize ${activeSide === side
                                     ? "bg-lime-300 text-black"
                                     : "text-neutral-400 hover:text-white"
@@ -740,49 +1315,67 @@ export default function DesignerClient({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <label className="inline-flex h-9 cursor-pointer items-center gap-2 bg-lime-300 px-3 text-sm font-black text-black hover:bg-lime-200">
-                            <ImageIcon className="h-4 w-4" />
-                            Image
-                            <input
-                                type="file"
-                                accept="image/png,image/jpeg,image/webp"
-                                className="hidden"
-                                onChange={(event) => {
-                                    addImageLayer(event.target.files?.[0] ?? null);
-                                    event.target.value = "";
-                                }}
-                            />
-                        </label>
-                        <Button type="button" onClick={addTextLayer} variant="secondary">
-                            <Type className="mr-2 h-4 w-4" />
-                                Text
-                        </Button>
+                        <button
+                            type="button"
+                            onClick={handleViewMockups}
+                            disabled={isGeneratingMockups || isUploadingArtwork}
+                            className="inline-flex h-9 items-center gap-2 border border-lime-300 px-3 text-sm font-black text-lime-300 transition hover:bg-lime-300 hover:text-black disabled:cursor-not-allowed disabled:border-neutral-700 disabled:text-neutral-600"
+                        >
+                            {isGeneratingMockups ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                            <span className="hidden sm:inline">View mockups</span>
+                        </button>
+                        {selectedLayer ? (
+                            <button
+                                type="button"
+                                onClick={removeSelectedLayer}
+                                className="inline-flex h-9 items-center gap-2 border border-red-500/50 px-3 text-sm font-bold text-red-300 hover:bg-red-500/15"
+                                title="Delete selected layer"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="hidden sm:inline">Delete</span>
+                            </button>
+                        ) : null}
                     </div>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                    <div className={activeSide === "front" ? "block" : "hidden lg:block opacity-40"}>
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <div className="relative grid min-h-0 flex-1 place-items-center overflow-hidden bg-white p-3 md:p-5">
+                        <div className="absolute left-3 top-3 z-10 flex items-center gap-1 border border-neutral-700 bg-black p-1 shadow-lg md:left-5 md:top-5" aria-label="Add to design">
+                            <label className={`inline-flex h-10 items-center gap-2 bg-lime-300 px-3 text-sm font-black text-black hover:bg-lime-200 ${isUploadingArtwork ? "cursor-wait opacity-60" : "cursor-pointer"}`}>
+                                {isUploadingArtwork ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                                {isUploadingArtwork ? "Uploading" : "Image"}
+                                <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    className="hidden"
+                                    disabled={isUploadingArtwork}
+                                    onChange={(event) => {
+                                        void addImageLayer(event.target.files?.[0] ?? null);
+                                        event.target.value = "";
+                                    }}
+                                />
+                            </label>
+                            <button
+                                type="button"
+                                onClick={addTextLayer}
+                                className="inline-flex h-10 items-center gap-2 px-3 text-sm font-black text-white hover:bg-neutral-800"
+                            >
+                                <Type className="h-4 w-4" />
+                                Text
+                            </button>
+                        </div>
                         <canvas
-                            ref={frontCanvasRef}
-                            className="aspect-[3/4] w-full touch-none border border-neutral-800 bg-neutral-950"
-                            onPointerDown={activeSide === "front" ? handlePointerDown : undefined}
-                            onPointerMove={activeSide === "front" ? handlePointerMove : undefined}
-                            onPointerUp={activeSide === "front" ? handlePointerUp : undefined}
-                            onPointerCancel={activeSide === "front" ? handlePointerUp : undefined}
+                            ref={canvasRef}
+                            className="block h-full min-h-0 w-auto max-w-full touch-none bg-white"
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
+                            onPointerCancel={handlePointerUp}
                         />
-                        <p className="mt-2 text-center text-xs uppercase tracking-wide text-neutral-500">Front</p>
                     </div>
-
-                    <div className={activeSide === "back" ? "block" : "hidden lg:block opacity-40"}>
-                        <canvas
-                            ref={backCanvasRef}
-                            className="aspect-[3/4] w-full touch-none border border-neutral-800 bg-neutral-950"
-                            onPointerDown={activeSide === "back" ? handlePointerDown : undefined}
-                            onPointerMove={activeSide === "back" ? handlePointerMove : undefined}
-                            onPointerUp={activeSide === "back" ? handlePointerUp : undefined}
-                            onPointerCancel={activeSide === "back" ? handlePointerUp : undefined}
-                        />
-                        <p className="mt-2 text-center text-xs uppercase tracking-wide text-neutral-500">Back</p>
+                    <div className="mt-2 flex shrink-0 items-center justify-between text-xs uppercase tracking-wide text-neutral-500">
+                        <span>{activeSide} view</span>
+                        <span>{selectedLayer ? "Drag to move | green handle resizes | red handle rotates" : "Select artwork to edit"}</span>
                     </div>
                 </div>
             </section>
@@ -797,38 +1390,32 @@ export default function DesignerClient({
                             label="Single"
                             priceCents={singlePriceCents}
                             artistProfitCents={artistProfitCents}
+                            active={!hasTwoPrintSides}
                         />
                         <PriceSummaryCard
                             label="Double"
                             priceCents={doublePriceCents}
                             artistProfitCents={artistProfitCents}
+                            active={hasTwoPrintSides}
                         />
                     </div>
                     <div className="mt-3 border border-neutral-800 bg-black p-3">
                         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
                             Current design
                         </p>
-                        <p className="mt-1 text-2xl font-black text-[#b7ff3c]">
-                            {formatMoneyFromCents(activePriceCents)}
+                        <p className="mt-1 text-sm text-neutral-300">
+                            RRP <span className="font-black text-[#b7ff3c]">{formatMoneyFromCents(activePriceCents)}</span>
+                        </p>
+                        <p className="mt-1 text-sm text-neutral-300">
+                            Band profit <span className="font-black text-white">{formatMoneyFromCents(artistProfitCents)}</span>
                         </p>
                         <p className="mt-1 text-xs text-neutral-400">
-                            {printSideCount === 2 ? "Front + back artwork" : "Front artwork only"}
+                            {hasTwoPrintSides ? "Front + back artwork" : hasBackDesign ? "Back artwork only" : "Front artwork only"}
                         </p>
                     </div>
                 </div>
 
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-                    <label className="block">
-                        <span className="block text-[11px] uppercase tracking-wide text-neutral-400 mb-1">
-                            New text
-                        </span>
-                        <input
-                            value={newText}
-                            onChange={(event) => setNewText(event.target.value)}
-                            className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm outline-none focus:border-lime-300"
-                        />
-                    </label>
-
                     {error ? (
                         <p className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                             {error}
@@ -836,49 +1423,12 @@ export default function DesignerClient({
                     ) : null}
 
                     <Button
-                        type="submit"
-                        name="save_mode"
-                        value="draft"
-                        onClick={() => {
-                            saveModeRef.current = "draft";
-                        }}
-                        disabled={isSaving || !title || layers.length === 0}
-                        className="h-11 w-full border border-neutral-700 bg-black font-black hover:bg-neutral-900"
-                    >
-                        {isSaving && savingMode === "draft" ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Saving
-                            </>
-                        ) : (
-                            <>
-                                <Save className="mr-2 h-4 w-4" />
-                                Save draft
-                            </>
-                        )}
-                    </Button>
-
-                    <Button
-                        type="submit"
-                        name="save_mode"
-                        value="publish"
-                        onClick={() => {
-                            saveModeRef.current = "publish";
-                        }}
-                        disabled={isSaving || !title || layers.length === 0}
+                        type="button"
+                        onClick={() => setActiveView("colors")}
+                        disabled={isGeneratingMockups || isUploadingArtwork || !title.trim() || layers.length === 0}
                         className="h-11 w-full bg-lime-300 font-black text-black hover:bg-lime-200"
                     >
-                        {isSaving && savingMode === "publish" ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Publishing
-                            </>
-                        ) : (
-                            <>
-                                <Save className="mr-2 h-4 w-4" />
-                                Save and publish to shop
-                            </>
-                        )}
+                        Choose colours <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 </div>
             </section>
@@ -886,23 +1436,112 @@ export default function DesignerClient({
     );
 }
 
+function MockupGallery({ preview }: { preview: DesignerMockupPreview }) {
+    const mockups = [
+        { id: "front", label: "Front", src: preview.front },
+        ...(preview.back ? [{ id: "back", label: "Back", src: preview.back }] : []),
+        ...preview.colorMockups.flatMap((color) => color.front === preview.front ? [] : [
+            { id: `${color.label}-front`, label: `${color.label} front`, src: color.front },
+            { id: `${color.label}-back`, label: `${color.label} back`, src: color.back },
+        ]),
+        ...preview.lifestyle,
+    ];
+    const [slots, setSlots] = useState<[string, string]>([
+        "front",
+        preview.back ? "back" : preview.lifestyle[0]?.id ?? "front",
+    ]);
+    const [activeSlot, setActiveSlot] = useState<0 | 1>(1);
+    const mainMockups = slots.map((id) => mockups.find((mockup) => mockup.id === id) ?? mockups[0]);
+    const otherMockups = mockups.filter((mockup) => !slots.includes(mockup.id));
+
+    function showInActiveSlot(id: string) {
+        setSlots((current) => current.map((item, index) => index === activeSlot ? id : item) as [string, string]);
+    }
+
+    return (
+        <div className="flex min-h-0 w-full flex-col gap-3 p-3 lg:grid lg:grid-cols-[minmax(0,1fr)_150px] lg:gap-5 lg:p-5 xl:grid-cols-[minmax(0,1fr)_180px]">
+            <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 lg:gap-5">
+                {mainMockups.map((mockup, index) => (
+                    <button
+                        key={index}
+                        type="button"
+                        onClick={() => setActiveSlot(index as 0 | 1)}
+                        aria-pressed={activeSlot === index}
+                        aria-label={`Select ${mockup.label} large preview`}
+                        title={`Select ${mockup.label} preview to replace`}
+                        className={`flex min-h-0 min-w-0 flex-col border bg-neutral-950 p-2 text-left transition lg:p-3 ${
+                            activeSlot === index ? "border-lime-300" : "border-neutral-800 hover:border-neutral-500"
+                        }`}
+                    >
+                        <span className="relative min-h-0 w-full flex-1 overflow-hidden bg-[#f3f1e8]">
+                            <Image
+                                src={mockup.src}
+                                alt={`${mockup.label} product mockup`}
+                                fill
+                                unoptimized
+                                sizes="(min-width: 1024px) 40vw, 45vw"
+                                className="object-contain"
+                            />
+                        </span>
+                        <span className="shrink-0 pt-2 text-center text-[11px] font-black uppercase tracking-[0.18em] text-neutral-300 lg:pt-3">
+                            {mockup.label}
+                        </span>
+                    </button>
+                ))}
+            </div>
+            {otherMockups.length > 0 ? (
+                <aside className="flex min-h-0 shrink-0 flex-col border-t border-neutral-800 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0" aria-label="Other mockup views">
+                    <p className="mb-2 shrink-0 text-[10px] font-black uppercase tracking-[0.18em] text-lime-300">Other views</p>
+                    <div className="flex min-h-0 gap-2 overflow-x-auto lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto">
+                        {otherMockups.map((mockup) => (
+                            <button
+                                key={mockup.id}
+                                type="button"
+                                onClick={() => showInActiveSlot(mockup.id)}
+                                aria-label={`Show ${mockup.label} in selected large preview`}
+                                title={`Show ${mockup.label} in selected large preview`}
+                                className="flex w-24 shrink-0 flex-col border border-neutral-700 bg-neutral-950 p-1.5 text-left transition hover:border-lime-300 focus-visible:border-lime-300 focus-visible:outline-none lg:w-full"
+                            >
+                                <span className="relative aspect-[3/4] w-full overflow-hidden bg-[#f3f1e8]">
+                                    <Image
+                                        src={mockup.src}
+                                        alt=""
+                                        fill
+                                        unoptimized
+                                        sizes="180px"
+                                        className="object-contain"
+                                    />
+                                </span>
+                                <span className="mt-1 w-full truncate text-center text-[10px] font-bold uppercase text-neutral-300">{mockup.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </aside>
+            ) : null}
+        </div>
+    );
+}
+
 function PriceSummaryCard({
     label,
     priceCents,
     artistProfitCents,
+    active,
     note,
 }: {
     label: string;
     priceCents: number;
     artistProfitCents: number;
+    active: boolean;
     note?: string;
 }) {
     return (
-        <div className="border border-neutral-800 bg-black p-3">
+        <div className={`border bg-black p-3 ${active ? "border-lime-300" : "border-neutral-800"}`}>
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</p>
-            <p className="mt-1 text-xl font-black text-white">{formatMoneyFromCents(priceCents)}</p>
-            <p className="mt-2 text-[11px] uppercase tracking-[0.1em] text-neutral-500">
-                Band {formatMoneyFromCents(artistProfitCents)} / {formatPercent(artistProfitCents, priceCents)}
+            <p className="mt-2 text-xs text-neutral-400">RRP</p>
+            <p className="text-xl font-black text-white">{formatMoneyFromCents(priceCents)}</p>
+            <p className="mt-2 text-xs text-neutral-400">
+                Band profit <span className="font-black text-white">{formatMoneyFromCents(artistProfitCents)}</span>
             </p>
             {note ? <p className="mt-1 text-[11px] text-red-300">{note}</p> : null}
         </div>
@@ -911,11 +1550,15 @@ function PriceSummaryCard({
 
 function LayerEditor({
     selectedLayer,
+    printArea,
     updateLayer,
+    applyQuickAction,
     removeSelectedLayer,
 }: {
     selectedLayer: DesignLayer | null;
+    printArea: PixelRect;
     updateLayer: (id: string, patch: Partial<DesignLayer>) => void;
+    applyQuickAction: (action: LayerQuickAction) => void;
     removeSelectedLayer: () => void;
 }) {
     if (!selectedLayer) {
@@ -932,6 +1575,49 @@ function LayerEditor({
     return (
         <div className="space-y-4">
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">Edit layer</p>
+            <div>
+                <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-neutral-400">Position in print area</p>
+                <div className="grid grid-cols-2 gap-2">
+                    <PositionInput
+                        key={`${selectedLayer.id}-x-${Math.round(selectedLayer.x - printArea.x)}`}
+                        label="X from left"
+                        value={Math.round(selectedLayer.x - printArea.x)}
+                        onCommit={(value) => updateLayer(selectedLayer.id, getLayerPositionPatch(selectedLayer, printArea, "x", value))}
+                    />
+                    <PositionInput
+                        key={`${selectedLayer.id}-y-${Math.round(selectedLayer.y - printArea.y)}`}
+                        label="Y from top"
+                        value={Math.round(selectedLayer.y - printArea.y)}
+                        onCommit={(value) => updateLayer(selectedLayer.id, getLayerPositionPatch(selectedLayer, printArea, "y", value))}
+                    />
+                </div>
+            </div>
+            <div>
+                <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-neutral-400">Quick actions</p>
+                <div className="grid grid-cols-2 gap-2">
+                    {([
+                        ["center-horizontal", AlignCenterHorizontal, "Centre horizontally"],
+                        ["center-vertical", AlignCenterVertical, "Centre vertically"],
+                        ["max-width", MoveHorizontal, "Max width"],
+                        ["max-height", MoveVertical, "Max height"],
+                        ["top", MoveUp, "Top edge"],
+                        ["bottom", MoveDown, "Bottom edge"],
+                        ["left", MoveLeft, "Left edge"],
+                        ["right", MoveRight, "Right edge"],
+                    ] as const).map(([action, Icon, label]) => (
+                        <button
+                            key={action}
+                            type="button"
+                            onClick={() => applyQuickAction(action)}
+                            title={`${label} in the printable area`}
+                            className="flex min-h-11 items-center gap-2 border border-neutral-700 bg-black px-2 py-2 text-left text-xs font-bold text-white transition hover:border-lime-300 hover:text-lime-300"
+                        >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span>{label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
             {selectedLayer.type === "text" ? (
                 <>
                     <label className="block">
@@ -951,6 +1637,32 @@ function LayerEditor({
                             onChange={(event) => updateLayer(selectedLayer.id, { fill: event.target.value })}
                             className="h-10 w-full border border-neutral-700 bg-black"
                         />
+                    </label>
+                    <label className="block">
+                        <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">Font</span>
+                        <select
+                            value={selectedLayer.fontFamily ?? "Arial"}
+                            onChange={(event) => updateLayer(selectedLayer.id, { fontFamily: event.target.value })}
+                            className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm text-white outline-none focus:border-lime-300"
+                        >
+                            {["Arial", "Impact", "Georgia", "Verdana", "Courier New"].map((font) => (
+                                <option key={font} value={font}>{font}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="block">
+                        <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">Weight</span>
+                        <select
+                            value={selectedLayer.fontWeight ?? "900"}
+                            onChange={(event) => updateLayer(selectedLayer.id, { fontWeight: event.target.value })}
+                            className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm text-white outline-none focus:border-lime-300"
+                        >
+                            <option value="400">Regular</option>
+                            <option value="600">Semi bold</option>
+                            <option value="700">Bold</option>
+                            <option value="800">Extra bold</option>
+                            <option value="900">Black</option>
+                        </select>
                     </label>
                     <RangeControl
                         label="Font size"
@@ -1005,6 +1717,34 @@ function LayerEditor({
                 Remove layer
             </button>
         </div>
+    );
+}
+
+function PositionInput({ label, value, onCommit }: { label: string; value: number; onCommit: (value: number) => void }) {
+    const [draft, setDraft] = useState(String(value));
+
+    return (
+        <label className="block">
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">{label}</span>
+            <input
+                type="number"
+                step="1"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onBlur={() => {
+                    const number = Number(draft);
+                    if (draft.trim() && Number.isFinite(number)) onCommit(number);
+                    setDraft(String(value));
+                }}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        event.currentTarget.blur();
+                    }
+                }}
+                className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm text-white outline-none focus:border-lime-300"
+            />
+        </label>
     );
 }
 

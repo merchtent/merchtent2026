@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { getServerSupabase } from "@/lib/supabase/server";
 import ProductModerationActions from "./ProductModerationActions";
+import AdminProductArchiveButton from "./AdminProductArchiveButton";
 
 function money(cents: number) {
     return `$${((cents ?? 0) / 100).toFixed(2)}`;
@@ -132,7 +133,11 @@ export default async function ProductPage({
 
                     <div className="flex gap-2 mt-4">
 
-                        {product.is_published && (
+                        {product.artist_archived_at && (
+                            <span className="border border-neutral-600 px-3 py-1 text-xs font-bold uppercase text-neutral-300">Archived</span>
+                        )}
+
+                        {product.is_published && product.moderation_status === "approved" && !product.artist_archived_at && (
                             <span className="
                                 px-3
                                 py-1
@@ -166,7 +171,8 @@ export default async function ProductPage({
 
                 </div>
 
-                <Link
+                <div className="flex flex-wrap items-center gap-3">
+                {!product.artist_archived_at ? <Link
                     href={`/admin/products/${product.id}/edit`}
                     className="
                         bg-lime-300
@@ -181,7 +187,9 @@ export default async function ProductPage({
                     "
                 >
                     Edit Product
-                </Link>
+                </Link> : null}
+                <AdminProductArchiveButton productId={product.id} productTitle={product.title} archived={Boolean(product.artist_archived_at)} />
+                </div>
 
             </div>
             </section>
@@ -463,10 +471,11 @@ export default async function ProductPage({
                             Moderation
                         </h2>
 
-                        <ProductModerationActions
+                        {!product.artist_archived_at ? <ProductModerationActions
+                            key={product.moderation_status ?? "unknown"}
                             productId={product.id}
                             currentStatus={product.moderation_status}
-                        />
+                        /> : <p className="text-sm text-neutral-400">Restore this product before moderating it.</p>}
 
                     </div>
 

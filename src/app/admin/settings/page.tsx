@@ -1,9 +1,20 @@
 import PolaroidsSection from "@/components/admin/PolaroidsSection";
 import TourDatesSection from "@/components/admin/TourDatesSection";
-import { getServerSupabase } from "@/lib/supabase/server";
+import TaxSettingsPanel from "@/components/admin/TaxSettingsPanel";
+import { requireAdminPage } from "@/lib/auth/admin";
 
-export default async function SettingsPage() {
-    const supabase = getServerSupabase();
+export default async function SettingsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ saved?: string }>;
+}) {
+    const { supabase } = await requireAdminPage();
+    const query = await searchParams;
+
+    const [{ data: taxSettings }, { data: turnoverStatus }] = await Promise.all([
+        supabase.from("tax_settings").select("gst_registered, gst_effective_from, gst_rate_bps, pricing_mode, legal_name, abn").eq("id", true).maybeSingle(),
+        supabase.from("gst_turnover_status").select("current_turnover_cents, projected_turnover_cents, alert_level").maybeSingle(),
+    ]);
 
     const { data: artists } = await supabase
         .from("artists")
@@ -122,6 +133,23 @@ export default async function SettingsPage() {
             </section>
 
             <section className="space-y-8 p-5 md:p-8">
+
+            <TaxSettingsPanel
+                settings={(taxSettings ?? {
+                    gst_registered: false,
+                    gst_effective_from: null,
+                    gst_rate_bps: 1000,
+                    pricing_mode: "preserve_margins",
+                    legal_name: "Merch Tent",
+                    abn: null,
+                }) as Parameters<typeof TaxSettingsPanel>[0]["settings"]}
+                turnover={(turnoverStatus ?? {
+                    current_turnover_cents: 0,
+                    projected_turnover_cents: 0,
+                    alert_level: "normal",
+                }) as Parameters<typeof TaxSettingsPanel>[0]["turnover"]}
+                saved={query.saved === "tax"}
+            />
 
             <TourDatesSection
                 tourDates={tourDates ?? []}

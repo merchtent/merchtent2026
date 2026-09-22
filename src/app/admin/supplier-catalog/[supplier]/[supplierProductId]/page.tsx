@@ -5,10 +5,12 @@ import { ArrowLeft, SlidersHorizontal } from "lucide-react";
 
 import { requireAdminPage } from "@/lib/auth/admin";
 import { SHIPPING_METHOD_OPTIONS, normaliseShippingMethodId } from "@/lib/shipping-methods";
+import { colorSwatchHex } from "@/lib/catalog/color-swatch";
 import PricingAnalysisClient from "./PricingAnalysisClient";
 import SaveCatalogSettingsButton from "./SaveCatalogSettingsButton";
 import {
     addSupplierCatalogProviderShippingAction,
+    updateSupplierCatalogColorsAction,
     updateSupplierCatalogProductSettingsAction,
     updateSupplierCatalogProviderShippingAction,
     updateSupplierCatalogVariantsAction,
@@ -40,6 +42,7 @@ type CatalogProductRow = {
             city?: string | null;
         };
     } | null;
+    colors: Array<{ label: string; value: string; supplierColorName?: string }>;
     supplier_catalog_variants: CatalogVariantRow[];
 };
 
@@ -117,6 +120,7 @@ export default async function SupplierCatalogProductPage({
                 cost_tax_rate_bps,
                 automation_mode,
                 production_data,
+                colors,
                 supplier_catalog_variants (
                     id,
                     supplier_variant_id,
@@ -175,6 +179,12 @@ export default async function SupplierCatalogProductPage({
             total + product.supplier_catalog_variants.filter((variant) => variant.is_enabled !== false).length,
         0
     );
+    const availableColorLabels = Array.from(new Map(products.flatMap((product) =>
+        product.supplier_catalog_variants
+            .filter((variant) => variant.is_enabled !== false && variant.color_label)
+            .map((variant) => [variant.color_label!.toLowerCase(), variant.color_label!] as const)
+    )).values()).sort((a, b) => a.localeCompare(b));
+    const approvedColors = new Set(seed.colors.map((color) => (color.supplierColorName ?? color.label).toLowerCase()));
     const pricingAnalysis = buildPricingAnalysis({
         products,
         shippingByCatalogProductId,
@@ -287,6 +297,7 @@ export default async function SupplierCatalogProductPage({
                             <option value="hoodies">Hoodies</option>
                             <option value="hats">Hats</option>
                             <option value="tanks">Tanks</option>
+                            <option value="bags">Bags</option>
                             <option value="posters">Posters</option>
                             <option value="vinyl">Vinyl</option>
                             <option value="accessories">Accessories</option>
@@ -301,6 +312,7 @@ export default async function SupplierCatalogProductPage({
                         >
                             <option value="tee">Tee</option>
                             <option value="hoodie">Hoodie</option>
+                            <option value="tank">Tank top</option>
                         </select>
                     </Field>
                     <Field label="Status">
@@ -383,6 +395,33 @@ export default async function SupplierCatalogProductPage({
                             </div>
                         </section>
                     )}
+                </form>
+
+                <form action={updateSupplierCatalogColorsAction} className="border-b border-neutral-800 p-6">
+                    <input type="hidden" name="supplier" value={seed.supplier} />
+                    <input type="hidden" name="supplier_product_id" value={seed.supplier_product_id} />
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-lime-300">Artist colour choices</p>
+                            <h2 className="mt-2 text-xl font-black uppercase">Allowed tee colours</h2>
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-400">Only checked colours with enabled supplier variants appear in the artist designer. Each created listing uses one selected colour. Black has the photographed tee and model mockups; other colours use the simplified garment preview.</p>
+                            {query.saved === "colors" ? <p className="mt-2 text-sm font-bold text-lime-300" role="status">Colour choices saved.</p> : null}
+                        </div>
+                        <button className="h-11 bg-lime-300 px-5 text-sm font-black uppercase text-black transition hover:bg-lime-200">Save colours</button>
+                    </div>
+                    <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {availableColorLabels.map((label) => {
+                            const color = seed.colors.find((item) => (item.supplierColorName ?? item.label).toLowerCase() === label.toLowerCase());
+                            return (
+                                <label key={label} className="flex min-w-0 cursor-pointer items-center gap-3 border border-neutral-800 bg-black p-3 text-sm text-white hover:border-neutral-500">
+                                    <input type="checkbox" name="allowed_color" value={label} defaultChecked={approvedColors.has(label.toLowerCase())} className="h-4 w-4 shrink-0 accent-lime-300" />
+                                    <span className="h-5 w-5 shrink-0 border border-white/30" style={{ backgroundColor: color?.value ?? colorSwatchHex(label) }} aria-hidden="true" />
+                                    <span className="truncate">{label}</span>
+                                </label>
+                            );
+                        })}
+                        {availableColorLabels.length === 0 ? <p className="text-sm text-neutral-400">Enable supplier variants to offer colours.</p> : null}
+                    </div>
                 </form>
 
                 <div className="grid gap-6 p-6">
@@ -864,7 +903,7 @@ function buildPricingAnalysis({
     if (!pricedCandidates.length) return null;
 
     const cheapest = pricedCandidates.sort((a, b) => a.totalCostIncGstCents - b.totalCostIncGstCents)[0];
-    const average = averagePricing(pricedCandidates);
+    const average = conservativePricingEstimate(pricedCandidates);
 
     return {
         averageBaseCostExGstCents: average.baseCostExGstCents,
@@ -878,33 +917,38 @@ function buildPricingAnalysis({
     };
 }
 
-function averagePricing(
+function conservativePricingEstimate(
     candidates: Array<{
+        providerName: string;
         baseCostExGstCents: number;
         baseCostGstCents: number;
         shippingExGstCents: number;
         shippingGstCents: number;
     }>
 ) {
-    const total = candidates.reduce(
-        (sum, candidate) => ({
-            baseCostExGstCents: sum.baseCostExGstCents + candidate.baseCostExGstCents,
-            baseCostGstCents: sum.baseCostGstCents + candidate.baseCostGstCents,
-            shippingExGstCents: sum.shippingExGstCents + candidate.shippingExGstCents,
-            shippingGstCents: sum.shippingGstCents + candidate.shippingGstCents,
-        }),
-        {
-            baseCostExGstCents: 0,
-            baseCostGstCents: 0,
-            shippingExGstCents: 0,
-            shippingGstCents: 0,
-        }
-    );
+    const providerGroups = new Map<string, typeof candidates>();
+    for (const candidate of candidates) {
+        providerGroups.set(candidate.providerName, [...(providerGroups.get(candidate.providerName) ?? []), candidate]);
+    }
+    const planningCandidates = Array.from(providerGroups.values()).map((group) => {
+        const divisor = group.length;
+        return {
+            providerName: group[0].providerName,
+            baseCostExGstCents: Math.round(group.reduce((sum, item) => sum + item.baseCostExGstCents, 0) / divisor),
+            baseCostGstCents: Math.round(group.reduce((sum, item) => sum + item.baseCostGstCents, 0) / divisor),
+            shippingExGstCents: Math.round(group.reduce((sum, item) => sum + item.shippingExGstCents, 0) / divisor),
+            shippingGstCents: Math.round(group.reduce((sum, item) => sum + item.shippingGstCents, 0) / divisor),
+        };
+    });
+    const upperWeighted = (key: "baseCostExGstCents" | "baseCostGstCents" | "shippingExGstCents" | "shippingGstCents") => {
+        const values = planningCandidates.map((item) => item[key]);
+        return Math.round(((values.reduce((sum, value) => sum + value, 0) / values.length) + Math.max(...values)) / 2);
+    };
 
     return {
-        baseCostExGstCents: Math.round(total.baseCostExGstCents / candidates.length),
-        baseCostGstCents: Math.round(total.baseCostGstCents / candidates.length),
-        shippingExGstCents: Math.round(total.shippingExGstCents / candidates.length),
-        shippingGstCents: Math.round(total.shippingGstCents / candidates.length),
+        baseCostExGstCents: upperWeighted("baseCostExGstCents"),
+        baseCostGstCents: upperWeighted("baseCostGstCents"),
+        shippingExGstCents: upperWeighted("shippingExGstCents"),
+        shippingGstCents: upperWeighted("shippingGstCents"),
     };
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
     Activity,
+    AlertTriangle,
     ArrowRight,
     BarChart3,
     Database,
@@ -92,6 +93,11 @@ export default async function AdminDashboard() {
         .select("total_cents, status")
         .returns<OrderSummary[]>();
 
+    const { data: gstTurnover } = await supabase
+        .from("gst_turnover_status")
+        .select("current_turnover_cents, projected_turnover_cents, alert_level, gst_registered")
+        .maybeSingle();
+
     const totalOrders = totals?.length ?? 0;
     const totalRevenue = totals?.reduce((sum, order) => sum + (order.total_cents || 0), 0) ?? 0;
 
@@ -135,6 +141,18 @@ export default async function AdminDashboard() {
 
     return (
         <main className="min-h-screen bg-black text-white">
+            {gstTurnover && gstTurnover.alert_level !== "normal" && !gstTurnover.gst_registered ? (
+                <Link
+                    href="/admin/settings"
+                    className="flex flex-col gap-3 border-b border-amber-400 bg-amber-300 px-5 py-4 text-black md:flex-row md:items-center md:justify-between md:px-10"
+                >
+                    <span className="flex items-center gap-3 font-black uppercase">
+                        <AlertTriangle className="h-5 w-5" />
+                        GST turnover {gstTurnover.alert_level}: {formatMoney(Math.max(gstTurnover.current_turnover_cents, gstTurnover.projected_turnover_cents))}
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-[0.12em]">Review GST settings →</span>
+                </Link>
+            ) : null}
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1fr_0.72fr]">
                     <div className="border-b border-neutral-800 p-5 md:p-10 lg:border-b-0 lg:border-r">

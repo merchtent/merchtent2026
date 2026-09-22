@@ -9,6 +9,8 @@ import { publicStorageUrl } from "@/lib/storage";
 import * as React from "react";
 import { ArrowRight, Disc3 } from "lucide-react";
 import SavedToggleButton from "@/components/SavedToggleButton";
+import { trackMarketingEvent } from "@/lib/marketing/events";
+import ProductImageGallery, { type ProductGalleryImage } from "@/components/shop/ProductImageGallery";
 
 type Artist = {
     id?: string | null;
@@ -77,7 +79,6 @@ export default function ProductViewClient({
         colors.length ? colors[0].id : null
     );
     const [selectedSize, setSelectedSize] = React.useState("M");
-    const [activeImageOverride, setActiveImageOverride] = React.useState<string | null>(null);
     const [avgRating, setAvgRating] = React.useState<number | null>(null);
     const [reviewCount, setReviewCount] = React.useState(0);
     const imageRef = React.useRef<HTMLDivElement | null>(null);
@@ -85,8 +86,35 @@ export default function ProductViewClient({
     const selectedColor = colors.find((c) => c.id === selectedColorId);
     const frontImage =
         selectedColor?.front_image_url ?? galleryUrls[0] ?? product.primary_image_url;
-    const backImage = selectedColor?.back_image_url ?? galleryUrls[1] ?? null;
-    const activeImage = activeImageOverride ?? frontImage;
+    const backImage = selectedColor?.back_image_url ?? null;
+    const galleryImages: ProductGalleryImage[] = [];
+    const seenImages = new Set<string>();
+    const addGalleryImage = (src: string | null | undefined, label: string) => {
+        if (!src || seenImages.has(src)) return;
+        seenImages.add(src);
+        galleryImages.push({ id: `view-${galleryImages.length}`, src, label });
+    };
+    addGalleryImage(frontImage, "Front");
+    if (!selectedColor || selectedColor.id === colors[0]?.id) {
+        galleryUrls.forEach((src, index) => {
+            addGalleryImage(src, src === backImage ? "Back" : index === 0 ? "Front" : `View ${galleryImages.length + 1}`);
+        });
+    }
+    addGalleryImage(backImage, "Back");
+
+    React.useEffect(() => {
+        trackMarketingEvent("view_item", {
+            currency: product.currency,
+            value_cents: product.price_cents,
+            items: [{
+                item_id: product.id,
+                item_name: product.title,
+                price_cents: product.price_cents,
+                currency: product.currency,
+                quantity: 1,
+            }],
+        });
+    }, [product.currency, product.id, product.price_cents, product.title]);
 
     React.useEffect(() => {
         let mounted = true;
@@ -220,7 +248,6 @@ export default function ProductViewClient({
                                     selectedColorId={selectedColorId}
                                     onSelectColor={(id) => {
                                         setSelectedColorId(id);
-                                        setActiveImageOverride(null);
                                     }}
                                     selectedSize={selectedSize}
                                     onSelectSize={setSelectedSize}
@@ -233,64 +260,13 @@ export default function ProductViewClient({
                         </div>
                     </div>
 
-                    <div className="order-1 grid content-start gap-4 lg:order-2">
-                        <div
-                            className="group relative isolate aspect-[4/3] scroll-mt-24 overflow-hidden border border-neutral-700 bg-[#f2f0ea] shadow-[0_26px_80px_rgba(0,0,0,0.55)] sm:aspect-square"
-                            ref={imageRef}
-                        >
-                            <Image
-                                src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1600&q=80"
-                                alt=""
-                                fill
-                                sizes="(max-width: 1024px) 100vw, 48vw"
-                                className="object-cover opacity-75"
-                            />
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_45%,rgba(190,242,100,0.22),transparent_32%),linear-gradient(180deg,rgba(0,0,0,0.16),rgba(0,0,0,0.42))]" />
-                            <div className="absolute inset-x-[8%] inset-y-[9%] bg-[#f7f4ec]/95 shadow-[0_24px_48px_rgba(0,0,0,0.5)] [clip-path:polygon(2%_1%,98%_0,100%_96%,1%_100%)]" />
-                            <div className="absolute inset-x-[11%] inset-y-[12%] border border-black/10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.72),rgba(255,255,255,0.24)_52%,transparent_74%)]" />
-
-                            {activeImage ? (
-                                <Image
-                                    src={activeImage}
-                                    alt={product.title}
-                                    fill
-                                    sizes="(max-width: 1024px) 100vw, 48vw"
-                                    className="relative z-10 object-contain p-7 drop-shadow-[0_28px_26px_rgba(0,0,0,0.42)] transition duration-500 group-hover:scale-105 sm:p-10 md:p-16"
-                                    priority
-                                />
-                            ) : null}
-
-                            {frontImage && backImage ? (
-                                <Image
-                                    src={activeImage === frontImage ? backImage : frontImage}
-                                    alt={`${product.title} alternate view`}
-                                    fill
-                                    sizes="(max-width: 1024px) 100vw, 48vw"
-                                    className="relative z-20 object-contain p-7 opacity-0 drop-shadow-[0_28px_26px_rgba(0,0,0,0.42)] transition duration-300 group-hover:opacity-100 sm:p-10 md:p-14"
-                                />
-                            ) : null}
-
-                            <span className="absolute left-3 top-3 z-30 bg-red-600 px-3 py-1 text-[11px] font-black uppercase text-white md:left-4 md:top-4">
-                                Counter pick
-                            </span>
-                            <span className="absolute bottom-4 right-4 z-30 border border-black/15 bg-lime-300 px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-black">
-                                Artist merch
-                            </span>
-                        </div>
-
-                        <div className="flex gap-2 md:gap-3">
-                            {[frontImage, backImage].filter((img): img is string => Boolean(img)).map((img, i) => (
-                                <button
-                                    key={img}
-                                    type="button"
-                                    onClick={() => setActiveImageOverride(img)}
-                                    className={`relative h-16 w-16 overflow-hidden border bg-neutral-950 transition hover:border-lime-300 md:h-20 md:w-20 ${activeImage === img ? "border-lime-300" : "border-neutral-700"}`}
-                                    aria-label={`Show product view ${i + 1}`}
-                                >
-                                    <Image src={img} alt={`Product view ${i + 1}`} fill sizes="80px" className="object-contain bg-white p-2" />
-                                </button>
-                            ))}
-                        </div>
+                    <div className="order-1 lg:order-2">
+                        <ProductImageGallery
+                            key={selectedColorId ?? "default"}
+                            images={galleryImages}
+                            title={product.title}
+                            containerRef={imageRef}
+                        />
                     </div>
                 </div>
             </section>

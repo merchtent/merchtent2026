@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
     LayoutDashboard,
     ShoppingBag,
@@ -15,6 +16,9 @@ import { requireAdminPage } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const metadata: Metadata = {
+    robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({
     children,
@@ -36,14 +40,14 @@ export default async function AdminLayout({
     ];
 
     return (
-        <div className="min-h-screen bg-black text-white lg:grid lg:grid-cols-[280px_1fr]">
+        <div className="operational-surface min-h-screen bg-black text-white lg:grid lg:grid-cols-[248px_1fr]">
             <aside className="border-b border-neutral-800 bg-black lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
-                <div className="border-b border-neutral-800 p-4 md:p-6">
-                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-lime-300">
+                <div className="border-b border-neutral-800 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-lime-300">
                         Merch Tent
                     </p>
 
-                    <h1 className="mt-2 text-3xl font-black uppercase leading-[0.9]">
+                    <h1 className="mt-1 text-2xl font-bold">
                         Backstage
                     </h1>
 
@@ -52,14 +56,14 @@ export default async function AdminLayout({
                     </p>
                 </div>
 
-                <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-2 lg:overflow-visible lg:p-4">
+                <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-1.5 lg:overflow-visible">
                     {nav.map((item) => {
                         const Icon = item.icon;
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className="inline-flex shrink-0 items-center gap-3 border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm font-black text-neutral-200 transition hover:border-lime-300 hover:bg-lime-300 hover:text-black lg:flex"
+                                className="inline-flex shrink-0 items-center gap-3 border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm font-semibold text-neutral-200 transition hover:border-lime-300 hover:bg-lime-300 hover:text-black lg:flex"
                             >
                                 <Icon className="h-4 w-4 text-red-500" />
                                 {item.label}

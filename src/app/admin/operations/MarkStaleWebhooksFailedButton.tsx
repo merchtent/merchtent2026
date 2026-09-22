@@ -34,7 +34,7 @@ export default function MarkStaleWebhooksFailedButton() {
                     }
                 });
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm font-semibold text-neutral-100 transition hover:border-red-500 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 border border-[#b6ff3f]/60 bg-black px-3 py-2 text-sm font-black uppercase tracking-[0.12em] text-[#b6ff3f] transition hover:bg-[#b6ff3f] hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
         >
             <RadioTower className="h-4 w-4" />
             {pending ? "Checking..." : "Mark stale processing failed"}

@@ -36,15 +36,49 @@ test("Supabase migrations use unique ordered timestamped SQL filenames", () => {
   }
 });
 
+test("navigation and continuous motion respect accessibility preferences", () => {
+  const layout = read("src/app/layout.tsx");
+  const globals = read("src/app/globals.css");
+  const home = read("src/app/HomePageClient.tsx");
+  const promoRail = read("src/components/shop/sections/AngledPromoRail.tsx");
+  const productionConfidence = read("src/components/shop/sections/ProductionConfidence.tsx");
+  const hero = read("src/components/shop/sections/Hero.tsx");
+
+  assert.match(layout, /href="#main-content"/);
+  assert.match(layout, /id="main-content"/);
+  assert.match(globals, /\.skip-link:focus-visible/);
+  assert.match(globals, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(globals, /\[data-marquee\]/);
+  assert.match(home, /data-marquee/);
+  assert.match(promoRail, /data-marquee/);
+  assert.match(productionConfidence, /data-marquee/);
+  assert.match(hero, /useReducedMotion/);
+});
+
+test("admin and dashboard use the quieter operational typography scale", () => {
+  const globals = read("src/app/globals.css");
+  const adminLayout = read("src/app/admin/layout.tsx");
+  const dashboardShell = read("src/app/dashboard/DashboardShell.tsx");
+
+  assert.match(globals, /\.operational-surface/);
+  assert.match(adminLayout, /operational-surface/);
+  assert.match(dashboardShell, /operational-surface/);
+});
+
 test("Supabase security definer functions pin search_path before function bodies", () => {
   const migrationFiles = readdirSync(new URL("../supabase/migrations", import.meta.url));
 
   for (const file of migrationFiles) {
     const sql = read(`supabase/migrations/${file}`);
-    const matches = sql.matchAll(/create\s+or\s+replace\s+function\s+public\.[\s\S]*?security\s+definer[\s\S]*?as\s+\$\$/gi);
+    const matches = sql.matchAll(/create\s+or\s+replace\s+function\s+public\.[\s\S]*?as\s+\$\$/gi);
 
     for (const match of matches) {
-      assert.match(match[0], /set\s+search_path\s*=\s*public/i, `${file} has a security definer function without a pinned search_path`);
+      if (!/security\s+definer/i.test(match[0])) continue;
+      assert.match(
+        match[0],
+        /set\s+search_path\s*=\s*(?:public|'')/i,
+        `${file} has a security definer function without a pinned search_path`
+      );
     }
   }
 });
@@ -2005,6 +2039,7 @@ test("Catalog randomization and designer IDs use platform crypto", () => {
   assert.match(randomHelper, /randomInt/);
   assert.doesNotMatch(randomHelper, /Math\.random/);
   assert.match(designer, /crypto\.randomUUID/);
+  assert.match(designer, /crypto\.getRandomValues/);
   assert.doesNotMatch(designer, /Math\.random/);
 });
 
@@ -2157,22 +2192,32 @@ test("Production health endpoint checks runtime configuration and database reach
   assert.doesNotMatch(maintenance, /NextResponse\.json/);
 });
 
-test("Provider email configuration is centralized behind server env helpers", () => {
+test("Provider email configuration is centralized and sends versioned branded templates", () => {
   const postmark = read("src/lib/postmark.ts");
   const testPostmark = read("src/app/api/test-postmark/route.ts");
   const serverEnv = read("src/lib/env.server.ts");
+  const orderEmails = read("src/lib/email/order-emails.ts");
+  const authSetup = read("scripts/configure-supabase-auth-smtp.mjs");
 
   assert.match(serverEnv, /optionalPostmarkServerToken/);
-  assert.match(serverEnv, /postmarkCustomerTemplateAlias/);
   assert.match(postmark, /serverEnv\.optionalPostmarkServerToken/);
+  assert.match(postmark, /renderCustomerOrderEmail/);
+  assert.match(postmark, /renderAdminOrderEmail/);
+  assert.match(postmark, /HtmlBody: email\.htmlBody/);
+  assert.match(postmark, /TextBody: email\.textBody/);
+  assert.match(postmark, /MessageStream: "outbound"/);
+  assert.doesNotMatch(postmark, /sendEmailWithTemplate/);
   assert.match(postmark, /type OrderEmailSendTask/);
   assert.match(postmark, /required: true/);
   assert.match(postmark, /required: false/);
   assert.match(postmark, /Promise\.allSettled/);
-  assert.match(postmark, /Postmark customer email is not configured\./);
   assert.match(postmark, /Postmark customer order email failed\./);
   assert.match(postmark, /Postmark order email send failed\./);
   assert.doesNotMatch(postmark, /await Promise\.all\(sends\)/);
+  assert.match(orderEmails, /Built for the scene/);
+  assert.match(orderEmails, /renderCustomerOrderEmail/);
+  assert.match(orderEmails, /renderAdminOrderEmail/);
+  assert.match(authSetup, /buildAuthEmailConfig/);
   assert.match(testPostmark, /serverEnv\.postmarkTestSecret/);
   assert.match(testPostmark, /export async function POST/);
   assert.match(testPostmark, /export const runtime = "nodejs"/);
@@ -2196,11 +2241,29 @@ test("Provider email configuration is centralized behind server env helpers", ()
 
 test("SEO routes expose canonical metadata, robots, and a data-backed sitemap", () => {
   const layout = read("src/app/layout.tsx");
+  const header = read("src/components/Header.tsx");
   const robots = read("src/app/robots.ts");
   const sitemap = read("src/app/sitemap.ts");
+  const categories = read("src/lib/catalog/public-categories.ts");
+  const categoryPage = read("src/app/category/[slug]/page.tsx");
+  const productPage = read("src/app/product/[id]/page.tsx");
+  const merchantFeed = read("src/app/google-merchant-feed.xml/route.ts");
+  const journal = read("src/app/journal/page.tsx");
+  const journalPost = read("src/app/journal/[slug]/page.tsx");
+  const authLayout = read("src/app/auth/layout.tsx");
+  const accountLayout = read("src/app/account/layout.tsx");
+  const checkoutLayout = read("src/app/checkout/layout.tsx");
 
   assert.match(layout, /metadataBase: new URL\(publicEnv\.siteUrl\(\)\)/);
   assert.match(layout, /openGraph/);
+  assert.doesNotMatch(layout, /force-dynamic/);
+  assert.doesNotMatch(layout, /getServerSupabase/);
+  assert.match(layout, /<Suspense fallback=\{null\}>\s*<PageViewTracker \/>\s*<\/Suspense>/);
+  assert.doesNotMatch(header, /getServerSupabase/);
+  for (const privateLayout of [authLayout, accountLayout, checkoutLayout]) {
+    assert.match(privateLayout, /export const dynamic = "force-dynamic"/);
+    assert.match(privateLayout, /robots: \{ index: false, follow: false \}/);
+  }
   assert.match(robots, /sitemap: `\$\{siteUrl\}\/sitemap\.xml`/);
   assert.match(robots, /disallow: \[/);
   assert.match(sitemap, /getPublicServerSupabase/);
@@ -2211,11 +2274,36 @@ test("SEO routes expose canonical metadata, robots, and a data-backed sitemap", 
   assert.match(sitemap, /eq\("is_public", true\)/);
   assert.match(sitemap, /from\("journal"\)/);
   assert.match(sitemap, /eq\("status", "published"\)/);
+  assert.match(sitemap, /PUBLIC_CATEGORY_SLUGS/);
+  assert.match(sitemap, /liveCategorySlugs/);
+  assert.doesNotMatch(sitemap, /"\/category\/vinyl"/);
+  assert.match(categories, /"tees"/);
+  assert.match(categories, /"posters"/);
+  assert.doesNotMatch(categories, /"vinyl"/);
+  assert.match(categoryPage, /if \(!isPublicCategorySlug\(slug\)\) notFound\(\)/);
+  assert.match(productPage, /if \(!product\) notFound\(\)/);
+  assert.doesNotMatch(productPage, /<h1 className="text-2xl font-black">Product not found<\/h1>/);
+  assert.match(productPage, /const isAvailable = colors\.length > 0/);
+  assert.match(productPage, /SHIPPING_METHOD_OPTIONS\.map/);
+  assert.doesNotMatch(productPage, /value: "10\.50"/);
+  assert.match(merchantFeed, /const availability = colors\.length > 0/);
+  assert.match(merchantFeed, /standardShipping\.checkoutAmountCents/);
+  assert.match(journal, /robots: \{ index: true, follow: true \}/);
+  assert.match(journalPost, /robots: \{ index: true, follow: true \}/);
 });
 
 test("Next.js config applies baseline production security headers", () => {
   const nextConfig = read("next.config.ts");
+  const proxy = read("src/proxy.ts");
+  const adminLayout = read("src/app/admin/layout.tsx");
+  const dashboardLayout = read("src/app/dashboard/layout.tsx");
+  const accountLayout = read("src/app/account/layout.tsx");
+  const artworkUpload = read("src/app/api/designer/artwork/route.ts");
+  const designer = read("src/app/dashboard/products/designer/DesignerClient.tsx");
+  const designerActions = read("src/app/dashboard/products/designer/actions.ts");
 
+  assert.match(nextConfig, /bodySizeLimit: "2mb"/);
+  assert.doesNotMatch(nextConfig, /bodySizeLimit: "20mb"/);
   assert.match(nextConfig, /Strict-Transport-Security/);
   assert.match(nextConfig, /max-age=63072000; includeSubDomains; preload/);
   assert.match(nextConfig, /X-Content-Type-Options/);
@@ -2228,6 +2316,23 @@ test("Next.js config applies baseline production security headers", () => {
   assert.match(nextConfig, /Environment variable \$\{key\} must be a valid URL/);
   assert.match(nextConfig, /optionalUrlHostname\("NEXT_PUBLIC_SUPABASE_URL"\)/);
   assert.doesNotMatch(nextConfig, /new URL\(process\.env\.NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(proxy, /crypto\.randomUUID\(\)/);
+  assert.match(proxy, /'nonce-\$\{nonce\}'/);
+  assert.match(proxy, /'strict-dynamic'/);
+  assert.match(proxy, /object-src 'none'/);
+  assert.match(proxy, /base-uri 'self'/);
+  assert.match(proxy, /frame-ancestors 'none'/);
+  assert.match(proxy, /response\.headers\.set\("Content-Security-Policy"/);
+  for (const layout of [adminLayout, dashboardLayout, accountLayout]) {
+    assert.match(layout, /robots: \{ index: false, follow: false \}/);
+  }
+  assert.match(artworkUpload, /rejectCrossOriginRequest\(request\)/);
+  assert.match(artworkUpload, /requestExceedsImageUploadLimit\(request\)/);
+  assert.match(artworkUpload, /validateImageFile\(file\)/);
+  assert.match(artworkUpload, /validateImageBytes\(bytes, file\.type\)/);
+  assert.match(artworkUpload, /checkDurableRateLimit/);
+  assert.match(designer, /fetch\("\/api\/designer\/artwork"/);
+  assert.match(designerActions, /designer-assets\/\$\{userId\}\//);
 });
 
 test("Production release checklist captures gates, operations checks, and live rehearsals", () => {
@@ -2245,6 +2350,10 @@ test("Production release checklist captures gates, operations checks, and live r
 
   assert.match(checklist, /npm run release:check/);
   assert.match(checklist, /npm run verify/);
+  assert.match(checklist, /production-environment/);
+  assert.match(ci, /production-environment:/);
+  assert.match(ci, /Certify production environment/);
+  assert.match(ci, /secrets\.SENTRY_AUTH_TOKEN/);
   assert.match(checklist, /npm run build/);
   assert.match(checklist, /npm run audit:prod/);
   assert.match(checklist, /npm run env:check:prod/);
@@ -2554,6 +2663,28 @@ test("Customer order details expose an authenticated owner-scoped receipt", () =
   assert.match(receiptRoute, /escapeHtml/);
 });
 
+test("Admin cancellations and refunds are Stripe-backed, idempotent, and audited", () => {
+  const route = read("src/app/api/admin/orders/[id]/terminal-action/route.ts");
+  const migration = read("supabase/migrations/202609220001_admin_order_terminal_actions.sql");
+  const controls = read("src/components/admin/OrderTerminalActions.tsx");
+
+  assert.match(route, /requireAdmin\(request\)/);
+  assert.match(route, /stripe\.refunds\.create/);
+  assert.match(route, /idempotencyKey: `admin-order-full-refund:\$\{order\.id\}`/);
+  assert.match(route, /admin_complete_order_terminal_action/);
+  assert.match(route, /p_stripe_refund_id: stripeRefundId/);
+  assert.doesNotMatch(route, /detail:\s*getErrorMessage\(error\)/);
+  assert.match(migration, /for update/);
+  assert.match(migration, /update public\.fulfillment_jobs/);
+  assert.match(migration, /insert into public\.fulfillment_job_events/);
+  assert.match(migration, /insert into public\.order_status_events/);
+  assert.match(migration, /perform public\.log_platform_event/);
+  assert.match(migration, /revoke all on function public\.admin_complete_order_terminal_action[\s\S]*from authenticated/);
+  assert.match(controls, /Operator reason/);
+  assert.match(controls, /Cancel and refund/);
+  assert.match(controls, /Refund order/);
+});
+
 test("Artist dashboard actions do not expose raw database errors", () => {
   const artistActions = read("src/app/dashboard/artist/actions.ts");
 
@@ -2777,7 +2908,8 @@ test("Designer saves include validation status and generation audit events", () 
   assert.match(designerAction, /checkDurableRateLimit/);
   assert.match(designerAction, /DESIGNER_PRODUCT_CREATE_LIMIT = 8/);
   assert.match(designerAction, /designer_product_create:\$\{artist\.id\}:\$\{user\.id\}/);
-  assert.match(designerAction, /check_public_rate_limit/);
+  assert.match(designerAction, /getServiceSupabase/);
+  assert.match(designerAction, /check_rate_limit/);
   assert.match(designerAction, /fallback: "deny"/);
   assert.match(designerAction, /Too many designer product generation attempts\. Try again later\./);
   assert.match(designerAction, /renderServerPrintAsset/);
@@ -2900,6 +3032,8 @@ test("Printify fulfillment supports on-demand product sync from saved designs", 
   assert.match(productSync, /Printify sync design lookup failed/);
   assert.match(productSync, /Printify variant mapping write failed/);
   assert.match(productSync, /Printify product sync failed/);
+  assert.match(productSync, /verifyPrintifyProductForOrder/);
+  assert.match(productSync, /Printify product verification failed/);
   assert.match(productSync, /writePrintifySyncEvent/);
   assert.match(productSync, /Printify sync event write failed/);
   assert.match(productSync, /syncingUpdateError/);
@@ -2946,6 +3080,8 @@ test("Printify fulfillment supports on-demand product sync from saved designs", 
   assert.doesNotMatch(dashboardAction, /createPrintifyProduct/);
   assert.match(fulfillment, /syncProductToPrintify/);
   assert.match(fulfillment, /submitPrintifyOrder/);
+  assert.match(fulfillment, /verifyPrintifyProductForOrder/);
+  assert.match(fulfillment, /Printify fulfillment product verification failed/);
   assert.match(fulfillment, /failPrintifyFulfillment/);
   assert.match(fulfillment, /failClaimedPrintifyFulfillment/);
   assert.match(fulfillment, /await recordFailedSync\(publicMessage\)/);

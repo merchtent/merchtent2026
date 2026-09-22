@@ -51,6 +51,7 @@ export async function GET() {
             description: j.excerpt,
             image:
                 publicStorageUrl("journal-images", j.cover_image) ??
+                publicStorageUrl("artist-images", j.artists?.hero_image_path) ??
                 "/merch-placeholder.svg",
             artist: j.artists?.display_name ?? "Artist",
             avatar:

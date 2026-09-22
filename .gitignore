@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/mobile-app/node_modules
+/mobile-app/dist
 /.pnp
 .pnp.*
 .yarn/*

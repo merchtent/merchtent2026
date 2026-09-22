@@ -5,6 +5,14 @@ import { publicImageUrl } from "@/lib/storage";
 import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 import { logger } from "@/lib/logger";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
+import type { Metadata } from "next";
+import TrackItemList from "@/components/TrackItemList";
+
+export const metadata: Metadata = {
+    title: "Editor’s Picks: Australian Band Merch",
+    description: "Discover hand-picked merch from Australian local and unsigned artists on Merch Tent.",
+    alternates: { canonical: "/editors" },
+};
 
 export const revalidate = 60;
 
@@ -78,8 +86,8 @@ export default async function EditorsPicksPage({
         });
 
         return (
-            <main className="p-6 max-w-7xl mx-auto">
-                <h1 className="text-2xl font-bold">Editor’s Picks</h1>
+            <main className="mx-auto max-w-7xl bg-[#060606] p-6 text-white">
+                <h1 className="text-3xl font-black uppercase">Editor’s Picks</h1>
                 <p className="text-red-400 mt-2">Could not load editor’s picks right now.</p>
             </main>
         );
@@ -116,30 +124,25 @@ export default async function EditorsPicksPage({
     const clearAllUrl = `/editors`;
 
     return (
-        <main className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14">
-            {/* Breadcrumbs */}
-            <nav className="text-xs text-neutral-400 mb-3">
-                <Link href="/" className="hover:underline">Home</Link> /{" "}
-                <Link href="/#grid" className="hover:underline">Shop</Link> /{" "}
-                <span className="text-neutral-200">Editor’s Picks</span>
-            </nav>
-
-            {/* angled banner vibe */}
-            <section className="relative py-0 mb-8">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-7xl mx-auto px-4 py-6 md:py-8 flex items-center justify-between">
-                        <div>
-                            <p className="uppercase tracking-[0.25em] text-xs text-red-600">Shop</p>
-                            <h1 className="text-2xl md:text-3xl font-black leading-[0.95]">Editor’s Picks</h1>
-                        </div>
-                        <span className="text-xs bg-neutral-900 text-white px-2 py-1 rounded rotate-[-2deg]">EDITORS</span>
-                    </div>
+        <main className="min-h-screen bg-[#060606] text-white">
+            <TrackItemList listName="editors_picks" items={products.map((product) => ({ id: product.id, title: product.title, price_cents: Math.round(Number(product.price) * 100), currency: "AUD" }))} />
+            <section className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(180,255,55,0.14),transparent_30%),linear-gradient(180deg,#080808,#111)]">
+                <div className="mx-auto max-w-7xl px-4 py-14 md:px-8 md:py-20">
+                    <p className="text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">Shop</p>
+                    <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                        Editor’s picks.
+                    </h1>
+                    <p className="mt-6 max-w-2xl text-base leading-7 text-white/68">
+                        Hand-picked products from the scene, with filters for price and fresh drops.
+                    </p>
                 </div>
             </section>
 
+            <div className="mx-auto max-w-7xl px-4 py-10 md:px-8 md:py-14">
+
             {/* Top toolbar: count + active chips + sort/price form */}
             <section className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <span className="text-sm text-neutral-400">
+                <span className="text-sm text-white/55">
                     {count} result{count === 1 ? "" : "s"}
                     {minNum != null || maxNum != null ? (
                         <span className="ml-2 text-neutral-500">
@@ -156,7 +159,7 @@ export default async function EditorsPicksPage({
                     {min && (
                         <Link
                             href={removeParamUrl("min")}
-                            className="text-xs rounded-full border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1 hover:bg-neutral-800"
+                            className="border border-white/15 bg-black px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-white/70 hover:border-[#b6ff3f]"
                         >
                             Min ${Number(min)} ✕
                         </Link>
@@ -164,7 +167,7 @@ export default async function EditorsPicksPage({
                     {max && (
                         <Link
                             href={removeParamUrl("max")}
-                            className="text-xs rounded-full border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1 hover:bg-neutral-800"
+                            className="border border-white/15 bg-black px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-white/70 hover:border-[#b6ff3f]"
                         >
                             Max ${Number(max)} ✕
                         </Link>
@@ -172,7 +175,7 @@ export default async function EditorsPicksPage({
                     {sort && sort !== "new" && (
                         <Link
                             href={removeParamUrl("sort")}
-                            className="text-xs rounded-full border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1 hover:bg-neutral-800"
+                            className="border border-white/15 bg-black px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-white/70 hover:border-[#b6ff3f]"
                         >
                             {sort === "plh" ? "Price ↑" : "Price ↓"} ✕
                         </Link>
@@ -180,7 +183,7 @@ export default async function EditorsPicksPage({
                     {(min || max || (sort && sort !== "new")) && (
                         <Link
                             href={clearAllUrl}
-                            className="text-xs underline text-neutral-400 hover:text-neutral-200"
+                            className="text-xs font-black uppercase tracking-[0.14em] text-white/45 underline decoration-red-500 underline-offset-4 hover:text-red-400"
                         >
                             Clear all
                         </Link>
@@ -190,36 +193,36 @@ export default async function EditorsPicksPage({
 
             {/* Filter / Sort form (GET) */}
             <section className="mb-6">
-                <form method="GET" action="/editors" className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+                <form method="GET" action="/editors" className="border border-white/10 bg-black p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                         <div>
-                            <label className="block text-[11px] text-neutral-400 mb-1">Min (A$)</label>
+                            <label className="mb-1 block text-[11px] font-black uppercase tracking-[0.16em] text-[#b6ff3f]">Min (A$)</label>
                             <input
                                 name="min"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
                                 defaultValue={min ?? ""}
                                 placeholder="0"
-                                className="w-full rounded-lg border border-neutral-700 bg-neutral-950 text-neutral-200 px-3 py-2 text-sm placeholder:text-neutral-600"
+                                className="w-full border border-white/15 bg-[#080808] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#b6ff3f] focus:outline-none"
                             />
                         </div>
                         <div>
-                            <label className="block text-[11px] text-neutral-400 mb-1">Max (A$)</label>
+                            <label className="mb-1 block text-[11px] font-black uppercase tracking-[0.16em] text-[#b6ff3f]">Max (A$)</label>
                             <input
                                 name="max"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
                                 defaultValue={max ?? ""}
                                 placeholder="200"
-                                className="w-full rounded-lg border border-neutral-700 bg-neutral-950 text-neutral-200 px-3 py-2 text-sm placeholder:text-neutral-600"
+                                className="w-full border border-white/15 bg-[#080808] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#b6ff3f] focus:outline-none"
                             />
                         </div>
                         <div>
-                            <label className="block text-[11px] text-neutral-400 mb-1">Sort</label>
+                            <label className="mb-1 block text-[11px] font-black uppercase tracking-[0.16em] text-[#b6ff3f]">Sort</label>
                             <select
                                 name="sort"
                                 defaultValue={sort ?? "new"}
-                                className="w-full rounded-lg border border-neutral-700 bg-neutral-950 text-neutral-200 px-3 py-2 text-sm"
+                                className="w-full border border-white/15 bg-[#080808] px-3 py-2 text-sm text-white focus:border-[#b6ff3f] focus:outline-none"
                             >
                                 <option value="new">Newest</option>
                                 <option value="plh">Price: Low → High</option>
@@ -230,14 +233,14 @@ export default async function EditorsPicksPage({
                     <div className="mt-3 flex items-center gap-2">
                         <button
                             type="submit"
-                            className="rounded-xl px-3 py-2 bg-red-600 text-white text-sm hover:bg-red-500"
+                            className="bg-[#b6ff3f] px-4 py-2 text-sm font-black uppercase text-black"
                         >
                             Apply
                         </button>
                         {(min || max || (sort && sort !== "new")) && (
                             <Link
                                 href={clearAllUrl}
-                                className="rounded-xl px-3 py-2 border border-neutral-700 text-neutral-200 text-sm hover:bg-neutral-900"
+                                className="border border-white/15 px-4 py-2 text-sm font-black uppercase text-white hover:border-red-500"
                             >
                                 Clear
                             </Link>
@@ -247,19 +250,16 @@ export default async function EditorsPicksPage({
             </section>
 
             {!products.length ? (
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-                    <p className="text-neutral-300">No editor’s picks yet.</p>
+                <div className="border border-white/10 bg-black p-6">
+                    <p className="text-white/60">No editor’s picks yet.</p>
                 </div>
             ) : (
                 <div className="[column-fill:_balance]_columns-2 md:columns-3 lg:columns-4 gap-4">
-                    {products.map((p, i) => (
+                    {products.map((p) => (
                         <div key={p.id} className="mb-4 break-inside-avoid">
                             <Link
                                 href={`/product/${p.id}`}
-                                className="group block rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900"
-                                style={{
-                                    clipPath: i % 4 === 0 ? "polygon(6% 0,100% 0,94% 100%,0 100%)" : undefined,
-                                }}
+                                className="group block overflow-hidden border border-white/10 bg-black"
                             >
                                 <div className="relative aspect-[3/4]">
                                     <Image
@@ -267,7 +267,7 @@ export default async function EditorsPicksPage({
                                         alt={p.title}
                                         fill
                                         sizes="(max-width:768px) 50vw, (max-width:1024px) 33vw, 25vw"
-                                        className="object-cover transition-opacity duration-300 group-hover:opacity-0"
+                                            className="object-contain bg-[#f4f1e8] transition-opacity duration-300 group-hover:opacity-0"
                                     />
                                     {p.hover ? (
                                         <Image
@@ -275,15 +275,15 @@ export default async function EditorsPicksPage({
                                             alt={`${p.title} alt`}
                                             fill
                                             sizes="(max-width:768px) 50vw, (max-width:1024px) 33vw, 25vw"
-                                            className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                                            className="object-contain bg-[#f4f1e8] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                                         />
                                     ) : null}
                                 </div>
                                 <div className="p-3 md:p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <p className="text-sm md:text-base">{p.title}</p>
-                                            <p className="text-sm text-neutral-400">${p.price}</p>
+                                            <p className="text-sm font-black uppercase leading-tight md:text-base">{p.title}</p>
+                                            <p className="mt-1 text-sm font-black text-[#b6ff3f]">${p.price}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -292,6 +292,7 @@ export default async function EditorsPicksPage({
                     ))}
                 </div>
             )}
+            </div>
         </main>
     );
 }

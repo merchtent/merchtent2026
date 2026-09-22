@@ -1,11 +1,17 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import CategoryClient from "./CategoryClient";
 import type { ReactNode } from "react";
+import StructuredData from "@/components/StructuredData";
 import { publicImageUrl, publicStorageUrl } from "@/lib/storage";
 import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { publicEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
+import { isPublicCategorySlug, type PublicCategorySlug } from "@/lib/catalog/public-categories";
+import TrackItemList from "@/components/TrackItemList";
 import { ArrowRight, Flame, Package, Shirt } from "lucide-react";
 
 export const revalidate = 60;
@@ -31,7 +37,7 @@ type ProductRow = {
     artist?: ProductArtistRow | null;
 };
 
-const categoryCopy: Record<string, { title: string; kicker: string; body: string; image: string }> = {
+const categoryCopy: Record<PublicCategorySlug, { title: string; kicker: string; body: string; image: string }> = {
     tees: {
         title: "Tees",
         kicker: "Front-row staples",
@@ -56,11 +62,11 @@ const categoryCopy: Record<string, { title: string; kicker: string; body: string
         body: "Sleeveless summer merch for hot rooms, festival days, and the front half of the crowd.",
         image: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80",
     },
-    vinyl: {
-        title: "Vinyl",
-        kicker: "Record crate energy",
-        body: "Records, collector drops, and music-first pieces from artists building their own world.",
-        image: "https://images.unsplash.com/photo-1494232410401-ad00d5433cfa?auto=format&fit=crop&w=1800&q=80",
+    bags: {
+        title: "Bags",
+        kicker: "Carry the scene",
+        body: "Canvas totes and everyday carry pieces made for records, cables, market runs, and merch-table finds.",
+        image: "https://images.unsplash.com/photo-1639450258509-d24e3e1fadc4?auto=format&fit=crop&w=1800&q=80",
     },
     posters: {
         title: "Posters",
@@ -70,12 +76,37 @@ const categoryCopy: Record<string, { title: string; kicker: string; body: string
     },
 };
 
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+    const { slug } = await params;
+    if (!isPublicCategorySlug(slug)) notFound();
+    const copy = categoryCopy[slug];
+    const title = `${copy.title} from Australian Local Bands`;
+
+    return {
+        title,
+        description: copy.body,
+        alternates: { canonical: `/category/${slug}` },
+        openGraph: {
+            type: "website",
+            url: `/category/${slug}`,
+            title,
+            description: copy.body,
+            images: [{ url: copy.image, alt: `${copy.title} from local artists` }],
+        },
+    };
+}
+
 export default async function CategoryPage({
     params,
 }: {
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
+    if (!isPublicCategorySlug(slug)) notFound();
 
     const supabase = getPublicServerSupabase();
 
@@ -137,16 +168,33 @@ export default async function CategoryPage({
         };
     });
 
-    const copy = categoryCopy[slug] ?? {
-        title: String(slug).replace(/-/g, " "),
-        kicker: "Shop the rack",
-        body: "Browse artist merch from the scene.",
-        image: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1800&q=80",
-    };
+    const copy = categoryCopy[slug];
     const title = copy.title.toUpperCase();
 
     return (
+        <>
+        <StructuredData
+            data={{
+                "@context": "https://schema.org",
+                "@type": "BreadcrumbList",
+                itemListElement: [
+                    {
+                        "@type": "ListItem",
+                        position: 1,
+                        name: "Home",
+                        item: publicEnv.siteUrl(),
+                    },
+                    {
+                        "@type": "ListItem",
+                        position: 2,
+                        name: copy.title,
+                        item: `${publicEnv.siteUrl()}/category/${slug}`,
+                    },
+                ],
+            }}
+        />
         <main className="bg-black text-neutral-100">
+            <TrackItemList listName={`category_${slug}`} items={products.map((product) => ({ id: product.id, title: product.title, price_cents: Math.round(product.price * 100), currency: "AUD" }))} />
             <section className="relative overflow-hidden border-b border-neutral-800 bg-black">
                 <div className="absolute inset-0">
                     <Image
@@ -210,6 +258,7 @@ export default async function CategoryPage({
                 </div>
             </section>
         </main>
+        </>
     );
 }
 

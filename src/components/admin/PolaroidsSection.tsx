@@ -61,10 +61,9 @@ export default function PolaroidsSection({
     return (
         <>
             <div className="
-                bg-neutral-900
+                bg-black
                 border
-                border-neutral-800
-                rounded-2xl
+                border-white/10
                 p-6
             ">
 
@@ -97,12 +96,13 @@ export default function PolaroidsSection({
                             setOpen(true);
                         }}
                         className="
-                            bg-red-600
-                            hover:bg-red-500
+                            bg-[#b6ff3f]
+                            hover:bg-white
+                            text-black
                             px-4
                             py-2
-                            rounded-xl
-                            font-semibold
+                            font-black
+                            uppercase
                         "
                     >
                         Add Polaroid
@@ -123,10 +123,9 @@ export default function PolaroidsSection({
                             <div
                                 key={photo.id}
                                 className="
-                                    bg-neutral-950
+                                    bg-black
                                     border
-                                    border-neutral-800
-                                    rounded-2xl
+                                    border-white/10
                                     overflow-hidden
                                 "
                             >
@@ -180,9 +179,10 @@ export default function PolaroidsSection({
                                                 flex-1
                                                 px-3
                                                 py-2
-                                                rounded-lg
-                                                bg-neutral-800
-                                                hover:bg-neutral-700
+                                                border
+                                                border-white/15
+                                                bg-black
+                                                hover:border-[#b6ff3f]
                                             "
                                         >
                                             Edit
@@ -196,7 +196,6 @@ export default function PolaroidsSection({
                                             className="
                                                 px-3
                                                 py-2
-                                                rounded-lg
                                                 bg-red-600
                                                 hover:bg-red-500
                                             "
@@ -235,7 +234,7 @@ export default function PolaroidsSection({
                     aria-modal="true"
                     aria-labelledby="delete-polaroid-title"
                 >
-                    <div className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-950 p-5 shadow-2xl">
+                    <div className="w-full max-w-md border border-white/10 bg-black p-5">
                         <h3
                             id="delete-polaroid-title"
                             className="text-lg font-bold"
@@ -255,7 +254,7 @@ export default function PolaroidsSection({
                                 type="button"
                                 onClick={() => setPendingDelete(null)}
                                 disabled={isDeleting}
-                                className="rounded-lg bg-neutral-800 px-4 py-2 text-sm font-semibold hover:bg-neutral-700 disabled:opacity-60"
+                                className="border border-white/15 bg-black px-4 py-2 text-sm font-black uppercase hover:border-[#b6ff3f] disabled:opacity-60"
                             >
                                 Cancel
                             </button>
@@ -263,7 +262,7 @@ export default function PolaroidsSection({
                                 type="button"
                                 onClick={deletePolaroid}
                                 disabled={isDeleting}
-                                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500 disabled:opacity-60"
+                                className="bg-red-600 px-4 py-2 text-sm font-black uppercase hover:bg-red-500 disabled:opacity-60"
                             >
                                 {isDeleting ? "Deleting..." : "Delete"}
                             </button>

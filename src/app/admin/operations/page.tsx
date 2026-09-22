@@ -12,6 +12,7 @@ import SubmitFulfillmentExceptionButton from "./SubmitFulfillmentExceptionButton
 import MarkStaleProductGenerationsFailedButton from "./MarkStaleProductGenerationsFailedButton";
 import RetryPrintifyOrderSyncButton from "./RetryPrintifyOrderSyncButton";
 import ReviewStripeFinancialEventButton from "./ReviewStripeFinancialEventButton";
+import SentryTestButton from "./SentryTestButton";
 
 export const revalidate = 0;
 
@@ -171,6 +172,20 @@ type PlatformEvent = {
     created_at: string;
 };
 
+type ServiceCaseException = {
+    id: string;
+    case_number: string;
+    order_id: string;
+    order_number: string | null;
+    case_type: string;
+    status: string;
+    priority: string;
+    summary: string;
+    created_at: string;
+    age_seconds: number | null;
+    exception_reason: string;
+};
+
 type QueryFailure = {
     label: string;
 };
@@ -271,6 +286,7 @@ export default async function AdminOperationsPage() {
         merchCreditBalanceReconciliationExceptionsRes,
         platformEventsRes,
         severePlatformEventsRes,
+        serviceCaseExceptionsRes,
     ] = await Promise.all([
         supabase
             .from("orders_operational_exceptions")
@@ -357,6 +373,11 @@ export default async function AdminOperationsPage() {
             .select("*", { count: "exact", head: true })
             .in("severity", ["error", "critical"])
             .gte("created_at", severePlatformEventCutoff),
+        supabase
+            .from("order_service_case_operational_exceptions")
+            .select("id, case_number, order_id, order_number, case_type, status, priority, summary, created_at, age_seconds, exception_reason")
+            .order("created_at", { ascending: true })
+            .limit(25),
     ]);
 
     const exceptions = (exceptionsRes.data ?? []) as OperationalException[];
@@ -380,6 +401,7 @@ export default async function AdminOperationsPage() {
     const merchCreditBalanceReconciliationExceptions = (merchCreditBalanceReconciliationExceptionsRes.data ?? []) as MerchCreditBalanceReconciliationException[];
     const platformEvents = (platformEventsRes.data ?? []) as PlatformEvent[];
     const severePlatformEventCount = severePlatformEventsRes.count ?? 0;
+    const serviceCaseExceptions = (serviceCaseExceptionsRes.data ?? []) as ServiceCaseException[];
     const queryFailureSources: QueryFailureSource[] = [
         { label: "Order exceptions", error: exceptionsRes.error },
         { label: "Webhook issues", error: failedWebhooksRes.error },
@@ -396,6 +418,7 @@ export default async function AdminOperationsPage() {
         { label: "Merch credit balance reconciliation", error: merchCreditBalanceReconciliationExceptionsRes.error },
         { label: "Platform events", error: platformEventsRes.error },
         { label: "Severe platform events", error: severePlatformEventsRes.error },
+        { label: "Service case SLA", error: serviceCaseExceptionsRes.error },
     ];
     const queryFailures: QueryFailure[] = queryFailureSources
         .filter((failure) => failure.error)
@@ -417,6 +440,7 @@ export default async function AdminOperationsPage() {
         productGenerationExceptions.length +
         merchCreditExceptions.length +
         merchCreditBalanceReconciliationExceptions.length +
+        serviceCaseExceptions.length +
         severePlatformEventCount +
         queryFailures.length;
 
@@ -433,6 +457,7 @@ export default async function AdminOperationsPage() {
                         Failed or stale operations, webhook state, notifications, and audit events.
                     </p>
                 </div>
+                <div className="flex flex-col items-stretch gap-2 sm:items-end">
                 <div className="border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm font-black uppercase tracking-[0.08em]">
                     {attentionCount === 0 ? (
                         <CheckCircle2 className="mr-2 inline h-4 w-4 text-lime-300" />
@@ -440,6 +465,8 @@ export default async function AdminOperationsPage() {
                         <AlertTriangle className="mr-2 inline h-4 w-4 text-red-400" />
                     )}
                     {attentionCount} need attention
+                </div>
+                <SentryTestButton />
                 </div>
             </div>
             </section>
@@ -454,6 +481,7 @@ export default async function AdminOperationsPage() {
                 <Metric label="Credit issues" value={merchCreditExceptions.length + merchCreditBalanceReconciliationExceptions.length} />
                 <Metric label="Webhook issues" value={failedWebhooks.length} />
                 <Metric label="Notification issues" value={failedNotifications.length} />
+                <Metric label="Service cases" value={serviceCaseExceptions.length} />
                 <Metric label="Severe events" value={severePlatformEventCount} />
                 <Metric label="Recent events" value={platformEvents.length} />
                 <Metric label="Dashboard query errors" value={queryFailures.length} />
@@ -882,6 +910,29 @@ export default async function AdminOperationsPage() {
                                     {(delivery.channel === "email" || delivery.channel === "sms") && delivery.order_id ? (
                                         <RetryNotificationButton deliveryId={delivery.id} />
                                     ) : null}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Panel>
+
+                <Panel title="Service Case SLA" icon={<ClipboardList className="h-4 w-4" />}>
+                    {serviceCaseExceptions.length === 0 ? (
+                        <p className="text-sm text-neutral-400">No overdue return, reprint, refund or cancellation cases.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {serviceCaseExceptions.map((serviceCase) => (
+                                <div key={serviceCase.id} className="border border-red-500/30 bg-red-500/10 p-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <Link href={`/admin/orders/${serviceCase.order_id}`} className="font-semibold text-red-200 underline">
+                                            {serviceCase.case_number} · {serviceCase.order_number ?? serviceCase.order_id}
+                                        </Link>
+                                        <StatusPill status={serviceCase.priority} />
+                                    </div>
+                                    <p className="mt-2 text-sm text-neutral-200">{serviceCase.summary}</p>
+                                    <p className="mt-1 text-xs text-neutral-500">
+                                        {serviceCase.case_type} · {serviceCase.status.replaceAll("_", " ")} · {fmtAge(serviceCase.age_seconds)} · {serviceCase.exception_reason.replaceAll("_", " ")}
+                                    </p>
                                 </div>
                             ))}
                         </div>

@@ -48,6 +48,7 @@ const checkoutDetailsSchema = z.object({
 });
 
 const checkoutAttemptIdSchema = z.uuid();
+const attributionSchema = z.record(z.string(), z.unknown());
 
 const CHECKOUT_ATTEMPT_LIMIT = 12;
 const CHECKOUT_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
@@ -58,6 +59,35 @@ function cleanMetadataValue(value: FormDataEntryValue | null, max = 500) {
 
 function hashRateLimitPart(value: string) {
     return createHash("sha256").update(value).digest("hex").slice(0, 24);
+}
+
+function compactAttribution(value: Record<string, unknown>) {
+    const allowed = [
+        "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+        "gclid", "gbraid", "wbraid", "fbclid", "ttclid", "first_landing_page",
+    ];
+    return Object.fromEntries(
+        allowed.flatMap((key) => {
+            const item = value[key];
+            return typeof item === "string" && item.trim()
+                ? [[key, item.trim().slice(0, 120)]]
+                : [];
+        })
+    );
+}
+
+function stripeAttributionMetadata(value: Record<string, unknown>) {
+    const compact: Record<string, string> = {};
+
+    for (const [key, rawValue] of Object.entries(value)) {
+        compact[key] = String(rawValue);
+        const serialised = JSON.stringify(compact);
+        if (serialised.length > 500) {
+            delete compact[key];
+        }
+    }
+
+    return JSON.stringify(compact);
 }
 
 async function checkoutRateLimitKey(userId: string | null, email: string) {
@@ -122,8 +152,22 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
     }
 
     const shippingMethod = normaliseShippingMethodId(formData.get("shipping_method"));
-    const shippingAmountCents = checkoutShippingAmountCents(shippingMethod);
+    const shippingAmountCents = checkoutShippingAmountCents(
+        shippingMethod,
+        details.country,
+        cartItems.length,
+        cartItems.reduce((sum, item) => sum + item.qty, 0)
+    );
     const voucher = details.voucher ?? "";
+    const marketingAttribution = compactAttribution(attributionSchema.catch({}).parse(
+        (() => {
+            try {
+                return JSON.parse(cleanMetadataValue(formData.get("marketing_attribution"), 4000) || "{}");
+            } catch {
+                return {};
+            }
+        })()
+    ));
 
     const productIds = [...new Set(cartItems.map((item) => item.product_id))];
     const { data: products, error: productsError } = await publicCatalogProductQuery(supabase
@@ -273,7 +317,7 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
             line_items,
             discounts: merchCreditCouponId ? [{ coupon: merchCreditCouponId }] : undefined,
             customer_email: details.email,
-            success_url: `${siteUrl}/checkout/success`,
+            success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${siteUrl}/checkout`,
             phone_number_collection: {
                 enabled: true,
@@ -281,6 +325,7 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
             metadata: {
                 user_id: user?.id ?? "guest",
                 shippingMethod,
+                shippingAmountCents: String(shippingAmountCents),
                 voucher,
                 merch_credit_reservation_id: creditReservation?.reservation_id ?? "",
                 merch_credit_points: creditReservation ? String(creditReservation.points) : "",
@@ -298,6 +343,7 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
                 country: details.country,
                 phone: details.phone,
                 checkout_attempt_id: checkoutAttemptId,
+                marketing_attribution: stripeAttributionMetadata(marketingAttribution),
             },
         }, {
             idempotencyKey: `checkout-session:${user?.id ?? "guest"}:${checkoutAttemptId}`,

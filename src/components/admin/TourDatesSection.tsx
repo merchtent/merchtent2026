@@ -54,7 +54,7 @@ export default function TourDatesSection({
 
     return (
         <>
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+            <div className="border border-white/10 bg-black p-6">
 
                 <div className="flex items-center justify-between mb-6">
 
@@ -74,12 +74,13 @@ export default function TourDatesSection({
                             setOpen(true);
                         }}
                         className="
-                            bg-red-600
-                            hover:bg-red-500
+                            bg-[#b6ff3f]
+                            hover:bg-white
+                            text-black
                             px-4
                             py-2
-                            rounded-xl
-                            font-semibold
+                            font-black
+                            uppercase
                         "
                     >
                         Add Tour Date
@@ -87,10 +88,10 @@ export default function TourDatesSection({
 
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-neutral-800">
+                <div className="overflow-x-auto border border-white/10">
                     <table className="w-full">
 
-                        <thead className="bg-neutral-950">
+                        <thead className="bg-white/[0.04]">
 
                             <tr>
 
@@ -130,8 +131,8 @@ export default function TourDatesSection({
                                     key={date.id}
                                     className="
                         border-t
-                        border-neutral-800
-                        hover:bg-neutral-800/30
+                        border-white/10
+                        hover:bg-white/[0.04]
                         transition
                     "
                                 >
@@ -173,8 +174,8 @@ export default function TourDatesSection({
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="
-                                text-red-400
-                                hover:text-red-300
+                                text-[#b6ff3f]
+                                hover:text-white
                                 font-medium
                             "
                                         >
@@ -195,9 +196,10 @@ export default function TourDatesSection({
                                                 className="
                                     px-3
                                     py-1.5
-                                    rounded-lg
-                                    bg-neutral-800
-                                    hover:bg-neutral-700
+                                    border
+                                    border-white/15
+                                    bg-black
+                                    hover:border-[#b6ff3f]
                                     text-sm
                                     font-medium
                                 "
@@ -213,7 +215,6 @@ export default function TourDatesSection({
                                                 className="
                                     px-3
                                     py-1.5
-                                    rounded-lg
                                     bg-red-600
                                     hover:bg-red-500
                                     text-sm
@@ -273,7 +274,7 @@ export default function TourDatesSection({
                     aria-modal="true"
                     aria-labelledby="delete-tour-date-title"
                 >
-                    <div className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-950 p-5 shadow-2xl">
+                    <div className="w-full max-w-md border border-white/10 bg-black p-5">
                         <h3 id="delete-tour-date-title" className="text-lg font-bold">
                             Delete tour date
                         </h3>
@@ -290,7 +291,7 @@ export default function TourDatesSection({
                                 type="button"
                                 onClick={() => setPendingDelete(null)}
                                 disabled={isDeleting}
-                                className="rounded-lg bg-neutral-800 px-4 py-2 text-sm font-semibold hover:bg-neutral-700 disabled:opacity-60"
+                                className="border border-white/15 bg-black px-4 py-2 text-sm font-black uppercase hover:border-[#b6ff3f] disabled:opacity-60"
                             >
                                 Cancel
                             </button>
@@ -298,7 +299,7 @@ export default function TourDatesSection({
                                 type="button"
                                 onClick={deleteDate}
                                 disabled={isDeleting}
-                                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500 disabled:opacity-60"
+                                className="bg-red-600 px-4 py-2 text-sm font-black uppercase hover:bg-red-500 disabled:opacity-60"
                             >
                                 {isDeleting ? "Deleting..." : "Delete"}
                             </button>

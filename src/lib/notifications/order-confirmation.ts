@@ -50,8 +50,20 @@ type OrderNotificationRow = {
     order_items: OrderItemRow[] | null;
 };
 
-function shippingCentsForMethod(method: string | null | undefined) {
-    return checkoutShippingAmountCents(method);
+function shippingCentsForOrder(order: OrderNotificationRow) {
+    const items = order.order_items ?? [];
+    const lineCount = items.length;
+    const itemCount = items.reduce(
+        (total, item) => total + Math.max(Number(item.qty ?? 1), 1),
+        0
+    );
+
+    return checkoutShippingAmountCents(
+        order.shipping_method,
+        order.country,
+        lineCount,
+        itemCount
+    );
 }
 
 function formatMoney(cents: number, currency: string) {
@@ -150,7 +162,7 @@ export async function sendOrderConfirmationEmail(input: {
 
     const currency = typedOrder.currency ?? "AUD";
     const orderNumber = typedOrder.order_number ?? typedOrder.id;
-    const shippingCents = shippingCentsForMethod(typedOrder.shipping_method);
+    const shippingCents = shippingCentsForOrder(typedOrder);
     const subtotalInclShipping = Number(typedOrder.subtotal_cents ?? 0);
     const subtotalCents = Math.max(subtotalInclShipping - shippingCents, 0);
     const discountCents =

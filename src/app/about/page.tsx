@@ -1,143 +1,97 @@
-// app/about/page.tsx
 import Link from "next/link";
+import type { Metadata } from "next";
+import { ArrowRight, BadgeDollarSign, PackageCheck, Shirt, Users } from "lucide-react";
 
 export const revalidate = 60;
 
+export const metadata: Metadata = {
+    title: "About",
+    description: "Merch Tent is an Australian self-service merch marketplace where local and unsigned artists launch products and earn from every sale.",
+    alternates: { canonical: "/about" },
+};
+
+const principles = [
+    {
+        title: "Artists launch themselves",
+        body: "Merch Tent gives bands the account, product tools, artist page and sales dashboard. The setup is self-service.",
+        icon: Shirt,
+    },
+    {
+        title: "Fans buy real merch",
+        body: "Products stay connected to the artist, so every purchase feels like backing the scene rather than browsing a faceless catalogue.",
+        icon: Users,
+    },
+    {
+        title: "Products move after sale",
+        body: "Orders are routed into fulfilment after checkout, reducing stock risk and keeping the merch table flexible.",
+        icon: PackageCheck,
+    },
+    {
+        title: "Payouts stay visible",
+        body: "Artists can track sales and cash-out activity from their dashboard as the store grows.",
+        icon: BadgeDollarSign,
+    },
+];
+
 export default function AboutPage() {
     return (
-        <main className="min-h-screen bg-neutral-950 text-neutral-100">
-
-            {/* Breadcrumbs */}
-            <nav className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-4 text-xs text-neutral-400">
-                <Link href="/" className="hover:underline">Home</Link> /{" "}
-                <span className="text-neutral-200">About</span>
-            </nav>
-
-            {/* HERO */}
-            <section className="relative py-0">
-                <div className="-skew-y-2 bg-neutral-100 text-neutral-900 border-b border-neutral-200">
-                    <div className="skew-y-2 max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-10">
-                        <p className="uppercase tracking-[0.25em] text-xs text-red-600">
-                            About Merch Tent
-                        </p>
-                        <h1 className="text-3xl md:text-4xl font-black leading-[0.95] mt-1">
-                            Built for bands. Backed by fans.
-                        </h1>
-                    </div>
+        <main className="min-h-screen bg-[#060606] text-white">
+            <section className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(180,255,55,0.15),transparent_30%),linear-gradient(180deg,#080808,#111)]">
+                <div className="mx-auto max-w-7xl px-4 py-14 md:px-8 md:py-20">
+                    <p className="text-xs font-black uppercase tracking-[0.35em] text-[#b6ff3f]">
+                        About Merch Tent
+                    </p>
+                    <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.86] md:text-7xl">
+                        Build the drop. Back the band.
+                    </h1>
+                    <p className="mt-6 max-w-2xl text-base leading-7 text-white/68">
+                        Merch Tent is a self-service merch platform for artists who want to launch products without buying boxes of stock first.
+                    </p>
                 </div>
             </section>
 
-            <section className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8 py-12 space-y-10">
-
-                {/* WHAT THIS IS */}
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8">
-                    <h2 className="text-xl md:text-2xl font-bold">
-                        What we’re building
+            <section className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[0.9fr_1.1fr] md:px-8 md:py-16">
+                <div className="border border-white/10 bg-black p-6 md:p-8">
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-red-500">What this is</p>
+                    <h2 className="mt-4 text-4xl font-black uppercase leading-[0.9] md:text-5xl">
+                        A merch table that can go live before the boxes exist.
                     </h2>
-
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        Merch Tent is a platform for local and unsigned artists to design,
-                        launch, and sell their own merch — without the usual barriers.
+                    <p className="mt-5 text-sm leading-6 text-white/62">
+                        Artists create products, publish them to their store, and let fans buy direct. The platform keeps product pages, orders, credits and payout visibility together.
                     </p>
+                </div>
 
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        Fans get access to real band merch. Artists get a way to earn from it.
-                        Everything is built around supporting the scene, not extracting from it.
-                    </p>
-                </article>
+                <div className="grid gap-px border border-white/10 bg-white/10 sm:grid-cols-2">
+                    {principles.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <article key={item.title} className="bg-[#f4f1e8] p-6 text-black">
+                                <Icon className="h-7 w-7 text-[#477a00]" />
+                                <h3 className="mt-5 text-2xl font-black uppercase leading-none">
+                                    {item.title}
+                                </h3>
+                                <p className="mt-3 text-sm leading-6 text-black/62">{item.body}</p>
+                            </article>
+                        );
+                    })}
+                </div>
+            </section>
 
-                {/* WHY IT EXISTS */}
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8">
-                    <h2 className="text-xl md:text-2xl font-bold">
-                        Why it exists
-                    </h2>
-
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        Traditional merch is broken for smaller artists.
-                    </p>
-
-                    <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-                        <li>Pay upfront for stock</li>
-                        <li>Guess sizes and quantities</li>
-                        <li>Risk unsold inventory</li>
-                    </ul>
-
-                    <p className="text-neutral-300 mt-4 leading-relaxed">
-                        Most bands either lose money or never start.
-                        We built Merch Tent to remove that completely.
-                    </p>
-                </article>
-
-                {/* HOW WE FIX IT */}
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8">
-                    <h2 className="text-xl md:text-2xl font-bold">
-                        A better way to do merch
-                    </h2>
-
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        We use print-on-demand production.
-                    </p>
-
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        That means nothing is made until it’s ordered.
-                        No stock. No waste. No upfront cost.
-                    </p>
-
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        Artists upload their designs. We handle printing,
-                        shipping, and customer experience.
-                    </p>
-
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        Every sale earns them money — automatically.
-                    </p>
-                </article>
-
-                {/* ECO */}
-                <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8">
-                    <h2 className="text-xl md:text-2xl font-bold">
-                        Better for the planet
-                    </h2>
-
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        Print-on-demand means no overproduction and no excess waste.
-                    </p>
-
-                    <p className="text-neutral-300 mt-3 leading-relaxed">
-                        We only produce what people actually buy — reducing landfill,
-                        unnecessary shipping, and unused stock.
-                    </p>
-                </article>
-
-                {/* CTA */}
-                <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 md:p-8 text-center">
-
-                    <h3 className="text-xl font-bold">
-                        Want to start your own merch?
-                    </h3>
-
-                    <p className="text-neutral-400 mt-2">
-                        It’s free. No risk. Takes minutes to get started.
-                    </p>
-
-                    <div className="mt-6 flex justify-center gap-3">
-                        <Link
-                            href="/start"
-                            className="rounded-xl bg-red-600 text-white px-6 py-3 font-bold hover:bg-red-500"
-                        >
-                            Learn how it works
-                        </Link>
-
-                        <Link
-                            href="/auth/sign-up"
-                            className="rounded-xl border border-neutral-700 px-6 py-3 hover:bg-neutral-800"
-                        >
-                            Get started
-                        </Link>
+            <section className="border-y border-white/10 bg-[#f4f1e8] text-black">
+                <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 md:grid-cols-[1fr_auto] md:items-end md:px-8">
+                    <div>
+                        <p className="text-xs font-black uppercase tracking-[0.3em] text-[#477a00]">Start simple</p>
+                        <h2 className="mt-3 max-w-3xl text-4xl font-black uppercase leading-[0.9] md:text-6xl">
+                            No warehouse. No bulk order. No stock gamble.
+                        </h2>
+                        <p className="mt-5 max-w-2xl text-sm leading-6 text-black/65">
+                            Upload your artwork, build the product, publish the listing, and track what happens next from your artist account.
+                        </p>
                     </div>
-
-                </section>
-
+                    <Link href="/start" className="inline-flex items-center gap-2 bg-[#b6ff3f] px-5 py-4 text-sm font-black uppercase text-black">
+                        See the artist pathway <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
             </section>
         </main>
     );

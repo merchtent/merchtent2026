@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 function optionalUrlHostname(key: string) {
   const value = process.env[key];
@@ -16,6 +17,11 @@ const supabaseHost = optionalUrlHostname("NEXT_PUBLIC_SUPABASE_URL");
 const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "2mb",
+    },
   },
   async headers() {
     return [
@@ -63,4 +69,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+});

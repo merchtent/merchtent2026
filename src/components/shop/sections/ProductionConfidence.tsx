@@ -88,9 +88,13 @@ export default function ProductionConfidence() {
     return (
         <section className="border-y border-neutral-800 bg-neutral-950 text-white">
             <div className="overflow-hidden border-b border-neutral-800 bg-black">
-                <div className="flex min-w-max animate-[marquee_42s_linear_infinite] gap-8 py-3 text-[11px] font-black uppercase tracking-[0.22em]">
+                <div data-marquee className="flex min-w-max animate-[marquee_42s_linear_infinite] gap-8 py-3 text-[11px] font-black uppercase tracking-[0.22em]">
                     {[...trustSignals, ...trustSignals].map((signal, index) => (
-                        <span key={`${signal}-${index}`} className={index % 2 === 0 ? "text-red-400" : "text-white"}>
+                        <span
+                            key={`${signal}-${index}`}
+                            aria-hidden={index >= trustSignals.length}
+                            className={index % 2 === 0 ? "text-red-400" : "text-white"}
+                        >
                             [ {signal} ]
                         </span>
                     ))}

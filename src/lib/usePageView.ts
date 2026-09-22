@@ -1,7 +1,9 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+import { captureMarketingAttribution } from "@/lib/marketing/attribution";
+import { hasAnalyticsConsent } from "@/lib/marketing/consent";
 
 function getSessionId() {
     if (typeof window === "undefined") return null;
@@ -24,16 +26,21 @@ function getSessionId() {
 
 export function usePageView(userId?: string | null) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
+        if (!hasAnalyticsConsent()) return;
         const session_id = getSessionId();
+        captureMarketingAttribution();
+        const query = searchParams.toString();
+        const path = query ? `${pathname}?${query}` : pathname;
 
         fetch("/api/track/page-view", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             keepalive: true, // important for unloads
             body: JSON.stringify({
-                path: pathname,
+                path,
                 referrer: document.referrer || null,
                 user_agent: navigator.userAgent,
                 user_id: userId ?? null,
@@ -42,5 +49,5 @@ export function usePageView(userId?: string | null) {
         }).catch(() => {
             // never throw
         });
-    }, [pathname, userId]);
+    }, [pathname, searchParams, userId]);
 }

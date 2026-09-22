@@ -2,6 +2,8 @@ import "server-only";
 
 import { getServerSupabase } from "@/lib/supabase/server";
 import type { CatalogProduct, CatalogProductColor, CatalogProviderOption } from "@/lib/product-catalog";
+import { publicCatalogProductKey } from "@/lib/catalog/public-product-key";
+import { retailCentsForTaxSettings, type PublicTaxSettings } from "@/lib/tax";
 
 type SupplierCatalogProductRow = {
     id: string;
@@ -89,7 +91,8 @@ function catalogRowToProviderOption(row: SupplierCatalogProductRow): CatalogProv
 
 export function catalogRowToDesignerProduct(
     row: SupplierCatalogProductRow,
-    providerOptions: CatalogProviderOption[] = [catalogRowToProviderOption(row)]
+    providerOptions: CatalogProviderOption[] = [catalogRowToProviderOption(row)],
+    taxSettings: PublicTaxSettings | null = null
 ): CatalogProduct {
     const printifyBlueprintId =
         row.production_data.printify_blueprint_id ?? Number(row.supplier_product_id);
@@ -102,15 +105,18 @@ export function catalogRowToDesignerProduct(
         row.cost_tax_mode === "ex_gst"
             ? Math.round((additionalPrintSideCents * (row.cost_tax_rate_bps ?? 0)) / 10000)
             : 0;
+    const retailCents = retailCentsForTaxSettings(row.default_price_cents, taxSettings);
+    const configuredAdditionalSideRetail =
+        row.pricing?.additional_print_side_retail_cents ?? additionalPrintSideCents + additionalPrintSideTaxCents;
 
     return {
-        key: `${row.supplier}-${row.supplier_product_id}`,
+        key: publicCatalogProductKey(row.supplier, row.supplier_product_id),
         name: row.merch_tent_name,
         brand: row.supplier_brand ?? row.supplier,
         model: row.supplier_model ?? row.supplier_product_id,
         category: row.category,
         garmentKind: row.garment_kind,
-        defaultPrice: (row.default_price_cents / 100).toFixed(2),
+        defaultPrice: (retailCents / 100).toFixed(2),
         supplier: {
             key: row.supplier,
             name: supplierLabel(row.supplier),
@@ -130,7 +136,7 @@ export function catalogRowToDesignerProduct(
         },
         providerOptions,
         sizes: uniqueSorted([...row.sizes, ...providerOptions.flatMap((provider) => provider.sizes)]),
-        colors: mergeColors(row.colors, providerOptions.flatMap((provider) => provider.colors)),
+        colors: availableColors(row.colors, providerOptions.flatMap((provider) => provider.colors)),
         printAreas: row.print_areas,
         printAsset: {
             width: 2400,
@@ -144,7 +150,7 @@ export function catalogRowToDesignerProduct(
             includedPrintSides: row.pricing?.included_print_sides ?? 1,
             additionalPrintSideCents,
             additionalPrintSideRetailCents:
-                row.pricing?.additional_print_side_retail_cents ?? additionalPrintSideCents + additionalPrintSideTaxCents,
+                retailCentsForTaxSettings(configuredAdditionalSideRetail, taxSettings),
             artistProfitCents: row.pricing?.artist_profit_cents,
             platformProfitCents: row.pricing?.platform_profit_cents,
         },
@@ -162,12 +168,20 @@ export async function listDesignerCatalogProducts() {
     if (error) return [];
 
     const rows = (data ?? []) as SupplierCatalogProductRow[];
-    const priceMap = await loadProductPriceMap(rows);
-    return groupCatalogRows(rows, priceMap);
+    const [priceMap, taxSettings] = await Promise.all([
+        loadProductPriceMap(rows),
+        loadTaxSettings(),
+    ]);
+    return groupCatalogRows(rows, priceMap, taxSettings);
 }
 
 export async function getDesignerCatalogProduct(key: string) {
     const supabase = getServerSupabase();
+    if (/^mt-[a-f0-9]{16}$/.test(key)) {
+        const products = await listDesignerCatalogProducts();
+        return products.find((product) => product.key === key) ?? null;
+    }
+
     const [supplier, ...productIdParts] = key.split("-");
     const supplierProductId = productIdParts.join("-");
 
@@ -184,9 +198,23 @@ export async function getDesignerCatalogProduct(key: string) {
     if (error || !data?.length) return null;
 
     const rows = data as SupplierCatalogProductRow[];
-    const priceMap = await loadProductPriceMap(rows);
+    const [priceMap, taxSettings] = await Promise.all([
+        loadProductPriceMap(rows),
+        loadTaxSettings(),
+    ]);
 
-    return groupCatalogRows(rows, priceMap)[0] ?? null;
+    return groupCatalogRows(rows, priceMap, taxSettings)[0] ?? null;
+}
+
+async function loadTaxSettings(): Promise<PublicTaxSettings | null> {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase
+        .from("tax_settings")
+        .select("gst_registered, gst_effective_from, gst_rate_bps, pricing_mode")
+        .eq("id", true)
+        .maybeSingle();
+
+    return error ? null : data as PublicTaxSettings | null;
 }
 
 async function loadProductPriceMap(rows: SupplierCatalogProductRow[]) {
@@ -216,7 +244,11 @@ async function loadProductPriceMap(rows: SupplierCatalogProductRow[]) {
     );
 }
 
-function groupCatalogRows(rows: SupplierCatalogProductRow[], priceMap = new Map<string, SupplierCatalogProductPricingRow>()) {
+function groupCatalogRows(
+    rows: SupplierCatalogProductRow[],
+    priceMap = new Map<string, SupplierCatalogProductPricingRow>(),
+    taxSettings: PublicTaxSettings | null = null
+) {
     const groups = new Map<string, SupplierCatalogProductRow[]>();
 
     for (const row of rows) {
@@ -242,41 +274,25 @@ function groupCatalogRows(rows: SupplierCatalogProductRow[], priceMap = new Map<
                         additional_print_side_retail_cents: pricing.additional_print_side_retail_cents,
                     },
                 },
-            providerOptions
+            providerOptions,
+            taxSettings
         );
-    });
+    }).filter((product) => product.colors.length > 0);
 }
 
 function uniqueSorted(values: Array<string | null | undefined>) {
     return Array.from(new Set(values.filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b));
 }
 
-function mergeColors(baseColors: CatalogProductColor[], providerColorLabels: string[]) {
-    const byLabel = new Map(baseColors.map((color) => [color.label.toLowerCase(), color]));
-
-    for (const label of providerColorLabels) {
-        if (!byLabel.has(label.toLowerCase())) {
-            byLabel.set(label.toLowerCase(), {
-                label,
-                value: fallbackColorHex(label),
-                supplierColorName: label,
-            });
-        }
-    }
-
-    return Array.from(byLabel.values());
+function availableColors(approvedColors: CatalogProductColor[], providerColorLabels: string[]) {
+    const available = new Set(providerColorLabels.map((label) => label.toLowerCase()));
+    return approvedColors
+        .filter((color) => available.has((color.supplierColorName ?? color.label).toLowerCase()))
+        .sort((a, b) => Number(!isBlackColor(a)) - Number(!isBlackColor(b)));
 }
 
-function fallbackColorHex(label: string) {
-    const normalized = label.toLowerCase();
-    if (normalized.includes("white")) return "#f7f7f2";
-    if (normalized.includes("black")) return "#111111";
-    if (normalized.includes("navy")) return "#111827";
-    if (normalized.includes("red")) return "#b91c1c";
-    if (normalized.includes("green") || normalized.includes("forest")) return "#14532d";
-    if (normalized.includes("grey") || normalized.includes("gray")) return "#9ca3af";
-    if (normalized.includes("blue")) return "#1d4ed8";
-    return "#444444";
+function isBlackColor(color: CatalogProductColor) {
+    return (color.supplierColorName ?? color.label).trim().toLowerCase() === "black";
 }
 
 function supplierLabel(supplier: string) {

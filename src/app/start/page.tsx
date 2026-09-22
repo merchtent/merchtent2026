@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
     ArrowRight,
     BadgeDollarSign,
-    Check,
     CircleHelp,
     PackageCheck,
     Megaphone,
@@ -14,6 +13,27 @@ import {
     Upload,
 } from "lucide-react";
 import { StartProfitCalculator } from "./StartProfitCalculator";
+import type { Metadata } from "next";
+import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
+import { publicImageUrl } from "@/lib/storage";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { DesignerVideoShowcase } from "./DesignerVideoShowcase";
+import ProductImageGallery, { type ProductGalleryImage } from "@/components/shop/ProductImageGallery";
+
+export const metadata: Metadata = {
+    title: "Sell Band Merch Without Upfront Stock",
+    description: "Design and sell band merch in Australia without ordering boxes first. Create mockups, publish your drop, fulfil after checkout and track artist earnings.",
+    alternates: { canonical: "/start" },
+    openGraph: {
+        type: "website",
+        url: "/start",
+        title: "Sell Band Merch Without Upfront Stock | Merch Tent",
+        description: "Launch made-to-order band merch with self-service design, fulfilment and artist payouts.",
+        images: [{ url: "/images/home-new-designer-shirt-preview.png", alt: "Merch Tent band merch designer" }],
+    },
+};
 
 const launchPaths = [
     {
@@ -59,37 +79,50 @@ const simpleSteps = [
     },
 ];
 
-const setupHelp = [
-    "Artist profile",
-    "Catalogue blank",
-    "Artwork upload",
-    "Mockup preview",
-    "Draft or publish",
-    "Order-ready data",
-];
+type LiveExample = { id: string; title: string | null; slug: string | null; primary_image_path: string | null; artist?: { display_name?: string | null; slug?: string | null } | null };
+type ExampleImageRow = { id: string; product_id: string; path: string | null; sort_order: number | null };
+type LiveExampleWithGallery = LiveExample & { gallery: ProductGalleryImage[] };
 
-const examples = [
-    {
-        artist: "Spank The 90s",
-        product: "Logo hoodie",
-        note: "A tribute act can turn a recognisable show identity into a simple first drop.",
-        src: "/images/home-new-hero-merch-table.png",
-    },
-    {
-        artist: "Lionel Loves Vinyl",
-        product: "Classic logo tee",
-        note: "A small logo can still feel like proper merch when the placement and mockups are right.",
-        src: "/images/home-new-designer-shirt-preview.png",
-    },
-    {
-        artist: "Madre Monte",
-        product: "Artwork tee",
-        note: "A poster, cover, or gig visual can become a wearable drop for existing fans.",
-        src: "/images/merch-tent-logo-badge.png",
-    },
-];
+export default async function StartPage() {
+    const hasDesignerVideo = ["designer-loop.webm", "designer-loop.mp4"].some((file) =>
+        existsSync(path.join(process.cwd(), "public", "videos", file))
+    );
+    const supabase = getPublicServerSupabase();
+    const { data } = await publicCatalogProductQuery(supabase
+        .from("products_with_first_image")
+        .select("id,title,slug,primary_image_path,artist:artists(display_name,slug)"))
+        .order("created_at", { ascending: false })
+        .limit(3);
+    const exampleRows = (data ?? []) as LiveExample[];
+    const exampleIds = exampleRows.map((example) => example.id);
+    const { data: imageData } = exampleIds.length
+        ? await supabase
+            .from("product_images")
+            .select("id,product_id,path,sort_order")
+            .in("product_id", exampleIds)
+            .order("sort_order", { ascending: true })
+        : { data: [] as ExampleImageRow[] };
+    const imageRows = (imageData ?? []) as ExampleImageRow[];
+    const examples: LiveExampleWithGallery[] = exampleRows.map((example) => {
+        const gallery: ProductGalleryImage[] = [];
+        const seen = new Set<string>();
+        const addImage = (src: string | null, id: string) => {
+            if (!src || seen.has(src)) return;
+            seen.add(src);
+            gallery.push({
+                id,
+                src,
+                label: gallery.length === 0 ? "Front" : gallery.length === 1 ? "Back" : `View ${gallery.length + 1}`,
+            });
+        };
 
-export default function StartPage() {
+        imageRows
+            .filter((image) => image.product_id === example.id)
+            .forEach((image) => addImage(publicImageUrl(image.path), image.id));
+        addImage(publicImageUrl(example.primary_image_path), `${example.id}-primary`);
+
+        return { ...example, gallery };
+    });
     return (
         <main className="bg-black text-white">
             <section className="relative overflow-hidden border-b border-neutral-800">
@@ -193,7 +226,7 @@ export default function StartPage() {
             </section>
 
             <section className="border-b border-neutral-800 bg-neutral-950">
-                <div className="grid md:grid-cols-4">
+                <div className="grid border-t-2 border-neutral-500 md:grid-cols-4">
                     {[
                         ["Logo is enough", "upload it yourself"],
                         ["Start with one tee", "keep the first drop simple"],
@@ -255,34 +288,9 @@ export default function StartPage() {
                             The artist path is built to be direct: create the profile, choose a catalogue product, upload
                             your artwork, preview the mockups, then save a draft or publish to your shop.
                         </p>
-                        <div className="mt-7 flex flex-wrap gap-3">
-                            <Link
-                                href="/auth/sign-up?type=artist"
-                                className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-white hover:bg-red-500"
-                            >
-                                Create artist account
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
-                            <Link
-                                href="/dashboard/products/designer"
-                                className="inline-flex items-center gap-2 border border-black px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-lime-300"
-                            >
-                                Open product designer
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
-                        </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2">
-                        {setupHelp.map((item) => (
-                            <div key={item} className="flex min-h-32 items-center gap-4 border-b border-r border-neutral-300 p-5">
-                                <span className="grid h-10 w-10 shrink-0 place-items-center bg-lime-300">
-                                    <Check className="h-5 w-5" />
-                                </span>
-                                <p className="text-xl font-black uppercase leading-none">{item}</p>
-                            </div>
-                        ))}
-                    </div>
+                    <DesignerVideoShowcase hasVideo={hasDesignerVideo} />
                 </div>
             </section>
 
@@ -327,7 +335,10 @@ export default function StartPage() {
                     {simpleSteps.map((step, index) => {
                         const Icon = step.icon;
                         return (
-                            <article key={step.title} className="border-b border-r border-neutral-800 bg-black p-5 md:min-h-[240px] md:p-6">
+                            <article
+                                key={step.title}
+                                className={`border-b border-r border-neutral-800 bg-black p-5 md:min-h-[240px] md:p-6 ${index === simpleSteps.length - 1 ? "md:border-b-lime-300" : ""}`}
+                            >
                                 <div className="flex items-start justify-between gap-4">
                                     <span className="text-4xl font-black leading-none text-lime-300">
                                         0{index + 1}
@@ -349,7 +360,7 @@ export default function StartPage() {
             <section className="border-b border-neutral-800 bg-neutral-950 p-5 md:p-8">
                 <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">Real examples</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">Published on Merch Tent</p>
                         <h2 className="mt-2 text-5xl font-black uppercase leading-[0.88] md:text-7xl">
                             First drops do not need to be huge.
                         </h2>
@@ -364,24 +375,22 @@ export default function StartPage() {
                 </div>
 
                 <div className="grid gap-px bg-neutral-800 lg:grid-cols-3">
-                    {examples.map((example) => (
-                        <article key={example.artist} className="bg-black">
-                            <div className="relative aspect-[4/3] bg-neutral-900">
-                                <Image
-                                    src={example.src}
-                                    alt={`${example.artist} merch example`}
-                                    fill
-                                    sizes="(max-width: 1024px) 100vw, 33vw"
-                                    className="object-contain p-8"
+                    {examples.map((example) => {
+                        return <article key={example.id} className="bg-black">
+                            <div className="p-4 md:p-5">
+                                <ProductImageGallery
+                                    images={example.gallery}
+                                    title={example.title ?? "Published artist merch"}
                                 />
                             </div>
                             <div className="border-t border-neutral-800 p-5">
-                                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-500">{example.artist}</p>
-                                <h3 className="mt-2 text-3xl font-black uppercase leading-none">{example.product}</h3>
-                                <p className="mt-4 text-sm leading-6 text-neutral-400">{example.note}</p>
+                                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-500">{example.artist?.display_name ?? "Merch Tent artist"}</p>
+                                <h3 className="mt-2 text-3xl font-black uppercase leading-none">{example.title ?? "Published drop"}</h3>
+                                <Link href={`/product/${example.slug ?? example.id}`} className="mt-4 inline-flex text-sm font-black text-lime-300">View live product</Link>
                             </div>
-                        </article>
-                    ))}
+                        </article>;
+                    })}
+                    {examples.length === 0 ? <div className="bg-black p-6 lg:col-span-3"><p className="text-2xl font-black uppercase">Published artist examples will appear here.</p><p className="mt-3 text-sm text-neutral-400">No example products are live yet.</p></div> : null}
                 </div>
             </section>
 

@@ -50,6 +50,7 @@ export async function GET() {
         checkEnv("PRINTIFY_DEFAULT_PRINT_PROVIDER_ID", () => String(serverEnv.requiredPrintifyDefaultPrintProviderId())),
         checkEnv("PRINTIFY_DEFAULT_VARIANT_IDS", () => String(serverEnv.requiredPrintifyDefaultVariantIds())),
         checkEnv("OPERATIONAL_HEALTH_SECRET", serverEnv.operationalHealthSecret),
+        checkEnv("SENTRY_DSN", serverEnv.sentryDsn),
     ];
 
     try {

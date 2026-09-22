@@ -55,7 +55,8 @@ export default async function MyImagesPage() {
     const { data: products, error: prodErr } = await supabase
         .from("products")
         .select("id, title")
-        .eq("artist_id", artist.id);
+        .eq("artist_id", artist.id)
+        .is("artist_archived_at", null);
 
     if (prodErr) {
         logger.error("Dashboard images page failed to load products", {

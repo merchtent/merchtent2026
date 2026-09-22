@@ -2,12 +2,25 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ArrowRight, Camera, Disc3, Search, Sparkles, Users } from "lucide-react";
 import { publicStorageUrl } from "@/lib/storage";
 import { logger } from "@/lib/logger";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+    title: "Australian Local and Unsigned Artists",
+    description: "Discover Australian local and unsigned bands, browse their official merch, and support artists directly through Merch Tent.",
+    alternates: { canonical: "/artists" },
+    openGraph: {
+        title: "Australian Local and Unsigned Artists",
+        description: "Discover local bands and shop official artist merch through Merch Tent.",
+        url: "/artists",
+        type: "website",
+    },
+};
 
 type Artist = {
     id: string;

@@ -9,9 +9,11 @@ Use this checklist before promoting a release.
 - [ ] `npm run build`
 - [ ] `npm run audit:prod`
 - [ ] `npm run env:check:prod`
+- [ ] The `production-environment` GitHub Actions job passes on `main` using the actual deployment secret set. CI fixture values and local `.env.local` validation are not production certification.
 - [ ] `npm run db:lint:linked`
 - [ ] `SMOKE_BASE_URL=https://your-production-domain npm run smoke:prod` validates public pages, catalog APIs, health, sitemap, and baseline security headers.
 - [ ] `npx supabase migration list` shows local and remote migrations aligned.
+- [ ] `npm run ops:drills:check` confirms current passed evidence for backup/restore and supplier-outage drills.
 
 ## Runtime Configuration
 
@@ -57,6 +59,10 @@ Use this checklist before promoting a release.
 - [ ] `/api/health/operations` is monitored with `OPERATIONAL_HEALTH_SECRET` every 5-15 minutes.
 - [ ] `POST /api/operations/maintenance` is monitored with `OPERATIONAL_HEALTH_SECRET` every 5-15 minutes.
 - [ ] Alerts exist for Stripe webhook 5xxs, checkout 5xxs, and health-check degradation.
+- [ ] Sentry DSNs, org, project, release auth token, and environment are configured; a controlled test exception appears with the release and environment tags.
+- [ ] Sentry issue alerts notify the named on-call destination immediately for new fatal/error issues and repeated checkout, webhook, fulfilment, or payout failures.
 - [ ] Backup restore drill has been completed using `PRODUCTION_RECOVERY_DRILL.md`.
+- [ ] Supplier outage drill has been completed using `PRODUCTION_RECOVERY_DRILL.md`, including queued-order reconciliation and recovery evidence.
 - [ ] Rollback process and migration recovery path are documented for the deployment target using `PRODUCTION_RECOVERY_DRILL.md`.
 - [ ] Recovery drill evidence records RTO, RPO, backup timestamp, migration alignment, health output, smoke output, and follow-up owners.
+- [ ] Drill evidence is saved as JSON under `operations/drills/evidence` and passes `npm run ops:drills:check`.

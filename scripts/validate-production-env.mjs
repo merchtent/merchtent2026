@@ -13,6 +13,11 @@ const required = [
   { key: "PRINTIFY_API_TOKEN", minLength: 16 },
   { key: "PRINTIFY_SHOP_ID" },
   { key: "OPERATIONAL_HEALTH_SECRET", minLength: 32 },
+  { key: "SENTRY_DSN", kind: "url" },
+  { key: "NEXT_PUBLIC_SENTRY_DSN", kind: "url" },
+  { key: "SENTRY_ORG" },
+  { key: "SENTRY_PROJECT" },
+  { key: "SENTRY_AUTH_TOKEN", minLength: 16 },
 ];
 
 const printifyDefaults = [

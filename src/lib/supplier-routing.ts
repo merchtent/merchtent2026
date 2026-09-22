@@ -17,6 +17,7 @@ type SupplierCatalogProductRow = {
             region?: string | null;
             city?: string | null;
         };
+        routing_back_print_cost_cents?: number;
     };
 };
 
@@ -69,6 +70,7 @@ export async function resolveLeastCostSupplierRoute(input: {
     colorLabel?: string | null;
     destinationCountry?: string | null;
     shippingMethod?: string | null;
+    hasBackPrint?: boolean;
 }) {
     const supabase = getServiceSupabase();
     const { data: products, error: productError } = await supabase
@@ -100,7 +102,7 @@ export async function resolveLeastCostSupplierRoute(input: {
         .from("supplier_catalog_provider_shipping")
         .select("catalog_product_id, first_item_cents, additional_item_cents, destination_country, shipping_method")
         .in("catalog_product_id", providerRows.map((row) => row.id))
-        .eq("destination_country", destinationCountry)
+        .in("destination_country", [destinationCountry, "ROW"])
         .eq("shipping_method", shippingMethod);
 
     if (shippingError) {
@@ -110,9 +112,13 @@ export async function resolveLeastCostSupplierRoute(input: {
     const size = normalise(input.sizeLabel);
     const color = normalise(input.colorLabel);
     const providerById = new Map(providerRows.map((row) => [row.id, row]));
-    const shippingByCatalogProductId = new Map(
-        ((shippingRows ?? []) as SupplierProviderShippingRow[]).map((row) => [row.catalog_product_id, row])
-    );
+    const shippingByCatalogProductId = new Map<string, SupplierProviderShippingRow>();
+    for (const row of (shippingRows ?? []) as SupplierProviderShippingRow[]) {
+        const existing = shippingByCatalogProductId.get(row.catalog_product_id);
+        if (!existing || row.destination_country === destinationCountry) {
+            shippingByCatalogProductId.set(row.catalog_product_id, row);
+        }
+    }
     const candidates = ((variants ?? []) as SupplierCatalogVariantRow[])
         .filter((variant) => variant.is_enabled !== false)
         .filter((variant) => !size || normalise(variant.size_label) === size)
@@ -127,11 +133,13 @@ export async function resolveLeastCostSupplierRoute(input: {
             provider: SupplierCatalogProductRow;
             shipping: SupplierProviderShippingRow | undefined;
         } =>
-            Boolean(candidate.provider?.supplier_provider_id)
+            Boolean(candidate.provider?.supplier_provider_id && candidate.shipping)
         )
         .sort((a, b) => {
-            const costA = landedCost(a.variant.cost_cents, a.shipping?.first_item_cents);
-            const costB = landedCost(b.variant.cost_cents, b.shipping?.first_item_cents);
+            const costA = landedCost(a.variant.cost_cents, a.shipping?.first_item_cents) +
+                (input.hasBackPrint ? a.provider.production_data.routing_back_print_cost_cents ?? 0 : 0);
+            const costB = landedCost(b.variant.cost_cents, b.shipping?.first_item_cents) +
+                (input.hasBackPrint ? b.provider.production_data.routing_back_print_cost_cents ?? 0 : 0);
             if (costA !== costB) return costA - costB;
             return (a.provider.supplier_provider_name ?? "").localeCompare(b.provider.supplier_provider_name ?? "");
         });

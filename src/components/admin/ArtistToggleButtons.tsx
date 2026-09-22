@@ -51,17 +51,18 @@ export default function ArtistToggleButtons({
                 className={`
         px-2
         py-1
-        rounded-lg
         text-xs
-        font-semibold
+        font-black
+        uppercase
+        tracking-[0.14em]
         transition
         ${isPending
                         ? "cursor-not-allowed opacity-50"
                         : "cursor-pointer"
                     }
         ${isPublic
-                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                        : "bg-neutral-800 text-neutral-400 border border-neutral-700"
+                        ? "bg-[#b6ff3f] text-black border border-[#b6ff3f]"
+                        : "bg-black text-white/45 border border-white/15"
                     }
     `}
             >
@@ -74,17 +75,18 @@ export default function ArtistToggleButtons({
                 className={`
         px-2
         py-1
-        rounded-lg
         text-xs
-        font-semibold
+        font-black
+        uppercase
+        tracking-[0.14em]
         transition
         ${isPending
                         ? "cursor-not-allowed opacity-50"
                         : "cursor-pointer"
                     }
         ${featured
-                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                        : "bg-neutral-800 text-neutral-400 border border-neutral-700"
+                        ? "bg-red-600 text-white border border-red-500"
+                        : "bg-black text-white/45 border border-white/15"
                     }
     `}
             >

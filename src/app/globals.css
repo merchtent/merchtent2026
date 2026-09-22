@@ -126,3 +126,101 @@
     @apply bg-background text-foreground;
   }
 }
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 10000;
+  border: 2px solid #b7ff3c;
+  background: #050505;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.skip-link:not(:focus-visible) {
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.app-content:focus {
+  outline: none;
+}
+
+/* Keep the display voice for page heroes, then lower the volume below them. */
+.app-content h2,
+.app-content h3 {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.app-content h2[class*="text-5xl"],
+.app-content h2[class*="text-6xl"],
+.app-content h2[class*="text-7xl"],
+.app-content h2[class*="text-8xl"],
+.app-content h2[class*="text-9xl"] {
+  font-size: clamp(2rem, 4vw, 3.75rem) !important;
+  line-height: 1 !important;
+}
+
+.app-content h3[class*="text-4xl"],
+.app-content h3[class*="text-5xl"],
+.app-content h3[class*="text-6xl"] {
+  font-size: clamp(1.5rem, 2.5vw, 2rem) !important;
+  line-height: 1.1 !important;
+}
+
+.operational-surface {
+  font-size: 0.9375rem;
+}
+
+.operational-surface h1 {
+  font-size: clamp(1.75rem, 2.5vw, 2.5rem) !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.operational-surface h2 {
+  font-size: clamp(1.25rem, 2vw, 1.5rem) !important;
+  line-height: 1.2 !important;
+}
+
+.operational-surface h3 {
+  font-size: 1.125rem !important;
+  line-height: 1.25 !important;
+}
+
+.operational-surface [class*="tracking-"] {
+  letter-spacing: 0.06em !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  [data-marquee] {
+    animation: none !important;
+    transform: none !important;
+  }
+}

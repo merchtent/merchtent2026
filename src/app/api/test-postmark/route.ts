@@ -1,6 +1,11 @@
 // app/api/test-basic-postmark/route.ts
 import { NextRequest } from "next/server";
 import { ServerClient } from "postmark";
+import {
+    renderAdminOrderEmail,
+    renderCustomerOrderEmail,
+} from "@/lib/email/order-emails";
+import { buildOrderEmailPayloadFromStripe } from "@/lib/postmark";
 import { noStoreJson } from "@/lib/api/no-store";
 import { rejectCrossOriginRequest } from "@/lib/auth/request-origin";
 import { serverEnv } from "@/lib/env.server";
@@ -63,20 +68,76 @@ export async function POST(req: NextRequest) {
     const client = new ServerClient(serverToken);
 
     try {
-        const response = await client.sendEmailWithTemplate({
-            From: from,
-            To: to,
-            TemplateAlias: "order-confirmation", // <-- make sure this matches your Postmark template alias
-            TemplateModel: {
-                order_number: "TEST-ORDER-1234",
-                store_name: serverEnv.storeName(),
-            },
+        const payload = buildOrderEmailPayloadFromStripe({
+            order_number: "TEST-ORDER-1234",
+            createdAt: new Date(),
+            currency: "AUD",
+            subtotal_cents: 7800,
+            shipping_cents: 1000,
+            discount_cents: 0,
+            shipping_method: "Standard shipping",
+            voucher: null,
+            customer_name: "Test Customer",
+            customer_email: to,
+            shipping_address_1: "123 Test Street",
+            shipping_address_2: null,
+            shipping_city: "Melbourne",
+            shipping_state: "VIC",
+            shipping_postcode: "3000",
+            shipping_country: "Australia",
+            payment_method: "Stripe",
+            last4: "4242",
+            stripe_session_id: null,
+            stripe_payment_intent_id: null,
+            notes: null,
+            items: [
+                {
+                    title: "Local Noise Classic Tee",
+                    qty: 2,
+                    unit_price: "A$39.00",
+                    line_total: "A$78.00",
+                    size: "L",
+                    color_label: "Black",
+                    sku: "TEST-TEE-BLK-L",
+                    product_id: "test-product",
+                },
+            ],
         });
+        const customerEmail = renderCustomerOrderEmail(payload, {
+            siteUrl: serverEnv.siteUrl(),
+            assetBaseUrl: serverEnv.emailAssetBaseUrl(),
+        });
+        const adminEmail = renderAdminOrderEmail(payload, {
+            siteUrl: serverEnv.siteUrl(),
+            assetBaseUrl: serverEnv.emailAssetBaseUrl(),
+        });
+        const responses = await Promise.all([
+            client.sendEmail({
+                From: from,
+                To: to,
+                ReplyTo: serverEnv.postmarkSupportEmail(),
+                Subject: `[SAMPLE] ${customerEmail.subject}`,
+                HtmlBody: customerEmail.htmlBody,
+                TextBody: customerEmail.textBody,
+                MessageStream: "outbound",
+                Tag: "order-confirmation-test",
+            }),
+            client.sendEmail({
+                From: from,
+                To: to,
+                ReplyTo: serverEnv.postmarkSupportEmail(),
+                Subject: `[SAMPLE] ${adminEmail.subject}`,
+                HtmlBody: adminEmail.htmlBody,
+                TextBody: adminEmail.textBody,
+                MessageStream: "outbound",
+                Tag: "order-admin-test",
+            }),
+        ]);
 
         return noStoreJson({
             ok: true,
             to,
-            postmarkMessageId: response.MessageID,
+            postmarkMessageIds: responses.map((response) => response.MessageID),
         });
     } catch (err: unknown) {
         logger.error("Postmark basic test failed", {

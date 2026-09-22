@@ -38,6 +38,16 @@ function getSupabaseAdmin() {
     return supabaseAdminClient;
 }
 
+function parseAttribution(value: string | null | undefined) {
+    if (!value) return {};
+    try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
 const STRIPE_WEBHOOK_LINE_ITEM_FETCH_LIMIT = 100;
 
 type WebhookLedgerStatus = "processing" | "processed" | "ignored" | "failed";
@@ -588,6 +598,20 @@ export async function POST(req: NextRequest) {
         orderNumber = typedProcessedOrder.order_number ?? orderId;
         fulfillmentJobId = typedProcessedOrder.fulfillment_job_id;
 
+        const attribution = parseAttribution(session.metadata?.marketing_attribution);
+        if (Object.keys(attribution).length > 0) {
+            const { error: attributionError } = await supabaseAdmin
+                .from("orders")
+                .update({ marketing_attribution: attribution })
+                .eq("id", orderId);
+            if (attributionError) {
+                logger.warn("order marketing attribution update failed", {
+                    order_id: orderId,
+                    error: attributionError.message,
+                });
+            }
+        }
+
         const creditReservationId = session.metadata?.merch_credit_reservation_id || null;
         if (creditReservationId) {
             try {
@@ -645,7 +669,10 @@ export async function POST(req: NextRequest) {
             const voucher =
                 (session.metadata?.voucher as string | undefined) ?? null;
 
-            const shipping_cents = checkoutShippingAmountCents(shippingMethod);
+            const metadataShippingCents = Number(session.metadata?.shippingAmountCents);
+            const shipping_cents = Number.isInteger(metadataShippingCents) && metadataShippingCents >= 0
+                ? metadataShippingCents
+                : checkoutShippingAmountCents(shippingMethod, session.metadata?.country);
 
             const subtotal_incl_shipping = Number(session.amount_subtotal ?? 0);
             const subtotal_cents = Math.max(

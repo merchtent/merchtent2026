@@ -17,6 +17,7 @@ const ALLOWED_CATEGORIES = [
     "hoodies",
     "hats",
     "tanks",
+    "bags",
     "posters",
     "vinyl",
     "accessories",

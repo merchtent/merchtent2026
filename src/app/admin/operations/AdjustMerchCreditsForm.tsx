@@ -13,9 +13,9 @@ export default function AdjustMerchCreditsForm() {
     const toast = useToast();
 
     return (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-3">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-neutral-100">
-                <Coins className="h-4 w-4 text-red-300" />
+        <div className="border border-white/10 bg-black p-3">
+            <div className="mb-3 flex items-center gap-2 text-sm font-black uppercase text-white">
+                <Coins className="h-4 w-4 text-[#b6ff3f]" />
                 Manual credit adjustment
             </div>
             <div className="grid gap-2 lg:grid-cols-[minmax(0,1.6fr)_120px_minmax(0,1.4fr)_auto]">
@@ -25,7 +25,7 @@ export default function AdjustMerchCreditsForm() {
                     onChange={(event) => setUserId(event.target.value)}
                     placeholder="User id"
                     disabled={pending}
-                    className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition placeholder:text-neutral-500 focus:border-red-400 disabled:opacity-60"
+                    className="min-w-0 border border-white/15 bg-[#080808] px-3 py-2 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#b6ff3f] disabled:opacity-60"
                 />
                 <input
                     type="number"
@@ -36,7 +36,7 @@ export default function AdjustMerchCreditsForm() {
                     min={-10000}
                     max={10000}
                     step={1}
-                    className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition placeholder:text-neutral-500 focus:border-red-400 disabled:opacity-60"
+                    className="min-w-0 border border-white/15 bg-[#080808] px-3 py-2 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#b6ff3f] disabled:opacity-60"
                 />
                 <input
                     type="text"
@@ -45,7 +45,7 @@ export default function AdjustMerchCreditsForm() {
                     placeholder="Adjustment reason"
                     disabled={pending}
                     maxLength={500}
-                    className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition placeholder:text-neutral-500 focus:border-red-400 disabled:opacity-60"
+                    className="min-w-0 border border-white/15 bg-[#080808] px-3 py-2 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#b6ff3f] disabled:opacity-60"
                 />
                 <button
                     type="button"
@@ -78,7 +78,7 @@ export default function AdjustMerchCreditsForm() {
                             }
                         });
                     }}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-semibold text-neutral-100 transition hover:border-red-500 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 border border-[#b6ff3f]/60 bg-black px-3 py-2 text-sm font-black uppercase tracking-[0.12em] text-[#b6ff3f] transition hover:bg-[#b6ff3f] hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     <Coins className="h-4 w-4" />
                     {pending ? "Saving..." : "Adjust"}
