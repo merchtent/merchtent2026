@@ -73,7 +73,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ci-sentry-auth-token-123456
         run: npm run release:check
 
-      - name: Require Supabase DB lint secrets on production
+      - name: Require Supabase DB lint secrets on main
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.HAS_SUPABASE_DB_LINT_SECRETS != 'true' }}
         run: |
           echo "SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF are required on main pushes so DB lint is not skipped."
