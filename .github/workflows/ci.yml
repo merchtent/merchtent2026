@@ -2,11 +2,32 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - main
+      - uat
   push:
     branches:
       - main
+      - uat
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  promotion-policy:
+    if: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require UAT promotion
+        env:
+          SOURCE_BRANCH: ${{ github.head_ref }}
+        run: |
+          if [ "$SOURCE_BRANCH" != "uat" ]; then
+            echo "Production changes must be promoted from the uat branch."
+            exit 1
+          fi
+
   verify:
     runs-on: ubuntu-latest
     env:
@@ -52,7 +73,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ci-sentry-auth-token-123456
         run: npm run release:check
 
-      - name: Require Supabase DB lint secrets on main
+      - name: Require Supabase DB lint secrets on production
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.HAS_SUPABASE_DB_LINT_SECRETS != 'true' }}
         run: |
           echo "SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF are required on main pushes so DB lint is not skipped."
