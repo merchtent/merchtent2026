@@ -9,10 +9,6 @@ export const revalidate = 0;
 
 type RangeOption = "all" | "30d" | "7d";
 
-type SalesProduct = {
-    artist_cut_cents?: number | null;
-};
-
 type SalesOrder = {
     created_at?: string | null;
 };
@@ -22,7 +18,7 @@ type SalesRow = {
     product_id?: string | null;
     qty?: number | null;
     title?: string | null;
-    products?: SalesProduct | SalesProduct[] | null;
+    artist_cut_cents?: number | null;
     orders?: SalesOrder | SalesOrder[] | null;
 };
 
@@ -71,11 +67,12 @@ export default async function SalesPage({
       title,
       product_id,
       unit_price_cents,
-      products ( artist_cut_cents ),
+      artist_cut_cents,
       orders ( created_at )
     `
         )
         .eq("artist_id", artist.id)
+        .eq("purchase_type", "retail")
         .order("orders(created_at)", { ascending: false });
 
     if (since) {
@@ -117,9 +114,7 @@ export default async function SalesPage({
 
     const totalProfitCents =
         salesRows.reduce((sum, s) => {
-            const product = firstJoined(s.products);
-            const artistCut = product?.artist_cut_cents ?? 0;
-            return sum + (s.qty ?? 0) * artistCut;
+            return sum + (s.qty ?? 0) * (s.artist_cut_cents ?? 0);
         }, 0);
 
     const totalProfit = totalProfitCents / 100;
@@ -189,8 +184,7 @@ export default async function SalesPage({
                                 <tbody>
                                     {salesRows.map((s) => {
                                         const order = firstJoined(s.orders);
-                                        const product = firstJoined(s.products);
-                                        const artistCut = product?.artist_cut_cents ?? 0;
+                                        const artistCut = s.artist_cut_cents ?? 0;
 
                                         const createdAt = order?.created_at
                                             ? new Date(order.created_at).toLocaleDateString("en-AU", {

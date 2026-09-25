@@ -34,7 +34,7 @@ export type PrintifyVariant = {
     price?: number | null;
     grams?: number | null;
     is_enabled?: boolean | null;
-    options?: number[] | null;
+    options?: number[] | Record<string, string> | null;
     placeholders?: Array<{
         position: string;
         height?: number | null;

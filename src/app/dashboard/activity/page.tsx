@@ -30,7 +30,7 @@ type ArtistSaleActivity = {
     id: string;
     title: string | null;
     qty: number | null;
-    products: { artist_cut_cents: number | null } | { artist_cut_cents: number | null }[] | null;
+    artist_cut_cents: number | null;
     orders: { created_at: string | null; status: string | null } | { created_at: string | null; status: string | null }[] | null;
 };
 
@@ -144,8 +144,9 @@ async function loadArtistFeed(userId: string): Promise<FeedItem[]> {
             .limit(20),
         supabase
             .from("order_items")
-            .select("id, title, qty, products ( artist_cut_cents ), orders ( created_at, status )")
+            .select("id, title, qty, artist_cut_cents, orders ( created_at, status )")
             .eq("artist_id", artist.id)
+            .eq("purchase_type", "retail")
             .gte("orders.created_at", since.toISOString())
             .limit(30),
         supabase
@@ -189,9 +190,8 @@ async function loadArtistFeed(userId: string): Promise<FeedItem[]> {
     ((salesRes.data ?? []) as ArtistSaleActivity[]).forEach((sale) => {
         const order = firstJoined(sale.orders);
         if (!order?.created_at) return;
-        const product = firstJoined(sale.products);
         const qty = sale.qty ?? 0;
-        const artistCut = product?.artist_cut_cents ?? 0;
+        const artistCut = sale.artist_cut_cents ?? 0;
         feed.push({
             id: `sale-${sale.id}`,
             title: "Product sold",

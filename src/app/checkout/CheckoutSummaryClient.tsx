@@ -4,6 +4,7 @@
 import { useCart } from "@/components/CartProvider";
 import { publicProductImageUrlOrSource } from "@/lib/storage";
 import { checkoutShippingAmountCents, type ShippingMethodId } from "@/lib/shipping-methods";
+import { merchCreditDiscountCents as calculateMerchCreditDiscountCents } from "@/lib/merch-credits/constants";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -13,14 +14,16 @@ export default function CheckoutSummaryClient({
     useMerchCredits,
     merchCreditBalance,
     shippingCountry,
+    isArtistOrder,
 }: {
     shippingMethod: ShippingMethodId;
     isSubmitting: boolean;
     useMerchCredits: boolean;
     merchCreditBalance: number;
     shippingCountry: string;
+    isArtistOrder: boolean;
 }) {
-    const { items, subtotal_cents, currency } = useCart();
+    const { items, subtotal_cents, artist_bulk_discount_cents, payable_subtotal_cents, currency } = useCart();
 
     const shippingCents = checkoutShippingAmountCents(
         shippingMethod,
@@ -28,11 +31,13 @@ export default function CheckoutSummaryClient({
         items.length,
         items.reduce((sum, item) => sum + item.qty, 0)
     );
-    const merchCreditDiscountCents =
-        useMerchCredits && merchCreditBalance >= 20 && items.length > 0
-            ? Math.min(...items.map((item) => item.price_cents))
-            : 0;
-    const totalCents = Math.max(subtotal_cents + shippingCents - merchCreditDiscountCents, 0);
+    const merchCreditDiscountCents = useMerchCredits
+        ? calculateMerchCreditDiscountCents({
+            subtotalCents: subtotal_cents,
+            creditBalance: merchCreditBalance,
+        })
+        : 0;
+    const totalCents = Math.max(payable_subtotal_cents + shippingCents - merchCreditDiscountCents, 0);
 
     return (
         <div className="sticky top-4 space-y-4 border border-white/10 bg-[#f4f1e8] p-5 text-black">
@@ -77,6 +82,11 @@ export default function CheckoutSummaryClient({
                                             {item.color_label ? ` • ${item.color_label}` : ""}
                                             {item.size ? ` • ${item.size}` : ""}
                                         </p>
+                                        {item.purchase_type === "artist_self_order" ? (
+                                            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#477a00]">
+                                                Artist price · {((item.artist_discount_cents ?? 0) / 100).toLocaleString("en-AU", { style: "currency", currency: item.currency || "AUD" })} cut removed
+                                            </p>
+                                        ) : null}
                                         {item.sku ? (
                                             <p className="text-[10px] uppercase tracking-[0.12em] text-black/35 mt-0.5">
                                                 {item.sku}
@@ -98,6 +108,11 @@ export default function CheckoutSummaryClient({
             <Link href="/cart" className="text-xs font-black uppercase tracking-[0.16em] text-black/55 underline decoration-red-500 underline-offset-4">
                 Edit cart
             </Link>
+            {isArtistOrder ? (
+                <p className="border border-[#477a00]/30 bg-[#477a00]/10 p-3 text-xs leading-5 text-black/65">
+                    Artist discount applied. These items do not create an artist payout or earn merch credits.
+                </p>
+            ) : null}
             <p className="text-[11px] uppercase tracking-[0.12em] text-black/45 mt-2">
                 Orders are printed on demand – production begins immediately after payment
             </p>
@@ -121,7 +136,7 @@ export default function CheckoutSummaryClient({
             {/* totals */}
             <div className="border-t border-black/10 pt-3 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                    <span className="text-black/55">Subtotal</span>
+                    <span className="text-black/55">{isArtistOrder ? "Artist subtotal" : "Subtotal"}</span>
                     <span className="text-black">
                         {(subtotal_cents / 100).toLocaleString("en-AU", {
                             style: "currency",
@@ -143,6 +158,12 @@ export default function CheckoutSummaryClient({
                         })}
                     </span>
                 </div>
+                {artist_bulk_discount_cents > 0 ? (
+                    <div className="flex items-center justify-between font-black text-[#477a00]">
+                        <span>10+ artist order saving</span>
+                        <span>-{(artist_bulk_discount_cents / 100).toLocaleString("en-AU", { style: "currency", currency: currency || "AUD" })}</span>
+                    </div>
+                ) : null}
                 {merchCreditDiscountCents > 0 ? (
                     <div className="flex items-center justify-between">
                         <span className="text-black/55">Merch credits</span>

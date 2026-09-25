@@ -4,6 +4,7 @@ import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
 import { mapCatalogProductCard, type CatalogProductRow } from "@/lib/catalog/product-card";
 import { publicApiError, publicApiJson } from "@/lib/api/public-error";
 import { getPublicServerSupabase } from "@/lib/supabase/public-server";
+import { getAmplifyPriorityArtistIds } from "@/lib/amplify/entitlements";
 
 export async function GET() {
     const supabase = getPublicServerSupabase();
@@ -13,6 +14,7 @@ export async function GET() {
         .select(
             `
         id,
+        artist_id,
         title,
         slug,
         category,
@@ -31,9 +33,17 @@ export async function GET() {
         return publicApiError("/api/products", error);
     }
 
-    const products = ((data ?? []) as CatalogProductRow[]).map((product) =>
-        mapCatalogProductCard(product)
-    );
+    const rows = (data ?? []) as CatalogProductRow[];
+    const priorityArtistIds = await getAmplifyPriorityArtistIds(rows.map((product) => product.artist_id).filter((id): id is string => Boolean(id)));
+    const products = rows
+        .map((product, index) => ({ product, index }))
+        .sort((a, b) => {
+            const priorityDifference = Number(priorityArtistIds.has(b.product.artist_id ?? "")) - Number(priorityArtistIds.has(a.product.artist_id ?? ""));
+            return priorityDifference || a.index - b.index;
+        })
+        .map(({ product }) => mapCatalogProductCard(product, {
+            amplifyPriority: priorityArtistIds.has(product.artist_id ?? ""),
+        }));
 
     return publicApiJson({ products }, { status: 200 });
 }

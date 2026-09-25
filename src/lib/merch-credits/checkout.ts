@@ -2,8 +2,8 @@ import "server-only";
 
 import { logger } from "@/lib/logger";
 import { getServiceSupabase } from "@/lib/supabase/service";
+import { MERCH_CREDIT_REDEMPTION_POINTS } from "@/lib/merch-credits/constants";
 
-export const MERCH_CREDIT_REDEMPTION_POINTS = 20;
 export const MERCH_CREDIT_RESERVATION_MINUTES = 60;
 
 type ReservationResult = {

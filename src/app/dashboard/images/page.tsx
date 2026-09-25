@@ -1,213 +1,92 @@
-// app/dashboard/images/page.tsx
 import Link from "next/link";
-import Image from "next/image";
-import { AlertTriangle, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { AlertTriangle, ArrowRight, ImagePlus, ShieldCheck } from "lucide-react";
 import { requireArtistPage } from "@/lib/auth/artist";
-import { publicImageUrl } from "@/lib/storage";
+import { listArtistArtworkGallery } from "@/lib/products/artist-artwork-library";
+import type { ArtistArtworkGalleryAsset } from "@/lib/products/artist-artwork-library";
 import { logger } from "@/lib/logger";
+import ArtworkGalleryClient from "./ArtworkGalleryClient";
 
 export const revalidate = 0;
 
-type Product = { id: string; title: string | null };
-type ImgRow = {
-    id: string;
-    product_id: string;
-    path: string | null;
-    sort_order: number | null;
-    created_at?: string | null;
-};
-
-function fmtDate(iso?: string | null) {
-    if (!iso) return "--";
+export default async function ArtworkGalleryPage() {
+    const { artist } = await requireArtistPage();
+    let assets: ArtistArtworkGalleryAsset[];
     try {
-        return new Date(iso).toLocaleString("en-AU", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    } catch {
-        return iso ?? "--";
-    }
-}
-
-function ErrorPage({ message }: { message: string }) {
-    return (
-        <main className="min-h-screen bg-black text-white">
-            <section className="border-b border-neutral-800 p-5 md:p-8">
-                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Artist dashboard</p>
-                <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Images error.</h1>
-            </section>
-            <div className="p-5 md:p-8">
-                <div className="flex items-center gap-2 border border-neutral-800 bg-neutral-950 p-6 text-red-400">
-                    <AlertTriangle className="h-4 w-4" />
-                    {message}
-                </div>
-            </div>
-        </main>
-    );
-}
-
-export default async function MyImagesPage() {
-    const { supabase, artist } = await requireArtistPage();
-
-    const { data: products, error: prodErr } = await supabase
-        .from("products")
-        .select("id, title")
-        .eq("artist_id", artist.id)
-        .is("artist_archived_at", null);
-
-    if (prodErr) {
-        logger.error("Dashboard images page failed to load products", {
+        assets = await listArtistArtworkGallery(artist.id);
+    } catch (error) {
+        logger.error("Dashboard images page failed to load product images", {
             artist_id: artist.id,
-            error: prodErr.message,
+            error: error instanceof Error ? error.message : "Unknown error",
         });
-
-        return <ErrorPage message="Could not load products for your images." />;
-    }
-
-    const productMap = new Map<string, Product>();
-    const productIds = (products ?? []).map((product) => {
-        productMap.set(product.id as string, product as Product);
-        return product.id as string;
-    });
-
-    if (productIds.length === 0) {
         return (
-            <main className="min-h-screen bg-black text-white">
-                <AssetHeader total={0} />
-                <section className="p-5 md:p-8">
-                    <div className="border border-neutral-800 bg-neutral-950 p-6">
-                        <p className="text-neutral-300">No products yet. Images appear here after a product exists.</p>
-                        <Link
-                            href="/dashboard/products/designer"
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#b7ff3c] hover:text-lime-200"
-                        >
-                            Design product <ArrowRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                </section>
+            <main className="min-h-screen bg-black p-5 text-white md:p-8">
+                <div className="flex items-center gap-2 border border-neutral-800 bg-neutral-950 p-6 text-red-300">
+                    <AlertTriangle className="h-4 w-4" />
+                    Could not load your product images right now.
+                </div>
             </main>
         );
     }
 
-    const { data: imgs, error: imgErr } = await supabase
-        .from("product_images")
-        .select("id, product_id, path, sort_order, created_at")
-        .in("product_id", productIds);
-
-    if (imgErr) {
-        logger.error("Dashboard images page failed to load product images", {
-            artist_id: artist.id,
-            product_count: productIds.length,
-            error: imgErr.message,
-        });
-
-        return <ErrorPage message="Could not load your product images right now." />;
-    }
-
-    const images = (imgs ?? []) as ImgRow[];
-    const total = images.length;
-
     return (
         <main className="min-h-screen bg-black text-white">
-            <AssetHeader total={total} />
+            <section className="border-b border-neutral-800">
+                <div className="grid lg:grid-cols-[1fr_320px]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-lime-300">Artwork library</p>
+                        <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Artwork gallery.</h1>
+                        <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                            Reuse original artwork across tees, hoodies, hats and future drops. You own your artwork; Merch Tent stores and uses it to create, sell and fulfil the products you choose.
+                        </p>
+                    </div>
+                    <div className="flex flex-col justify-end p-5 md:p-8">
+                        <p className="text-4xl font-black">{assets.length}</p>
+                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-neutral-500">
+                            {assets.length === 1 ? "saved artwork" : "saved artworks"}
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="grid border-b border-neutral-800 lg:grid-cols-2">
+                <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                    <div className="flex gap-3">
+                        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-lime-300" />
+                        <div>
+                            <h2 className="text-sm font-black uppercase">How removal works</h2>
+                            <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-400">
+                                Artwork stays locked while a live or draft product uses it, and through the 14-day product recovery window. Permanent removal unlocks after every linked product is no longer recoverable.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div className="p-5 md:p-8">
+                    <p className="text-sm leading-6 text-neutral-400">
+                        Removing artwork stops future reuse and deletes its original upload. Order, payment and fulfilment records are kept separately where the law or customer support requires them.
+                    </p>
+                    <div className="mt-3 flex gap-4 text-xs font-black uppercase">
+                        <Link href="/terms" className="text-lime-300 hover:text-lime-200">Artwork terms</Link>
+                        <Link href="/privacy" className="text-lime-300 hover:text-lime-200">Privacy</Link>
+                    </div>
+                </div>
+            </section>
 
             <section className="p-5 md:p-8">
-                {total === 0 ? (
-                    <div className="border border-neutral-800 bg-neutral-950 p-6">
-                        <p className="text-neutral-300">No images yet.</p>
-                        <Link
-                            href="/dashboard/products/designer"
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#b7ff3c] hover:text-lime-200"
-                        >
-                            Design product <ArrowRight className="h-4 w-4" />
+                {assets.length > 0 ? (
+                    <ArtworkGalleryClient initialAssets={assets} />
+                ) : (
+                    <div className="border border-neutral-800 bg-neutral-950 p-8">
+                        <ImagePlus className="h-7 w-7 text-lime-300" />
+                        <h2 className="mt-4 text-2xl font-black uppercase">No saved artwork yet.</h2>
+                        <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-400">
+                            Artwork appears here after you save a product in the designer.
+                        </p>
+                        <Link href="/dashboard/products/designer" className="mt-5 inline-flex items-center gap-2 text-sm font-black uppercase text-lime-300">
+                            Design a product <ArrowRight className="h-4 w-4" />
                         </Link>
                     </div>
-                ) : (
-                    <ul className="grid border border-neutral-800 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {images.map((img) => {
-                            const url = publicImageUrl(img.path);
-                            const fileName = img.path?.split("/").slice(-1)[0] ?? "--";
-                            const product = productMap.get(img.product_id);
-
-                            return (
-                                <li key={img.id} className="group overflow-hidden border-b border-r border-neutral-800 bg-neutral-950 transition hover:bg-neutral-900">
-                                    <div className="relative">
-                                        {url ? (
-                                            <Image
-                                                src={url}
-                                                alt={fileName}
-                                                width={800}
-                                                height={800}
-                                                className="aspect-square w-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="grid aspect-square w-full place-items-center bg-black text-neutral-500">
-                                                <ImageIcon className="h-8 w-8" />
-                                            </div>
-                                        )}
-                                        <div className="flex items-center justify-between border-t border-neutral-800 bg-black px-3 py-2 text-xs">
-                                            <span className="truncate text-neutral-300">{fileName}</span>
-                                            <span className="text-neutral-500">{fmtDate(img.created_at)}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-4">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="truncate text-sm font-black md:text-base">
-                                                    {product?.title ?? "Untitled product"}
-                                                </p>
-                                                <p className="text-xs text-neutral-500">
-                                                    Sort #{img.sort_order ?? 0}
-                                                </p>
-                                            </div>
-                                            {product?.id ? (
-                                                <Link href={`/product/${product.id}`} className="shrink-0 text-sm font-black text-[#b7ff3c]">
-                                                    View
-                                                </Link>
-                                            ) : null}
-                                        </div>
-                                        {url && (
-                                            <a
-                                                href={url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="mt-3 inline-flex text-xs font-bold text-neutral-400 underline hover:text-neutral-200"
-                                            >
-                                                Open original
-                                            </a>
-                                        )}
-                                    </div>
-                                </li>
-                            );
-                        })}
-                    </ul>
                 )}
             </section>
         </main>
-    );
-}
-
-function AssetHeader({ total }: { total: number }) {
-    return (
-        <section className="border-b border-neutral-800 bg-black">
-            <div className="grid lg:grid-cols-[1fr_auto]">
-                <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Asset wall</p>
-                    <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">My images.</h1>
-                    <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-                        Product mockups, uploaded artwork, and generated storefront images.
-                    </p>
-                </div>
-                <div className="flex items-end p-5 md:p-8">
-                    <span className="bg-red-600 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-white">
-                        {total} {total === 1 ? "image" : "images"}
-                    </span>
-                </div>
-            </div>
-        </section>
     );
 }

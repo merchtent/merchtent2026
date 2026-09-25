@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { requireArtistPage } from "@/lib/auth/artist";
 import { getDesignerCatalogProduct } from "@/lib/supplier-catalog";
+import { listArtistArtworkLibrary } from "@/lib/products/artist-artwork-library";
 import DesignerClient from "../DesignerClient";
 
 export default async function ProductDesignerForCatalogPage({
@@ -16,6 +17,7 @@ export default async function ProductDesignerForCatalogPage({
 
     if (!product) notFound();
     if (catalogKey !== product.key) redirect(`/dashboard/products/designer/${product.key}`);
+    const recentArtwork = await listArtistArtworkLibrary(artist.id);
 
     return (
         <main className="flex h-full min-h-0 flex-col overflow-hidden bg-black text-white">
@@ -37,7 +39,7 @@ export default async function ProductDesignerForCatalogPage({
                 </Link>
             </section>
 
-            <DesignerClient catalogProduct={product} artistName={artist.display_name} />
+            <DesignerClient catalogProduct={product} artistName={artist.display_name} recentArtwork={recentArtwork} />
         </main>
     );
 }

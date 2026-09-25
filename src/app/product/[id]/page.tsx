@@ -10,6 +10,7 @@ import { getServiceSupabase } from "@/lib/supabase/service";
 import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 import { publicEnv } from "@/lib/env";
 import { SHIPPING_METHOD_OPTIONS } from "@/lib/shipping-methods";
+import { parseCatalogProductInfo, type CatalogProductInfo } from "@/lib/products/catalog-product-info";
 
 export const revalidate = 60;
 
@@ -107,8 +108,31 @@ type DesignerProductSpecPayload = {
         model?: unknown;
         production?: {
             method?: unknown;
+            customerInfo?: unknown;
         };
+        supplier?: {
+            key?: unknown;
+            externalProductId?: unknown;
+            printify?: {
+                printProviderId?: unknown;
+            };
+        };
+        providerOptions?: Array<{
+            supplierProviderId?: unknown;
+            location?: {
+                country?: unknown;
+                region?: unknown;
+                city?: unknown;
+            };
+        }>;
     };
+};
+
+type PrinterOrigin = {
+    country: string;
+    city?: string;
+    region?: string;
+    isAustralia: boolean;
 };
 
 export default async function ProductPage({
@@ -253,7 +277,7 @@ export default async function ProductPage({
                 : null,
         })) ?? [];
 
-    const specs = await loadPublicProductSpecs(product.id);
+    const { specs, productInfo, printerOrigin } = await loadPublicProductDetails(product.id, product.title);
 
     const { data: ratingRows } = await supabase
         .from("fan_shouts")
@@ -389,6 +413,8 @@ export default async function ProductPage({
             priceLabel={priceLabel}
             split4Label={split4Label}
             specs={specs}
+            productInfo={productInfo}
+            printerOrigin={printerOrigin}
             />
         </>
     );
@@ -431,9 +457,25 @@ async function loadProductSeoData(idOrSlug: string) {
     return byId.data ?? null;
 }
 
-async function loadPublicProductSpecs(productId: string): Promise<ProductSpec[]> {
+function legacyCatalogIdentity(title: string | null | undefined) {
+    const normalized = title?.toLowerCase() ?? "";
+    if (normalized.includes("heavy blend") && normalized.includes("hooded sweatshirt")) {
+        return { supplier: "printify", supplierProductId: "77" };
+    }
+    if (normalized.includes("softstyle") && normalized.includes("t-shirt")) {
+        return { supplier: "printify", supplierProductId: "145" };
+    }
+    return null;
+}
+
+async function loadPublicProductDetails(productId: string, productTitle?: string | null): Promise<{
+    specs: ProductSpec[];
+    productInfo?: CatalogProductInfo;
+    printerOrigin?: PrinterOrigin;
+}> {
     try {
-        const { data } = await getServiceSupabase()
+        const supabase = getServiceSupabase();
+        const { data } = await supabase
             .from("product_designs")
             .select("design_data")
             .eq("product_id", productId)
@@ -441,9 +483,49 @@ async function loadPublicProductSpecs(productId: string): Promise<ProductSpec[]>
             .limit(1)
             .maybeSingle();
 
-        return specsFromDesignData(data?.design_data);
+        const designData = data?.design_data;
+        const specs = specsFromDesignData(designData);
+        const design = designData && typeof designData === "object"
+            ? designData as DesignerProductSpecPayload
+            : undefined;
+        const embeddedInfo = parseCatalogProductInfo(design?.catalogProduct?.production?.customerInfo);
+        const supplier = stringValue(design?.catalogProduct?.supplier?.key);
+        const supplierProductId = stringValue(design?.catalogProduct?.supplier?.externalProductId);
+        const selectedProviderId = numberValue(design?.catalogProduct?.supplier?.printify?.printProviderId);
+        const embeddedProvider = design?.catalogProduct?.providerOptions?.find((provider) =>
+            selectedProviderId !== null && stringValue(provider.supplierProviderId) === String(selectedProviderId)
+        );
+        const embeddedOrigin = printerOriginFromLocation(embeddedProvider?.location);
+        const catalogIdentity = supplier && supplierProductId
+            ? { supplier, supplierProductId }
+            : legacyCatalogIdentity(productTitle);
+        if (!catalogIdentity) return { specs, productInfo: embeddedInfo, printerOrigin: embeddedOrigin };
+
+        let catalogQuery = supabase
+            .from("supplier_catalog_products")
+            .select("supplier_provider_id, production_data")
+            .eq("supplier", catalogIdentity.supplier)
+            .eq("supplier_product_id", catalogIdentity.supplierProductId);
+        if (selectedProviderId !== null) {
+            catalogQuery = catalogQuery.eq("supplier_provider_id", String(selectedProviderId));
+        }
+        const { data: catalogRows } = await catalogQuery
+            .limit(1);
+        const productionData = catalogRows?.[0]?.production_data;
+        const customerInfo = productionData && typeof productionData === "object"
+            ? parseCatalogProductInfo((productionData as Record<string, unknown>).customer_info)
+            : undefined;
+        const catalogOrigin = productionData && typeof productionData === "object"
+            ? printerOriginFromLocation((productionData as Record<string, unknown>).provider_location)
+            : undefined;
+
+        return {
+            specs,
+            productInfo: customerInfo ?? embeddedInfo,
+            printerOrigin: catalogOrigin ?? embeddedOrigin,
+        };
     } catch {
-        return [];
+        return { specs: [] };
     }
 }
 
@@ -480,4 +562,44 @@ function specsFromDesignData(raw: unknown): ProductSpec[] {
 
 function stringValue(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
+}
+
+function numberValue(value: unknown) {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function printerOriginFromLocation(value: unknown): PrinterOrigin | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const location = value as Record<string, unknown>;
+    const rawCountry = stringValue(location.country);
+    if (!rawCountry) return undefined;
+    const normalizedCountry = rawCountry.toUpperCase().replaceAll(".", "");
+    const countryNames: Record<string, string> = {
+        AU: "Australia",
+        AUS: "Australia",
+        AUSTRALIA: "Australia",
+        US: "United States",
+        USA: "United States",
+        "UNITED STATES": "United States",
+        CA: "Canada",
+        CANADA: "Canada",
+        GB: "United Kingdom",
+        UK: "United Kingdom",
+        "UNITED KINGDOM": "United Kingdom",
+        DE: "Germany",
+        GERMANY: "Germany",
+        CZ: "Czechia",
+        CZECHIA: "Czechia",
+        LV: "Latvia",
+        LATVIA: "Latvia",
+    };
+    const country = countryNames[normalizedCountry] ?? rawCountry;
+
+    return {
+        country,
+        city: stringValue(location.city) || undefined,
+        region: stringValue(location.region) || undefined,
+        isAustralia: country === "Australia",
+    };
 }

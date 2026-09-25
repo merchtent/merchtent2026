@@ -7,10 +7,11 @@ import AddToCartButton from "@/components/AddToCartButton";
 import ProductReviews from "@/components/ProductReviews";
 import { publicStorageUrl } from "@/lib/storage";
 import * as React from "react";
-import { ArrowRight, Disc3 } from "lucide-react";
+import { ArrowRight, CircleCheck, Disc3, Globe2, MapPin, Ruler, Scissors, ShieldCheck, Shirt, Waves } from "lucide-react";
 import SavedToggleButton from "@/components/SavedToggleButton";
 import { trackMarketingEvent } from "@/lib/marketing/events";
 import ProductImageGallery, { type ProductGalleryImage } from "@/components/shop/ProductImageGallery";
+import type { CatalogProductInfo } from "@/lib/products/catalog-product-info";
 
 type Artist = {
     id?: string | null;
@@ -52,6 +53,13 @@ type ProductSpec = {
     value: string;
 };
 
+type PrinterOrigin = {
+    country: string;
+    city?: string;
+    region?: string;
+    isAustralia: boolean;
+};
+
 type Props = {
     product: Product;
     galleryUrls: string[];
@@ -60,6 +68,8 @@ type Props = {
     priceLabel: string;
     split4Label: string;
     specs?: ProductSpec[];
+    productInfo?: CatalogProductInfo;
+    printerOrigin?: PrinterOrigin;
     initialWishlisted?: boolean;
     initialArtistSaved?: boolean;
 };
@@ -72,6 +82,8 @@ export default function ProductViewClient({
     priceLabel,
     split4Label,
     specs = [],
+    productInfo,
+    printerOrigin,
     initialWishlisted = false,
     initialArtistSaved = false,
 }: Props) {
@@ -207,9 +219,12 @@ export default function ProductViewClient({
                                 </div>
                             ) : null}
 
-                            <p className="mt-12 inline-flex bg-lime-300 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-black">
-                                Live from the table
-                            </p>
+                            <div className="mt-12 flex flex-wrap items-center gap-3">
+                                <p className="inline-flex bg-lime-300 px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-black">
+                                    Live from the table
+                                </p>
+                                {printerOrigin ? <PrinterOriginBadge origin={printerOrigin} /> : null}
+                            </div>
                             <h1 className="mt-6 max-w-3xl text-4xl font-black uppercase leading-[0.92] md:text-5xl xl:text-6xl">
                                 {product.title}
                             </h1>
@@ -296,6 +311,8 @@ export default function ProductViewClient({
                 </div>
             </section>
 
+            {productInfo ? <ProductInformation productInfo={productInfo} /> : null}
+
             {specs.length ? (
                 <section className="border-b border-neutral-800 bg-neutral-950">
                     <div className="grid lg:grid-cols-[0.75fr_1.25fr]">
@@ -322,6 +339,21 @@ export default function ProductViewClient({
                     </div>
                 </section>
             ) : null}
+
+            <section className="border-b border-neutral-800 bg-black">
+                <div className="grid lg:grid-cols-[0.65fr_1.35fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <ShieldCheck className="h-6 w-6 text-lime-300" aria-hidden="true" />
+                        <p className="mt-4 text-[11px] font-black uppercase tracking-[0.2em] text-red-400">Order protection</p>
+                        <h2 className="mt-3 text-3xl font-black uppercase leading-none md:text-4xl">We make it right.</h2>
+                    </div>
+                    <div className="flex items-center p-5 md:p-8">
+                        <p className="max-w-3xl text-lg font-black leading-7 text-white md:text-2xl md:leading-9">
+                            Damaged, misprinted or incorrect items are fully replaced at no cost.
+                        </p>
+                    </div>
+                </div>
+            </section>
 
             <section className="border-b border-neutral-800 bg-black p-5 md:p-8">
                 <ProductReviews productId={product.id} />
@@ -385,6 +417,153 @@ export default function ProductViewClient({
                 />
             </div>
         </main>
+    );
+}
+
+function PrinterOriginBadge({ origin }: { origin: PrinterOrigin }) {
+    const Icon = origin.isAustralia ? MapPin : Globe2;
+
+    return (
+        <div className={`inline-flex min-h-10 items-center gap-2 border px-3 py-2 ${origin.isAustralia
+            ? "border-lime-300 bg-lime-300/10 text-lime-200"
+            : "border-neutral-600 bg-black/70 text-neutral-200"
+        }`}>
+            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="text-sm font-black uppercase">Printed in {origin.country}</span>
+        </div>
+    );
+}
+
+const FEATURE_ICONS = [Shirt, Waves, Scissors, CircleCheck, Ruler, CircleCheck] as const;
+
+function ProductInformation({ productInfo }: { productInfo: CatalogProductInfo }) {
+    return (
+        <section className="border-b border-neutral-800 bg-neutral-950">
+            {productInfo.about ? (
+                <div className="grid border-b border-neutral-800 lg:grid-cols-[0.65fr_1.35fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-red-400">About the blank</p>
+                        <h2 className="mt-3 text-3xl font-black uppercase leading-none md:text-4xl">Made for the artwork.</h2>
+                    </div>
+                    <p className="p-5 text-sm leading-7 text-neutral-300 md:p-8 md:text-base">{productInfo.about}</p>
+                </div>
+            ) : null}
+            {productInfo.features.length ? (
+                <div className="grid lg:grid-cols-[0.65fr_1.35fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-lime-300">Garment details</p>
+                        <h2 className="mt-3 text-3xl font-black uppercase leading-none md:text-4xl">Built for repeat wear.</h2>
+                        <p className="mt-4 max-w-md text-sm leading-6 text-neutral-400">
+                            The artwork belongs to the artist. The construction underneath it matters too.
+                        </p>
+                    </div>
+                    <div className="grid sm:grid-cols-2">
+                        {productInfo.features.map((feature, index) => {
+                            const FeatureIcon = FEATURE_ICONS[index % FEATURE_ICONS.length];
+                            return (
+                                <div key={feature.title} className="border-b border-r border-neutral-800 p-5 md:p-6">
+                                    <FeatureIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
+                                    <h3 className="mt-4 text-lg font-black uppercase text-white">{feature.title}</h3>
+                                    <p className="mt-2 text-sm leading-6 text-neutral-400">{feature.description}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ) : null}
+
+            {productInfo.sizeGuide ? (
+                <div className="grid border-t border-neutral-800 lg:grid-cols-[0.65fr_1.35fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <Ruler className="h-6 w-6 text-lime-300" aria-hidden="true" />
+                        <h2 className="mt-4 text-3xl font-black uppercase leading-none">Size guide.</h2>
+                        <p className="mt-4 text-sm leading-6 text-neutral-400">
+                            {productInfo.sizeGuide.measurementNote}
+                        </p>
+                    </div>
+                    <div className="overflow-x-auto p-5 md:p-8">
+                        <table className="w-full min-w-[900px] border-collapse text-sm">
+                            <caption className="sr-only">Garment measurements in centimetres</caption>
+                            <thead>
+                                <tr className="border-y border-neutral-700">
+                                    <th className="px-4 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Measurement</th>
+                                    {productInfo.sizeGuide.measurements.map((item) => (
+                                        <th key={item.size} className="px-4 py-4 text-center font-black text-white">{item.size}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {productInfo.sizeGuide.measurements.some((item) => item.width !== undefined) ? (
+                                    <tr className="border-b border-neutral-800">
+                                        <th className="px-4 py-4 text-left font-black uppercase text-neutral-300">Width, cm</th>
+                                        {productInfo.sizeGuide.measurements.map((item) => (
+                                            <td key={item.size} className="px-4 py-4 text-center text-neutral-300">{item.width ?? "-"}</td>
+                                        ))}
+                                    </tr>
+                                ) : null}
+                                {productInfo.sizeGuide.measurements.some((item) => item.length !== undefined) ? (
+                                    <tr className="border-b border-neutral-800">
+                                        <th className="px-4 py-4 text-left font-black uppercase text-neutral-300">
+                                            {productInfo.sizeGuide.lengthLabel ?? "Length"}, cm
+                                        </th>
+                                        {productInfo.sizeGuide.measurements.map((item) => (
+                                            <td key={item.size} className="px-4 py-4 text-center text-neutral-300">{item.length ?? "-"}</td>
+                                        ))}
+                                    </tr>
+                                ) : null}
+                                {Array.from(new Set(productInfo.sizeGuide.measurements.flatMap((item) =>
+                                    item.metrics?.map((metric) => metric.label) ?? []
+                                ))).map((label) => (
+                                    <tr key={label} className="border-b border-neutral-800">
+                                        <th className="px-4 py-4 text-left font-black uppercase text-neutral-300">{label}</th>
+                                        {productInfo.sizeGuide!.measurements.map((item) => (
+                                            <td key={item.size} className="px-4 py-4 text-center text-neutral-300">
+                                                {item.metrics?.find((metric) => metric.label === label)?.value ?? "-"}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                                {productInfo.sizeGuide.measurements.some((item) => item.sleeveLength !== undefined) ? (
+                                    <tr className="border-b border-neutral-800">
+                                        <th className="px-4 py-4 text-left font-black uppercase text-neutral-300">
+                                            {productInfo.sizeGuide.sleeveLabel ?? "Sleeve length"}, cm
+                                        </th>
+                                        {productInfo.sizeGuide.measurements.map((item) => (
+                                            <td key={item.size} className="px-4 py-4 text-center text-neutral-300">{item.sleeveLength ?? "-"}</td>
+                                        ))}
+                                    </tr>
+                                ) : null}
+                                {productInfo.sizeGuide.measurements.some((item) => item.sizeTolerance !== undefined) ? (
+                                    <tr className="border-b border-neutral-800">
+                                        <th className="px-4 py-4 text-left font-black uppercase text-neutral-300">Size tolerance, cm</th>
+                                        {productInfo.sizeGuide.measurements.map((item) => (
+                                            <td key={item.size} className="px-4 py-4 text-center text-neutral-300">{item.sizeTolerance ?? "-"}</td>
+                                        ))}
+                                    </tr>
+                                ) : null}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : null}
+
+            {productInfo.careInstructions.length ? (
+                <div className="grid border-t border-neutral-800 lg:grid-cols-[0.65fr_1.35fr]">
+                    <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
+                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-red-400">Care instructions</p>
+                        <h2 className="mt-3 text-3xl font-black uppercase leading-none">Keep it in rotation.</h2>
+                    </div>
+                    <ul className="grid sm:grid-cols-2">
+                        {productInfo.careInstructions.map((instruction) => (
+                            <li key={instruction} className="flex items-start gap-3 border-b border-r border-neutral-800 p-5 text-sm leading-6 text-neutral-300">
+                                <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-lime-300" aria-hidden="true" />
+                                {instruction}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
+        </section>
     );
 }
 

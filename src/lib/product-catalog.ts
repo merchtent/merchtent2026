@@ -1,3 +1,6 @@
+import type { CatalogProductInfo } from "./products/catalog-product-info";
+import type { PosterFormat } from "./products/poster-formats";
+
 export type CatalogSupplierKey = "printify" | "printful" | "local";
 
 export type CatalogProductColor = {
@@ -34,7 +37,7 @@ export type CatalogProduct = {
     brand: string;
     model: string;
     category: "tees" | "hoodies" | "hats" | "tanks" | "bags" | "posters" | "vinyl" | "accessories" | "other";
-    garmentKind: "tee" | "hoodie" | "tank";
+    garmentKind: "tee" | "hoodie" | "hat" | "tank" | "bag" | "poster";
     defaultPrice: string;
     supplier: {
         key: CatalogSupplierKey;
@@ -66,6 +69,8 @@ export type CatalogProduct = {
         additionalPrintSideRetailCents?: number;
         artistProfitCents?: number;
         platformProfitCents?: number;
+        customerInfo?: CatalogProductInfo;
+        posterFormats?: PosterFormat[];
     };
 };
 

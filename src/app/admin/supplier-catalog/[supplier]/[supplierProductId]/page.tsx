@@ -224,8 +224,9 @@ export default async function SupplierCatalogProductPage({
                                 Pricing rules updated.
                             </h2>
                             <p className="mt-3 text-sm leading-6 text-neutral-300">
-                                New designer products will use the saved one-side RRP, and back-side artwork will add
-                                the configured second-side print charge.
+                                The saved RRP and band profit now apply to every current shop product using this
+                                blueprint. Front-and-back products retain the configured second-side retail add-on.
+                                Completed orders keep their original sale price and band-profit snapshot.
                             </p>
                         </div>
                         <div className="flex justify-end p-4">
@@ -312,7 +313,10 @@ export default async function SupplierCatalogProductPage({
                         >
                             <option value="tee">Tee</option>
                             <option value="hoodie">Hoodie</option>
+                            <option value="hat">Hat</option>
                             <option value="tank">Tank top</option>
+                            <option value="bag">Bag</option>
+                            <option value="poster">Poster</option>
                         </select>
                     </Field>
                     <Field label="Status">

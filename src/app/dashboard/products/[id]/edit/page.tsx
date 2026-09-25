@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { requireArtistPage } from "@/lib/auth/artist";
 import { publicImageUrl } from "@/lib/storage";
 import { getDesignerCatalogProduct, listDesignerCatalogProducts } from "@/lib/supplier-catalog";
+import { listArtistArtworkLibrary } from "@/lib/products/artist-artwork-library";
 import DesignerClient, { type DesignerInitialProduct } from "../../designer/DesignerClient";
 import { LogOut } from "lucide-react";
 
@@ -100,6 +101,8 @@ export default async function EditProductPage({
         catalogProduct?: { key?: string };
         garment?: { color?: string; supplierColorName?: string; colorLabel?: string };
         layers?: DesignerInitialProduct["layers"];
+        posterFormatKey?: string | null;
+        posterLayouts?: DesignerInitialProduct["posterLayouts"];
     } | null;
     const catalogProduct = designData?.catalogProduct?.key
         ? await getDesignerCatalogProduct(designData.catalogProduct.key)
@@ -108,6 +111,7 @@ export default async function EditProductPage({
         );
 
     if (catalogProduct) {
+        const recentArtwork = await listArtistArtworkLibrary(artist.id);
         const { data: existingSaleColors } = await supabase
             .from("product_colors")
             .select("label")
@@ -136,6 +140,7 @@ export default async function EditProductPage({
                 <DesignerClient
                     catalogProduct={catalogProduct}
                     artistName={artist.display_name}
+                    recentArtwork={recentArtwork}
                     initialProduct={{
                         id: product.id,
                         title: product.title,
@@ -144,6 +149,8 @@ export default async function EditProductPage({
                         colorLabel: designData?.garment?.supplierColorName ?? designData?.garment?.colorLabel,
                         saleColorNames: existingSaleColors?.map((color) => color.label) ?? [],
                         layers: Array.isArray(designData?.layers) ? designData.layers : [],
+                        posterFormatKey: designData?.posterFormatKey,
+                        posterLayouts: Array.isArray(designData?.posterLayouts) ? designData.posterLayouts : [],
                         referenceImageUrl: !designData ? publicImageUrl(referenceImage?.path) : null,
                     }}
                 />

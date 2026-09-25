@@ -11,12 +11,16 @@ import {
     Camera,
     Gift,
     HatGlasses,
+    History,
+    Images,
     Instagram,
     Package,
+    Palette,
     Radio,
     Shirt,
     ShoppingBag,
     Star,
+    Type,
     Users,
     Zap,
 } from "lucide-react";
@@ -31,6 +35,7 @@ type Product = {
     image?: string | null;
     price?: number;
     badge?: string | null;
+    amplifyPriority?: boolean;
 };
 
 type Artist = {
@@ -92,7 +97,10 @@ function fill<T>(items: T[], count: number) {
 }
 
 function shuffledOneProductPerArtist(products: Product[], count: number) {
-    const shuffled = [...products].sort(() => Math.random() - 0.5);
+    const shuffled = [
+        ...products.filter((product) => product.amplifyPriority).sort(() => Math.random() - 0.5),
+        ...products.filter((product) => !product.amplifyPriority).sort(() => Math.random() - 0.5),
+    ];
     const seenArtists = new Set<string>();
 
     return shuffled.filter((product) => {
@@ -285,14 +293,14 @@ function DesignerPreview() {
                 <div className="mt-4 grid grid-cols-[58px_1fr_34px] gap-3">
                     <div className="space-y-2 text-[10px] text-neutral-300">
                         {[
-                            ["T", "Text"],
-                            ["▧", "Images"],
-                            ["ϟ", "Graphics"],
-                            ["◌", "Colors"],
-                        ].map(([icon, label]) => (
+                            { icon: Type, label: "Text" },
+                            { icon: Images, label: "Images" },
+                            { icon: History, label: "Recent image" },
+                            { icon: Palette, label: "Colours" },
+                        ].map(({ icon: ToolIcon, label }) => (
                             <div key={label} className="grid h-[54px] place-items-center border border-white/10 bg-black/35">
-                                <span className="text-base">{icon}</span>
-                                <span>{label}</span>
+                                <ToolIcon className="h-4 w-4" aria-hidden="true" />
+                                <span className="text-center leading-tight">{label}</span>
                             </div>
                         ))}
                     </div>
@@ -1224,10 +1232,9 @@ function DropCard({ product, compact = false }: { product?: Product; index: numb
                 <p className="line-clamp-1 text-sm font-black leading-none">{product.badge ?? "Merch Tent artist"}</p>
                 <p className="mt-1 line-clamp-2 min-h-9 text-sm leading-[1.15] text-neutral-700">{product.title}</p>
             </div>
-            <div className="px-3 text-sm">
+            <div className="px-3 pb-3 text-sm">
                 <span className="font-black text-lime-700">{typeof product.price === "number" ? `$${product.price}` : "View drop"}</span>
             </div>
-            <div className="mx-3 mb-3 mt-2 h-1 bg-[#ef0000]" />
         </Link>
     );
 }

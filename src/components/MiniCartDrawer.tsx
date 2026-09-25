@@ -31,6 +31,8 @@ export default function MiniCartDrawer() {
         setQty,
         remove,
         subtotal_cents,
+        artist_bulk_discount_cents,
+        payable_subtotal_cents,
         currency,
         clear,
     } = useCart();
@@ -142,6 +144,11 @@ export default function MiniCartDrawer() {
                                                 <div className="text-sm font-black text-[#b6ff3f]">
                                                     {fmt(item.price_cents, item.currency)}
                                                 </div>
+                                                {item.purchase_type === "artist_self_order" ? (
+                                                    <div className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-lime-300">
+                                                        Artist price · no payout
+                                                    </div>
+                                                ) : null}
 
                                                 {variantLine ? (
                                                     <div className="mt-1 space-x-2 text-[11px] uppercase tracking-[0.14em] text-white/40">
@@ -225,11 +232,23 @@ export default function MiniCartDrawer() {
                     {/* Footer */}
                     <footer className="sticky bottom-0 border-t border-white/10 bg-black p-4">
                         <div className="mb-3 flex items-center justify-between">
-                            <span className="text-white/55">Subtotal</span>
-                            <span className="text-lg font-black text-[#b6ff3f]">
+                            <span className="text-white/55">{artist_bulk_discount_cents > 0 ? "Artist subtotal" : "Subtotal"}</span>
+                            <span className={artist_bulk_discount_cents > 0 ? "text-white/45 line-through" : "text-lg font-black text-[#b6ff3f]"}>
                                 {fmt(subtotal_cents, currency)}
                             </span>
                         </div>
+                        {artist_bulk_discount_cents > 0 ? (
+                            <div className="mb-3 space-y-2">
+                                <div className="flex items-center justify-between text-xs font-black uppercase text-lime-300">
+                                    <span>10+ artist saving</span>
+                                    <span>-{fmt(artist_bulk_discount_cents, currency)}</span>
+                                </div>
+                                <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                                    <span className="text-xs font-black uppercase text-white/70">Discounted subtotal</span>
+                                    <span className="text-lg font-black text-[#b6ff3f]">{fmt(payable_subtotal_cents, currency)}</span>
+                                </div>
+                            </div>
+                        ) : null}
 
                         <div className="flex gap-2">
                             <Link

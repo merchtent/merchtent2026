@@ -32,13 +32,13 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     const { data: artist } = isArtist && user
         ? await supabase
             .from("artists")
-            .select("slug")
+            .select("slug, is_public")
             .eq("user_id", user.id)
             .maybeSingle()
         : { data: null };
 
     return (
-        <DashboardShell sidebar={<DashboardSidebar displayName={displayName} isArtist={isArtist} artistSlug={artist?.slug ?? null} />}>
+        <DashboardShell sidebar={<DashboardSidebar displayName={displayName} isArtist={isArtist} artistSlug={artist?.slug ?? null} artistIsPublic={Boolean(artist?.is_public)} />}>
             {children}
         </DashboardShell>
     );

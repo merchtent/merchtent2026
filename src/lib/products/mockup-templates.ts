@@ -7,14 +7,24 @@ export type LifestyleModelSetId =
     | "hoodie-rehearsal"
     | "hoodie-vinyl-press"
     | "hoodie-loading-dock"
-    | "hoodie-radio-studio";
+    | "hoodie-radio-studio"
+    | "tank-rehearsal"
+    | "tank-backstage"
+    | "tank-record-shop"
+    | "tank-loading-dock"
+    | "tote-record-shop"
+    | "tote-loading-dock"
+    | "hat-backstage"
+    | "hat-record-shop"
+    | "hat-side-stage"
+    | "hat-laneway";
 
 export type LifestyleModelSet = {
     id: LifestyleModelSetId;
     label: string;
     audience: "female" | "male";
     frontTemplateId: string;
-    backTemplateId: string;
+    backTemplateId?: string;
 };
 
 type MockupProductIdentity = {
@@ -25,7 +35,7 @@ type MockupProductIdentity = {
 
 export type MockupTemplate = {
     publicPath: string;
-    fit: "cover";
+    fit: "cover" | "contain";
     canvasPlacement: GeometryRect;
     artworkPlacement?: GeometryRect;
     background: string;
@@ -330,6 +340,74 @@ const GILDAN_18500_LIFESTYLE_TEMPLATES = [
     GILDAN_18500_BLACK_RADIO_BACK,
 ];
 
+function createTankLifestylePrintMesh(left: number, top: number, right: number) {
+    const printRatio = 3071 / 3508;
+    const bottom = top + (right - left) / printRatio;
+
+    return Array.from({ length: 5 }, (_, row) => {
+        const verticalProgress = row / 4;
+        const y = top + (bottom - top) * verticalProgress;
+        const edgeInset = Math.sin(verticalProgress * Math.PI) * 4;
+
+        return Array.from({ length: 5 }, (_, column) => {
+            const horizontalProgress = column / 4;
+            const x = left + edgeInset + (right - left - edgeInset * 2) * horizontalProgress;
+            const fabricCurve = Math.sin(horizontalProgress * Math.PI) * 2;
+            return { x: Math.round(x), y: Math.round(y + fabricCurve) };
+        });
+    });
+}
+
+const AS_COLOUR_5039_MODEL_SETS: LifestyleModelSet[] = [
+    { id: "tank-rehearsal", label: "Rehearsal room", audience: "female", frontTemplateId: "tank-rehearsal-front" },
+    { id: "tank-backstage", label: "Backstage", audience: "female", frontTemplateId: "tank-backstage-front" },
+    { id: "tank-record-shop", label: "Record shop", audience: "male", frontTemplateId: "tank-record-shop-front" },
+    { id: "tank-loading-dock", label: "Loading dock", audience: "male", frontTemplateId: "tank-loading-dock-front" },
+];
+
+const AS_COLOUR_5039_LIFESTYLE_TEMPLATES: LifestyleMockupTemplate[] = [
+    {
+        id: "tank-rehearsal-front",
+        label: "Rehearsal room",
+        side: "front",
+        modelSetId: "tank-rehearsal",
+        publicPath: "/images/mockups/as-colour-5039/lifestyle/woman-rehearsal-front.png",
+        imageWidth: 1024,
+        imageHeight: 1536,
+        printMesh: createTankLifestylePrintMesh(344, 524, 680),
+    },
+    {
+        id: "tank-backstage-front",
+        label: "Backstage",
+        side: "front",
+        modelSetId: "tank-backstage",
+        publicPath: "/images/mockups/as-colour-5039/lifestyle/woman-backstage-front.png",
+        imageWidth: 1024,
+        imageHeight: 1536,
+        printMesh: createTankLifestylePrintMesh(340, 490, 682),
+    },
+    {
+        id: "tank-record-shop-front",
+        label: "Record shop",
+        side: "front",
+        modelSetId: "tank-record-shop",
+        publicPath: "/images/mockups/as-colour-5039/lifestyle/man-record-shop-front.png",
+        imageWidth: 1024,
+        imageHeight: 1536,
+        printMesh: createTankLifestylePrintMesh(344, 490, 682),
+    },
+    {
+        id: "tank-loading-dock-front",
+        label: "Loading dock",
+        side: "front",
+        modelSetId: "tank-loading-dock",
+        publicPath: "/images/mockups/as-colour-5039/lifestyle/man-loading-dock-front.png",
+        imageWidth: 1024,
+        imageHeight: 1536,
+        printMesh: createTankLifestylePrintMesh(350, 500, 690),
+    },
+];
+
 const GILDAN_64000_BLACK: Record<MockupSide, MockupTemplate> = {
     front: {
         publicPath: "/images/mockups/gildan-64000/black-front.jpg",
@@ -374,6 +452,186 @@ const GILDAN_18500_BLACK: Record<MockupSide, MockupTemplate> = {
     },
 };
 
+function createAsColour5039Template(colorSlug: string): Record<MockupSide, MockupTemplate> {
+    return {
+        front: {
+            publicPath: `/images/mockups/as-colour-5039/${colorSlug}-front.jpg`,
+            fit: "cover",
+            canvasPlacement: { x: 0, y: 0, width: 1, height: 1, units: "ratio" },
+            background: "#ffffff",
+        },
+        back: {
+            publicPath: `/images/mockups/as-colour-5039/${colorSlug}-back.jpg`,
+            fit: "cover",
+            canvasPlacement: { x: 0, y: 0, width: 1, height: 1, units: "ratio" },
+            background: "#ffffff",
+        },
+    };
+}
+
+const AS_COLOUR_5039_STONE_TEMPLATES: Record<string, Record<MockupSide, MockupTemplate>> = {
+    "ash stone": createAsColour5039Template("ash-stone"),
+    "black stone": createAsColour5039Template("black-stone"),
+    "moss stone": createAsColour5039Template("moss-stone"),
+};
+
+function createAsColour1001Template(colorSlug: string): Record<MockupSide, MockupTemplate> {
+    return {
+        front: {
+            publicPath: `/images/mockups/as-colour-1001/${colorSlug}-front.jpg`,
+            fit: "cover",
+            canvasPlacement: { x: 0, y: 0, width: 1, height: 1, units: "ratio" },
+            background: "#ffffff",
+        },
+        back: {
+            publicPath: `/images/mockups/as-colour-1001/${colorSlug}-back.jpg`,
+            fit: "cover",
+            canvasPlacement: { x: 0, y: 0, width: 1, height: 1, units: "ratio" },
+            background: "#ffffff",
+        },
+    };
+}
+
+const AS_COLOUR_1001_TEMPLATES: Record<string, Record<MockupSide, MockupTemplate>> = {
+    black: createAsColour1001Template("black"),
+    cream: createAsColour1001Template("cream"),
+};
+
+function createYupoong6089MTemplate(colorSlug: string): Record<MockupSide, MockupTemplate> {
+    const template: MockupTemplate = {
+        publicPath: `/images/mockups/yupoong-6089m/${colorSlug}-front.jpg`,
+        fit: "contain",
+        canvasPlacement: { x: 0, y: 0, width: 1, height: 1, units: "ratio" },
+        background: "#ffffff",
+    };
+    return { front: template, back: template };
+}
+
+const YUPOONG_6089M_TEMPLATES: Record<string, Record<MockupSide, MockupTemplate>> = {
+    black: createYupoong6089MTemplate("black"),
+    "dark heather": createYupoong6089MTemplate("dark-heather"),
+    white: createYupoong6089MTemplate("white"),
+};
+
+function createHatLifestylePrintMesh(left: number, top: number, right: number) {
+    const printRatio = 1654 / 750;
+    const bottom = top + (right - left) / printRatio;
+
+    return Array.from({ length: 5 }, (_, row) => {
+        const verticalProgress = row / 4;
+        const y = top + (bottom - top) * verticalProgress;
+        const edgeInset = (1 - verticalProgress) * 8;
+
+        return Array.from({ length: 5 }, (_, column) => {
+            const horizontalProgress = column / 4;
+            const x = left + edgeInset + (right - left - edgeInset * 2) * horizontalProgress;
+            const crownCurve = Math.sin(horizontalProgress * Math.PI) * 3;
+            return { x: Math.round(x), y: Math.round(y - crownCurve) };
+        });
+    });
+}
+
+const YUPOONG_6089M_MODEL_SETS: LifestyleModelSet[] = [
+    { id: "hat-backstage", label: "Backstage", audience: "female", frontTemplateId: "hat-backstage-front" },
+    { id: "hat-record-shop", label: "Record shop", audience: "female", frontTemplateId: "hat-record-shop-front" },
+    { id: "hat-side-stage", label: "Side stage", audience: "male", frontTemplateId: "hat-side-stage-front" },
+    { id: "hat-laneway", label: "After the gig", audience: "male", frontTemplateId: "hat-laneway-front" },
+];
+
+const YUPOONG_6089M_LIFESTYLE_TEMPLATES: LifestyleMockupTemplate[] = [
+    {
+        id: "hat-backstage-front",
+        label: "Backstage",
+        side: "front",
+        modelSetId: "hat-backstage",
+        publicPath: "/images/mockups/yupoong-6089m/lifestyle/female-01-punk-younger-front.png",
+        imageWidth: 1122,
+        imageHeight: 1402,
+        printMesh: createHatLifestylePrintMesh(350, 240, 772),
+    },
+    {
+        id: "hat-record-shop-front",
+        label: "Record shop",
+        side: "front",
+        modelSetId: "hat-record-shop",
+        publicPath: "/images/mockups/yupoong-6089m/lifestyle/female-02-punk-younger-front.png",
+        imageWidth: 1122,
+        imageHeight: 1402,
+        printMesh: createHatLifestylePrintMesh(353, 236, 769),
+    },
+    {
+        id: "hat-side-stage-front",
+        label: "Side stage",
+        side: "front",
+        modelSetId: "hat-side-stage",
+        publicPath: "/images/mockups/yupoong-6089m/lifestyle/male-01-punk-front.png",
+        imageWidth: 1122,
+        imageHeight: 1402,
+        printMesh: createHatLifestylePrintMesh(354, 245, 768),
+    },
+    {
+        id: "hat-laneway-front",
+        label: "After the gig",
+        side: "front",
+        modelSetId: "hat-laneway",
+        publicPath: "/images/mockups/yupoong-6089m/lifestyle/male-02-punk-front.png",
+        imageWidth: 1122,
+        imageHeight: 1402,
+        printMesh: createHatLifestylePrintMesh(350, 245, 772),
+    },
+];
+
+function createToteLifestylePrintMesh(left: number, top: number, right: number) {
+    const printRatio = 2835 / 3425;
+    const bottom = top + (right - left) / printRatio;
+
+    return Array.from({ length: 5 }, (_, row) => {
+        const verticalProgress = row / 4;
+        return Array.from({ length: 5 }, (_, column) => ({
+            x: Math.round(left + (right - left) * (column / 4)),
+            y: Math.round(top + (bottom - top) * verticalProgress),
+        }));
+    });
+}
+
+const AS_COLOUR_1001_MODEL_SETS: LifestyleModelSet[] = [
+    {
+        id: "tote-record-shop",
+        label: "Record shop - Cream",
+        audience: "female",
+        frontTemplateId: "tote-record-shop-front",
+    },
+    {
+        id: "tote-loading-dock",
+        label: "Loading dock - Black",
+        audience: "female",
+        frontTemplateId: "tote-loading-dock-front",
+    },
+];
+
+const AS_COLOUR_1001_LIFESTYLE_TEMPLATES: LifestyleMockupTemplate[] = [
+    {
+        id: "tote-record-shop-front",
+        label: "Record shop - Cream",
+        side: "front",
+        modelSetId: "tote-record-shop",
+        publicPath: "/images/mockups/as-colour-1001/lifestyle/woman-record-shop-cream-front.png",
+        imageWidth: 1024,
+        imageHeight: 1536,
+        printMesh: createToteLifestylePrintMesh(360, 785, 704),
+    },
+    {
+        id: "tote-loading-dock-front",
+        label: "Loading dock - Black",
+        side: "front",
+        modelSetId: "tote-loading-dock",
+        publicPath: "/images/mockups/as-colour-1001/lifestyle/woman-loading-dock-black-front.png",
+        imageWidth: 1024,
+        imageHeight: 1536,
+        printMesh: createToteLifestylePrintMesh(370, 958, 650),
+    },
+];
+
 function isGildan64000(product: MockupProductIdentity) {
     const key = product.key?.toLowerCase() ?? "";
     const brand = product.brand?.toLowerCase() ?? "";
@@ -388,6 +646,27 @@ function isGildan18500(product: MockupProductIdentity) {
     return key.includes("gildan-18500") || key === "printify-77" || (brand === "gildan" && model === "18500");
 }
 
+function isAsColour5039(product: MockupProductIdentity) {
+    const key = product.key?.toLowerCase() ?? "";
+    const brand = product.brand?.toLowerCase().replaceAll(" ", "") ?? "";
+    const model = product.model?.toLowerCase() ?? "";
+    return key === "printify-995" || (brand === "ascolour" && model === "5039");
+}
+
+function isAsColour1001(product: MockupProductIdentity) {
+    const key = product.key?.toLowerCase() ?? "";
+    const brand = product.brand?.toLowerCase().replaceAll(" ", "") ?? "";
+    const model = product.model?.toLowerCase() ?? "";
+    return key === "printify-553" || (brand === "ascolour" && model === "1001");
+}
+
+function isYupoong6089M(product: MockupProductIdentity) {
+    const key = product.key?.toLowerCase() ?? "";
+    const brand = product.brand?.toLowerCase() ?? "";
+    const model = product.model?.toLowerCase() ?? "";
+    return key === "printify-1703" || (brand === "yupoong" && model === "6089m");
+}
+
 function isBlack(color: string) {
     const normalized = color.toLowerCase();
     return normalized === "#111111" || normalized === "#000000" || normalized === "#0b0b0b";
@@ -396,14 +675,30 @@ function isBlack(color: string) {
 export function getMockupTemplate(
     product: MockupProductIdentity,
     color: string,
-    side: MockupSide
+    side: MockupSide,
+    supplierColorName?: string
 ) {
+    if (isYupoong6089M(product)) {
+        const template = YUPOONG_6089M_TEMPLATES[supplierColorName?.trim().toLowerCase() ?? ""];
+        if (template) return template[side];
+    }
+    if (isAsColour1001(product)) {
+        const template = AS_COLOUR_1001_TEMPLATES[supplierColorName?.trim().toLowerCase() ?? ""];
+        if (template) return template[side];
+    }
+    if (isAsColour5039(product)) {
+        const template = AS_COLOUR_5039_STONE_TEMPLATES[supplierColorName?.trim().toLowerCase() ?? ""];
+        if (template) return template[side];
+    }
     if (isGildan18500(product) && isBlack(color)) return GILDAN_18500_BLACK[side];
     if (isGildan64000(product) && isBlack(color)) return GILDAN_64000_BLACK[side];
     return null;
 }
 
 export function getLifestyleModelSets(product: MockupProductIdentity, color: string) {
+    if (isYupoong6089M(product) && isBlack(color)) return YUPOONG_6089M_MODEL_SETS;
+    if (isAsColour1001(product)) return AS_COLOUR_1001_MODEL_SETS;
+    if (isAsColour5039(product)) return AS_COLOUR_5039_MODEL_SETS;
     if (isGildan18500(product) && isBlack(color)) return GILDAN_18500_MODEL_SETS;
     return isGildan64000(product) && isBlack(color) ? GILDAN_64000_MODEL_SETS : [];
 }
@@ -413,7 +708,13 @@ export function getLifestyleMockupTemplates(
     color: string,
     selectedModelSets?: LifestyleModelSetId[]
 ) {
-    const templates = !isBlack(color)
+    const templates = isYupoong6089M(product) && isBlack(color)
+        ? YUPOONG_6089M_LIFESTYLE_TEMPLATES
+        : isAsColour1001(product)
+        ? AS_COLOUR_1001_LIFESTYLE_TEMPLATES
+        : isAsColour5039(product)
+        ? AS_COLOUR_5039_LIFESTYLE_TEMPLATES
+        : !isBlack(color)
         ? []
         : isGildan18500(product)
             ? GILDAN_18500_LIFESTYLE_TEMPLATES

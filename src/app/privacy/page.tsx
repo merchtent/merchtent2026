@@ -15,6 +15,7 @@ const sections = [
     ["How we use it", "We use information to process orders, run artist accounts, support payouts, improve the platform, send service updates and send marketing only where permitted."],
     ["Who helps us run it", "We work with trusted providers for payments, printing, fulfilment, email, hosting and analytics. We do not sell personal information."],
     ["Security", "We use secured services and encrypted transport. No online service is risk-free, but we keep access limited to what is needed to operate Merch Tent."],
+    ["Product and artwork retention", "Deleted products can be restored as drafts for 14 days. Original artwork remains protected while linked products are live, draft or within that recovery period. After every linked product has passed its recovery period, the artist can permanently remove the original upload in the Artwork Gallery. Separate order, payment, production and legal records may be retained where reasonably required, and temporary backup copies expire through normal backup cycles."],
     ["Cookies", "Cookies and similar tools help keep sessions working, understand traffic and improve product discovery. Browser settings can limit cookies, but some features may be affected."],
     ["Your choices", "You can contact us to request access, correction or deletion where available under applicable law."],
 ];
@@ -62,7 +63,7 @@ export default function PrivacyPolicyPage() {
             <section className="border-y border-white/10 bg-black">
                 <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 md:flex-row md:items-center md:justify-between md:px-8">
                     <p className="text-xs font-black uppercase tracking-[0.2em] text-white/45">
-                        Last updated: October 2025
+                        Last updated: 25 September 2026
                     </p>
                     <Link href="/terms" className="inline-flex items-center gap-2 text-sm font-black uppercase text-[#b6ff3f]">
                         Terms and conditions <ArrowRight className="h-4 w-4" />

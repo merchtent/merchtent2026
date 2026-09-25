@@ -12,10 +12,12 @@ import {
     DESIGN_CANVAS_WIDTH,
     resolveGeometryRect,
     type GeometryRect,
+    type PixelRect,
 } from "@/lib/products/design-geometry";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { decodeStrictBase64ImagePayload, validateImageBytes } from "@/lib/uploads";
 import { logger } from "@/lib/logger";
+import type { PosterFormat } from "@/lib/products/poster-formats";
 
 type Side = "front" | "back";
 
@@ -35,6 +37,7 @@ type DesignerLayer = {
     fontFamily?: string;
     fontWeight?: string;
     src?: string;
+    hidden?: boolean;
 };
 
 type PrintArea = GeometryRect;
@@ -48,9 +51,13 @@ export type DesignerPayload = {
         model?: string;
     };
     garment?: {
-        kind?: "tee" | "hoodie" | "tank";
+        kind?: "tee" | "hoodie" | "hat" | "tank" | "bag" | "poster";
         color?: string;
+        colorLabel?: string;
+        supplierColorName?: string;
     };
+    posterFormatKey?: string;
+    posterFormats?: PosterFormat[];
 };
 
 const PRINT_WIDTH = 2400;
@@ -188,13 +195,17 @@ async function layerToBuffer(layer: DesignerLayer, width: number, height: number
         .toBuffer();
 }
 
-export async function renderServerPrintAsset(design: DesignerPayload, side: Side) {
+export async function renderServerPrintAsset(
+    design: DesignerPayload,
+    side: Side,
+    output = { width: PRINT_WIDTH, height: PRINT_HEIGHT },
+) {
     const area = resolveGeometryRect(design.printAreas[side]);
-    const scaleX = PRINT_WIDTH / area.width;
-    const scaleY = PRINT_HEIGHT / area.height;
+    const scaleX = output.width / area.width;
+    const scaleY = output.height / area.height;
     const composites: OverlayOptions[] = [];
 
-    for (const layer of design.layers.filter((item) => item.side === side)) {
+    for (const layer of design.layers.filter((item) => item.side === side && !item.hidden)) {
         const width = Math.round((layer.width ?? 1) * scaleX);
         const height = Math.round((layer.height ?? 1) * scaleY);
         const left = Math.round((layer.x - area.x) * scaleX);
@@ -224,8 +235,8 @@ export async function renderServerPrintAsset(design: DesignerPayload, side: Side
 
     let renderer = sharp({
         create: {
-            width: PRINT_WIDTH,
-            height: PRINT_HEIGHT,
+            width: output.width,
+            height: output.height,
             channels: 4,
             background: { r: 0, g: 0, b: 0, alpha: 0 },
         },
@@ -238,28 +249,47 @@ export async function renderServerPrintAsset(design: DesignerPayload, side: Side
         contentType: "image/png",
         extension: "png",
         sha256: hashBuffer(buffer),
-        width: PRINT_WIDTH,
-        height: PRINT_HEIGHT,
+        width: output.width,
+        height: output.height,
     };
 }
 
-type GarmentKind = "tee" | "hoodie" | "tank";
+type GarmentKind = "tee" | "hoodie" | "hat" | "tank" | "bag" | "poster";
 
-function garmentPath(kind: GarmentKind) {
+function garmentPath(kind: GarmentKind, posterArea?: PixelRect) {
     if (kind === "hoodie") {
         return "M318 190 Q450 76 582 190 L646 324 L758 425 L662 595 L612 1000 Q450 1065 288 1000 L238 595 L142 425 L254 324 Z";
+    }
+
+    if (kind === "hat") {
+        return "M190 565 C190 260 300 155 450 155 C600 155 710 260 710 565 Q450 650 190 565 Z M190 565 Q450 650 710 565 Q745 710 450 745 Q155 710 190 565 Z";
     }
 
     if (kind === "tank") {
         return "M325 150 C360 136 390 120 407 105 C420 175 480 175 493 105 C510 120 540 136 575 150 L625 195 C585 265 565 340 585 980 Q450 1038 315 980 C335 340 315 265 275 195 Z";
     }
 
+    if (kind === "bag") {
+        return "M275 475 L625 475 L650 1030 L250 1030 Z";
+    }
+
+    if (kind === "poster") {
+        const area = posterArea ?? { x: 150, y: 150, width: 600, height: 900 };
+        return `M${area.x} ${area.y} H${area.x + area.width} V${area.y + area.height} H${area.x} Z`;
+    }
+
     return "M318 160 Q450 96 582 160 L742 300 L646 472 L590 980 Q450 1038 310 980 L254 472 L158 300 Z";
 }
 
-function garmentBaseSvg(kind: GarmentKind, side: Side, color: string) {
-    const path = garmentPath(kind);
-    const neckline = kind === "hoodie"
+function garmentBaseSvg(kind: GarmentKind, side: Side, color: string, posterArea?: PixelRect) {
+    const path = garmentPath(kind, posterArea);
+    const neckline = kind === "poster"
+        ? ""
+        : kind === "hat"
+        ? '<path d="M450 155 V625 M215 535 Q450 610 685 535 M190 565 Q450 650 710 565" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="5"/>'
+        : kind === "bag"
+        ? '<path d="M330 475 L330 210 Q450 125 570 210 L570 475" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="30"/>'
+        : kind === "hoodie"
         ? side === "front"
             ? '<path d="M350 225 Q450 320 550 225 Q506 355 450 390 Q394 355 350 225" fill="rgba(0,0,0,.2)"/>'
             : '<path d="M326 245 Q450 318 574 245" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5"/>'
@@ -300,8 +330,8 @@ function garmentBaseSvg(kind: GarmentKind, side: Side, color: string) {
     `);
 }
 
-function garmentFinishSvg(kind: GarmentKind) {
-    const path = garmentPath(kind);
+function garmentFinishSvg(kind: GarmentKind, posterArea?: PixelRect) {
+    const path = garmentPath(kind, posterArea);
     return Buffer.from(`
         <svg width="${MOCKUP_WIDTH}" height="${MOCKUP_HEIGHT}" viewBox="0 0 ${DESIGN_CANVAS_WIDTH} ${DESIGN_CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -333,8 +363,14 @@ function garmentFinishSvg(kind: GarmentKind) {
 export async function renderServerMockup(design: DesignerPayload, side: Side) {
     const kind: GarmentKind = design.garment?.kind === "hoodie"
         ? "hoodie"
+        : design.garment?.kind === "hat"
+            ? "hat"
         : design.garment?.kind === "tank"
             ? "tank"
+            : design.garment?.kind === "bag"
+                ? "bag"
+                : design.garment?.kind === "poster"
+                    ? "poster"
             : "tee";
     const color = /^#[0-9a-fA-F]{6}$/.test(design.garment?.color ?? "")
         ? design.garment?.color ?? "#111111"
@@ -342,7 +378,12 @@ export async function renderServerMockup(design: DesignerPayload, side: Side) {
     const area = resolveGeometryRect(design.printAreas[side]);
     const scaleX = MOCKUP_WIDTH / DESIGN_CANVAS_WIDTH;
     const scaleY = MOCKUP_HEIGHT / DESIGN_CANVAS_HEIGHT;
-    const template = getMockupTemplate(design.catalogProduct ?? {}, color, side);
+    const template = getMockupTemplate(
+        design.catalogProduct ?? {},
+        color,
+        side,
+        design.garment?.supplierColorName ?? design.garment?.colorLabel
+    );
     const printAsset = await renderServerPrintAsset(design, side);
 
     let renderer: Sharp;
@@ -426,13 +467,13 @@ export async function renderServerMockup(design: DesignerPayload, side: Side) {
             .resize(Math.round(area.width * scaleX), Math.round(area.height * scaleY), { fit: "fill" })
             .png()
             .toBuffer();
-        renderer = sharp(garmentBaseSvg(kind, side, color)).composite([
+        renderer = sharp(garmentBaseSvg(kind, side, color, area)).composite([
             {
                 input: artwork,
                 left: Math.round(area.x * scaleX),
                 top: Math.round(area.y * scaleY),
             },
-            { input: garmentFinishSvg(kind), blend: "over" },
+            ...(kind === "poster" ? [] : [{ input: garmentFinishSvg(kind, area), blend: "over" as const }]),
         ]);
     }
 

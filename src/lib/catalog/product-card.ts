@@ -20,6 +20,7 @@ export type CatalogProductArtistRow = {
 
 export type CatalogProductRow = {
     id: string;
+    artist_id?: string | null;
     title?: string | null;
     slug?: string | null;
     category?: string | null;
@@ -46,6 +47,7 @@ export type CatalogProductCard = {
     }>;
     kind: "tee";
     sizes: string[];
+    amplifyPriority: boolean;
 };
 
 const DEFAULT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
@@ -62,7 +64,7 @@ function firstArtist(artist?: CatalogProductArtistRow | CatalogProductArtistRow[
 
 export function mapCatalogProductCard(
     product: CatalogProductRow,
-    options?: { fallbackBadge?: string }
+    options?: { fallbackBadge?: string; amplifyPriority?: boolean }
 ): CatalogProductCard {
     const images = sortBySortOrder(product.product_images);
     const primary = publicImageUrl(images[0]?.path) ?? "/merch-placeholder.svg";
@@ -88,5 +90,6 @@ export function mapCatalogProductCard(
         colors,
         kind: "tee",
         sizes: DEFAULT_SIZES,
+        amplifyPriority: options?.amplifyPriority ?? false,
     };
 }

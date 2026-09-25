@@ -11,10 +11,10 @@ import {
 import { requireShippingMethodId } from "@/lib/shipping-methods";
 import { colorSwatchHex } from "@/lib/catalog/color-swatch";
 
-const SIZE_LABELS = new Set(["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]);
+const SIZE_LABELS = new Set(["ONE SIZE", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]);
 const ALLOWED_SUPPLIERS = new Set(["printify", "printful", "local"]);
 const ALLOWED_CATEGORIES = new Set(["tees", "hoodies", "hats", "tanks", "bags", "posters", "vinyl", "accessories", "other"]);
-const ALLOWED_GARMENT_KINDS = new Set(["tee", "hoodie", "tank"]);
+const ALLOWED_GARMENT_KINDS = new Set(["tee", "hoodie", "hat", "tank", "bag", "poster"]);
 const ALLOWED_DESTINATION_COUNTRIES = new Set(["AU"]);
 const ALLOWED_SHIPPING_SIZE_TYPES = new Set(["All"]);
 
@@ -24,7 +24,12 @@ function moneyToCents(value: FormDataEntryValue | null, fallback: number) {
     return Math.round(parsed * 100);
 }
 
-function parseVariantTitle(title: string) {
+function parseVariantTitle(title: string, options?: number[] | Record<string, string> | null) {
+    if (options && !Array.isArray(options)) {
+        const sizeLabel = options.size?.trim() || null;
+        const colorLabel = options.color?.trim() || options.paper?.trim() || null;
+        if (sizeLabel || colorLabel) return { sizeLabel, colorLabel };
+    }
     const parts = title
         .split("/")
         .map((part) => part.trim())
@@ -154,7 +159,7 @@ export async function importPrintifyCatalogueProductAction(formData: FormData) {
 
     const parsedVariants = variants.map((variant) => ({
         variant,
-        ...parseVariantTitle(variant.title),
+        ...parseVariantTitle(variant.title, variant.options),
     }));
     const sizes = uniqueSorted(parsedVariants.map((item) => item.sizeLabel));
     const colorLabels = uniqueSorted(parsedVariants.map((item) => item.colorLabel));
@@ -192,14 +197,43 @@ export async function importPrintifyCatalogueProductAction(formData: FormData) {
                 supplier_product_url: `https://printify.com/app/products/${blueprintId}`,
                 merch_tent_name: merchTentName || blueprint.title,
                 category,
-                garment_kind: category === "hoodies" ? "hoodie" : category === "tanks" ? "tank" : "tee",
+                garment_kind: category === "hoodies"
+                    ? "hoodie"
+                    : category === "hats"
+                        ? "hat"
+                    : category === "tanks"
+                        ? "tank"
+                        : category === "bags"
+                            ? "bag"
+                            : category === "posters"
+                                ? "poster"
+                            : "tee",
                 default_price_cents: defaultPriceCents,
                 currency: "AUD",
                 cost_tax_mode: "ex_gst",
                 cost_tax_region: "AU",
                 cost_tax_rate_bps: 1000,
                 automation_mode: "create_on_sale",
-                print_areas: category === "hoodies"
+                print_areas: category === "hats"
+                    ? {
+                        front: {
+                            x: 220 / 900,
+                            y: 390 / 1200,
+                            width: 460 / 900,
+                            height: (460 * 750 / 1654) / 1200,
+                            units: "ratio",
+                            supplierPlacement: "front",
+                        },
+                        back: {
+                            x: 220 / 900,
+                            y: 390 / 1200,
+                            width: 460 / 900,
+                            height: (460 * 750 / 1654) / 1200,
+                            units: "ratio",
+                            supplierPlacement: "front",
+                        },
+                    }
+                    : category === "hoodies"
                     ? {
                         front: {
                             x: 280 / 900,
@@ -237,6 +271,44 @@ export async function importPrintifyCatalogueProductAction(formData: FormData) {
                                 supplierPlacement: "back",
                             },
                         }
+                        : category === "bags"
+                            ? {
+                                front: {
+                                    x: 235 / 900,
+                                    y: 525 / 1200,
+                                    width: 430 / 900,
+                                    height: (430 * 3425 / 2835) / 1200,
+                                    units: "ratio",
+                                    supplierPlacement: "front",
+                                },
+                                back: {
+                                    x: 235 / 900,
+                                    y: 525 / 1200,
+                                    width: 430 / 900,
+                                    height: (430 * 3425 / 2835) / 1200,
+                                    units: "ratio",
+                                    supplierPlacement: "back",
+                                },
+                            }
+                            : category === "posters"
+                                ? {
+                                    front: {
+                                        x: 150 / 900,
+                                        y: 150 / 1200,
+                                        width: 600 / 900,
+                                        height: 900 / 1200,
+                                        units: "ratio",
+                                        supplierPlacement: "front",
+                                    },
+                                    back: {
+                                        x: 150 / 900,
+                                        y: 150 / 1200,
+                                        width: 600 / 900,
+                                        height: 900 / 1200,
+                                        units: "ratio",
+                                        supplierPlacement: "front",
+                                    },
+                                }
                         : {
                         front: {
                             x: 280 / 900,
@@ -258,7 +330,7 @@ export async function importPrintifyCatalogueProductAction(formData: FormData) {
                 colors: existingCatalog?.colors ?? colors,
                 sizes,
                 production_data: {
-                    method: "DTG",
+                    method: category === "posters" ? "Digital printing" : "DTG",
                     placements: supplierPrintAreas.map((area) => area.position),
                     notes: ["Imported from Printify for curated Merch Tent designer use."],
                     printify_blueprint_id: blueprintId,
@@ -514,6 +586,7 @@ export async function updateSupplierCatalogProductSettingsAction(formData: FormD
     revalidatePath("/admin/supplier-catalog");
     revalidatePath(`/admin/supplier-catalog/${supplier}/${supplierProductId}`);
     revalidatePath("/dashboard/products/designer");
+    revalidatePath("/", "layout");
     redirect(`/admin/supplier-catalog/${supplier}/${encodeURIComponent(supplierProductId)}?saved=pricing`);
 }
 

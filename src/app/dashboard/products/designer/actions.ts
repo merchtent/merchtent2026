@@ -14,6 +14,9 @@ import { checkDurableRateLimit } from "@/lib/rate-limit";
 import { requireArtistAction } from "@/lib/auth/artist";
 import { getLifestyleModelSets, type LifestyleModelSetId } from "@/lib/products/mockup-templates";
 import { getDesignerCatalogProduct } from "@/lib/supplier-catalog";
+import { posterCanvasArea, posterFormatForKey, remapPosterLayers, type PosterFormat } from "@/lib/products/poster-formats";
+import { resolveGeometryRect } from "@/lib/products/design-geometry";
+import { buildDesignedProductName } from "@/lib/products/designed-product-name";
 
 const ALLOWED_CATEGORIES = [
     "tees",
@@ -49,6 +52,15 @@ type DesignerLayer = {
     fontFamily?: string;
     fontWeight?: string;
     src?: string;
+    sourcePixelWidth?: number;
+    sourcePixelHeight?: number;
+    name?: string;
+    locked?: boolean;
+    hidden?: boolean;
+    groupId?: string;
+    fileType?: string;
+    hasTransparency?: boolean;
+    colorProfile?: string;
 };
 
 type DesignerPayload = {
@@ -103,8 +115,12 @@ type DesignerPayload = {
             format: string;
         };
     printSideCount?: 1 | 2;
+    posterFormatKey?: string;
+    posterFormats?: PosterFormat[];
+    posterLayouts?: Array<{ key: string; layers: DesignerLayer[] }>;
+    posterPrintAssets?: Array<PosterFormat & { path: string; sha256: string }>;
     garment: {
-        kind: "tee" | "hoodie" | "tank";
+        kind: "tee" | "hoodie" | "hat" | "tank" | "bag" | "poster";
         color: string;
         colorLabel?: string;
         supplierColorName?: string;
@@ -118,7 +134,7 @@ type DesignerPayload = {
         back: PrintArea & { units: "ratio" };
     };
     layers: DesignerLayer[];
-    listingModelSets?: { female: LifestyleModelSetId; male: LifestyleModelSetId };
+    listingModelSets?: { female?: LifestyleModelSetId; male?: LifestyleModelSetId };
 };
 
 type PrintArea = {
@@ -159,11 +175,20 @@ const layerSchema = z.object({
     fontFamily: z.enum(["Arial", "Impact", "Georgia", "Verdana", "Courier New"]).optional(),
     fontWeight: z.enum(["400", "500", "600", "700", "800", "900"]).optional(),
     src: z.string().max(16_000_000).optional(),
+    sourcePixelWidth: z.number().int().min(1).max(50_000).optional(),
+    sourcePixelHeight: z.number().int().min(1).max(50_000).optional(),
+    name: z.string().trim().min(1).max(80).optional(),
+    locked: z.boolean().optional(),
+    hidden: z.boolean().optional(),
+    groupId: z.string().max(80).optional(),
+    fileType: z.string().max(80).optional(),
+    hasTransparency: z.boolean().optional(),
+    colorProfile: z.string().max(80).optional(),
 });
 
 const designPayloadSchema = z.object({
     version: z.literal(1),
-    templateKey: z.string().min(1).max(80).regex(/^merch-tent-(tee|hoodie|tank)-v1$/),
+    templateKey: z.string().min(1).max(80).regex(/^merch-tent-(tee|hoodie|hat|tank|bag|poster)-v1$/),
     catalogProduct: z.object({
         key: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/),
         name: z.string().min(1).max(160),
@@ -199,7 +224,7 @@ const designPayloadSchema = z.object({
             colors: z.array(z.string().max(100)).max(200),
             sizes: z.array(z.string().max(40)).max(100),
         })).max(50).optional(),
-        sizes: z.array(z.string().min(1).max(20)).max(80).optional(),
+        sizes: z.array(z.string().min(1).max(40)).max(80).optional(),
         colors: z.array(z.unknown()).max(100).optional(),
         production: z.unknown().optional(),
     }).optional(),
@@ -213,8 +238,20 @@ const designPayloadSchema = z.object({
         format: z.literal("image/png"),
     }).optional(),
     printSideCount: z.union([z.literal(1), z.literal(2)]).optional(),
+    posterFormatKey: z.string().min(1).max(80).optional(),
+    posterFormats: z.array(z.object({
+        key: z.string().min(1).max(80),
+        label: z.string().min(1).max(80),
+        width: z.number().int().min(100).max(12_000),
+        height: z.number().int().min(100).max(12_000),
+        variantIds: z.array(z.number().int().positive()).min(1).max(20),
+    })).max(20).optional(),
+    posterLayouts: z.array(z.object({
+        key: z.string().min(1).max(80),
+        layers: z.array(layerSchema).max(30),
+    })).max(20).optional(),
     garment: z.object({
-        kind: z.enum(["tee", "hoodie", "tank"]),
+        kind: z.enum(["tee", "hoodie", "hat", "tank", "bag", "poster"]),
         color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
         colorLabel: z.string().max(80).optional(),
         supplierColorName: z.string().max(80).optional(),
@@ -232,7 +269,7 @@ const designPayloadSchema = z.object({
 
 const designedProductInputSchema = z.object({
     productId: z.string().uuid().optional(),
-    title: z.string().trim().min(1).max(120),
+    dropName: z.string().trim().min(1).max(80),
     description: z.string().trim().max(2_000),
     price: z.coerce.number().finite().min(1).max(2_000),
     category: z.enum(ALLOWED_CATEGORIES).catch("other"),
@@ -257,6 +294,16 @@ const designedProductInputSchema = z.object({
         "hoodie-vinyl-press",
         "hoodie-loading-dock",
         "hoodie-radio-studio",
+        "tank-rehearsal",
+        "tank-backstage",
+        "tank-record-shop",
+        "tank-loading-dock",
+        "tote-record-shop",
+        "tote-loading-dock",
+        "hat-backstage",
+        "hat-record-shop",
+        "hat-side-stage",
+        "hat-laneway",
     ]).optional(),
     maleModelSet: z.enum([
         "gig",
@@ -267,6 +314,16 @@ const designedProductInputSchema = z.object({
         "hoodie-vinyl-press",
         "hoodie-loading-dock",
         "hoodie-radio-studio",
+        "tank-rehearsal",
+        "tank-backstage",
+        "tank-record-shop",
+        "tank-loading-dock",
+        "tote-record-shop",
+        "tote-loading-dock",
+        "hat-backstage",
+        "hat-record-shop",
+        "hat-side-stage",
+        "hat-laneway",
     ]).optional(),
 });
 
@@ -329,6 +386,48 @@ function normaliseDesignPayload(raw: string): DesignerPayload {
     }
 
     return parsed;
+}
+
+function posterDesignsForProduct(design: DesignerPayload, liveFormats: PosterFormat[]) {
+    if (design.garment.kind !== "poster") return [];
+    const sourceFormat = posterFormatForKey(liveFormats, design.posterFormatKey);
+    if (!sourceFormat) throw new Error("This poster does not have any available print formats.");
+    const submittedIds = new Set(design.posterFormats?.flatMap((format) => format.variantIds) ?? []);
+    const liveIds = new Set(liveFormats.flatMap((format) => format.variantIds));
+    if (submittedIds.size !== liveIds.size || [...submittedIds].some((id) => !liveIds.has(id))) {
+        throw new Error("Poster formats changed in the supplier catalogue. Reload the designer and try again.");
+    }
+    const sourceArea = resolveGeometryRect(design.printAreas.front);
+    const sourceLayers = new Map(design.layers.map((layer) => [layer.id, layer]));
+
+    return liveFormats.map((format) => {
+        const area = posterCanvasArea(format.width, format.height);
+        const savedLayout = design.posterLayouts?.find((layout) => layout.key === format.key)?.layers;
+        const layers = savedLayout
+            ? savedLayout.map((layer) => ({
+                ...layer,
+                src: layer.src ?? sourceLayers.get(layer.id)?.src,
+            }))
+            : remapPosterLayers(design.layers, sourceArea, area);
+        for (const layer of layers) {
+            const width = layer.width ?? 1;
+            const height = layer.height ?? 1;
+            if (layer.x < area.x || layer.y < area.y || layer.x + width > area.x + area.width || layer.y + height > area.y + area.height) {
+                throw new Error(`Artwork for ${format.label} must stay inside its printable area.`);
+            }
+        }
+        return {
+            format,
+            design: {
+                ...design,
+                posterFormatKey: format.key,
+                posterFormats: liveFormats,
+                printAreas: { front: area, back: area },
+                normalizedPrintAreas: undefined,
+                layers,
+            } satisfies DesignerPayload,
+        };
+    });
 }
 
 async function requireAvailableDesignerColor(design: DesignerPayload) {
@@ -426,17 +525,18 @@ async function replaceLayerAssets(
     userId: string,
     design: DesignerPayload
 ) {
-    const layers: DesignerLayer[] = [];
-
-    for (const layer of design.layers) {
+    const storedSources = new Map<string, string>();
+    async function persistLayer(layer: DesignerLayer) {
         const isOwnedUploadedAsset = layer.src?.startsWith(`designer-assets/${userId}/`) ?? false;
         if (layer.type === "image" && layer.src && !layer.src.startsWith("data:") && !layer.src.startsWith(`${productId}/design-assets/`) && !isOwnedUploadedAsset) {
             throw new Error("The design contains an image from another product.");
         }
         if (layer.type !== "image" || !layer.src?.startsWith("data:")) {
-            layers.push(layer);
-            continue;
+            return layer;
         }
+
+        const existingPath = storedSources.get(layer.src);
+        if (existingPath) return { ...layer, src: existingPath };
 
         const parsed = parseDataUrl(layer.src);
         const path = `${productId}/design-assets/${layer.id}-${randomUUID()}.${parsed.extension}`;
@@ -457,15 +557,23 @@ async function replaceLayerAssets(
             });
         }
 
-        layers.push({
-            ...layer,
-            src: path,
-        });
+        storedSources.set(layer.src, path);
+        return { ...layer, src: path };
+    }
+
+    const layers: DesignerLayer[] = [];
+    for (const layer of design.layers) layers.push(await persistLayer(layer));
+    const posterLayouts = [];
+    for (const layout of design.posterLayouts ?? []) {
+        const layoutLayers: DesignerLayer[] = [];
+        for (const layer of layout.layers) layoutLayers.push(await persistLayer(layer));
+        posterLayouts.push({ ...layout, layers: layoutLayers });
     }
 
     return {
         ...design,
         layers,
+        ...(posterLayouts.length > 0 ? { posterLayouts } : {}),
     };
 }
 
@@ -609,6 +717,10 @@ export async function generateDesignerMockupPreviewAction(designRaw: string, sal
         throw new Error("Choose the colours to sell again.");
     }
     const { product, colors } = await requireAvailableDesignerColors(design, requestedColors);
+    const isSingleSided = design.garment.kind === "poster" || design.garment.kind === "hat";
+    const posterTargets = design.garment.kind === "poster"
+        ? posterDesignsForProduct(design, product.production.posterFormats ?? [])
+        : [];
     if (product.supplier.key === "printify") {
         await availablePrintifyVariantIds(
             getServerSupabase(),
@@ -617,19 +729,19 @@ export async function generateDesignerMockupPreviewAction(designRaw: string, sal
             colors.map((color) => color.supplierColorName ?? color.label)
         );
     }
-    const [renderedColors, lifestyle] = await Promise.all([
+    const [renderedColors, lifestyle, renderedPosterFormats] = await Promise.all([
         Promise.all(colors.map(async (color) => {
             try {
             const variantDesign = { ...design, garment: { ...design.garment, color: color.value } };
             const [front, back] = await Promise.all([
                 renderServerMockup(variantDesign, "front"),
-                renderServerMockup(variantDesign, "back"),
+                isSingleSided ? Promise.resolve(null) : renderServerMockup(variantDesign, "back"),
             ]);
             return {
                 label: color.label,
                 value: color.value,
                 front: `data:${front.contentType};base64,${front.buffer.toString("base64")}`,
-                back: `data:${back.contentType};base64,${back.buffer.toString("base64")}`,
+                back: back ? `data:${back.contentType};base64,${back.buffer.toString("base64")}` : null,
             };
             } catch (error: unknown) {
                 logger.error("designer colour mockup preview failed", {
@@ -645,6 +757,16 @@ export async function generateDesignerMockupPreviewAction(designRaw: string, sal
             });
             return [];
         }),
+        Promise.all(posterTargets.map(async ({ format, design: targetDesign }) => {
+            const mockup = await renderServerMockup(targetDesign, "front");
+            return {
+                key: format.key,
+                label: format.label,
+                width: format.width,
+                height: format.height,
+                src: `data:${mockup.contentType};base64,${mockup.buffer.toString("base64")}`,
+            };
+        })),
     ]);
 
     const colorMockups = renderedColors.filter((color): color is NonNullable<typeof color> => Boolean(color));
@@ -659,6 +781,7 @@ export async function generateDesignerMockupPreviewAction(designRaw: string, sal
             label: mockup.label,
             src: `data:${mockup.contentType};base64,${mockup.buffer.toString("base64")}`,
         })),
+        posterFormats: renderedPosterFormats,
     });
 }
 
@@ -681,7 +804,7 @@ export async function createDesignedProductAction(formData: FormData) {
 
     const parsedInput = designedProductInputSchema.safeParse({
         productId: formData.get("product_id") ?? undefined,
-        title: formData.get("title"),
+        dropName: formData.get("drop_name"),
         description: formData.get("description") ?? "",
         price: formData.get("price"),
         category: formData.get("category") ?? "tees",
@@ -706,7 +829,7 @@ export async function createDesignedProductAction(formData: FormData) {
 
     const {
         productId: editingProductId,
-        title,
+        dropName,
         description,
         price,
         category,
@@ -741,6 +864,7 @@ export async function createDesignedProductAction(formData: FormData) {
     let saleColorNames: string[];
     try { saleColorNames = JSON.parse(saleColorNamesRaw); } catch { throw new Error("Choose the colours to sell again."); }
     const { product: liveCatalogProduct, colors: saleColors } = await requireAvailableDesignerColors(design, saleColorNames);
+    const title = buildDesignedProductName(artist.display_name, dropName, liveCatalogProduct.name);
     const approvedColor = saleColors.find((color) =>
         (color.supplierColorName ?? color.label).toLowerCase() === (design.garment.supplierColorName ?? design.garment.colorLabel)?.toLowerCase()
     );
@@ -760,28 +884,53 @@ export async function createDesignedProductAction(formData: FormData) {
         ? await availablePrintifyVariantIds(supabase, supplierProductId, liveCatalogProduct.supplier.printify?.printProviderId, saleColorNames)
         : null;
     let parsedVariantIds = supplierVariants?.variantIds ?? parsePrintifyVariantIds(printifyVariantIds);
-    const hasFrontDesign = design.layers.some((layer) => layer.side === "front");
-    const hasBackDesign = design.layers.some((layer) => layer.side === "back");
-    const availableModelSets = getLifestyleModelSets(design.catalogProduct ?? {}, design.garment.color);
-    if (availableModelSets.length > 0 && (
-        !availableModelSets.some((set) => set.id === femaleModelSet && set.audience === "female") ||
-        !availableModelSets.some((set) => set.id === maleModelSet && set.audience === "male")
-    )) {
-        throw new Error("Choose one female and one male model set before saving.");
+    const hasFrontDesign = design.layers.some((layer) => layer.side === "front") &&
+        design.layers.some((layer) => layer.side === "front" && !layer.hidden);
+    const hasBackDesign = design.layers.some((layer) => layer.side === "back") &&
+        design.layers.some((layer) => layer.side === "back" && !layer.hidden);
+    const isSingleSided = design.garment.kind === "poster" || design.garment.kind === "hat";
+    if (design.garment.kind === "poster" && hasBackDesign) {
+        throw new Error("Posters support front artwork only.");
     }
-    const chosenModelSets = availableModelSets.length > 0
-        ? [femaleModelSet!, maleModelSet!]
+    if (design.garment.kind === "hat" && hasBackDesign) {
+        throw new Error("Hats support front artwork only.");
+    }
+    const availableModelSets = getLifestyleModelSets(design.catalogProduct ?? {}, design.garment.color);
+    const femaleModelSets = availableModelSets.filter((set) => set.audience === "female");
+    const maleModelSets = availableModelSets.filter((set) => set.audience === "male");
+    if ((femaleModelSets.length > 0 && !femaleModelSets.some((set) => set.id === femaleModelSet)) ||
+        (maleModelSets.length > 0 && !maleModelSets.some((set) => set.id === maleModelSet))) {
+        throw new Error("Choose one available model from each listed group before saving.");
+    }
+    const chosenModelSets = [femaleModelSet, maleModelSet]
+        .filter((id): id is LifestyleModelSetId => Boolean(id));
+    const posterTargets = design.garment.kind === "poster"
+        ? posterDesignsForProduct(design, liveCatalogProduct.production.posterFormats ?? [])
         : [];
-    const canonicalFrontPrintAsset = await renderServerPrintAsset(design, "front");
+    const canonicalPosterTarget = posterTargets.find(({ format }) => format.key === design.posterFormatKey)
+        ?? posterTargets[0];
+    const canonicalRenderDesign = canonicalPosterTarget?.design ?? design;
+    const canonicalFrontPrintAsset = canonicalPosterTarget
+        ? await renderServerPrintAsset(
+            canonicalRenderDesign,
+            "front",
+            { width: canonicalPosterTarget.format.width, height: canonicalPosterTarget.format.height },
+        )
+        : await renderServerPrintAsset(design, "front");
     const canonicalBackPrintAsset = hasBackDesign
         ? await renderServerPrintAsset(design, "back")
         : null;
-    const canonicalFrontMockup = await renderServerMockup(design, "front");
-    const canonicalBackMockup = await renderServerMockup(design, "back");
+    const canonicalFrontMockup = await renderServerMockup(canonicalRenderDesign, "front");
+    const canonicalBackMockup = isSingleSided
+        ? null
+        : await renderServerMockup(design, "back");
     const lifestyleMockups = chosenModelSets.length > 0
         ? await renderServerLifestyleMockups(design, { modelSets: chosenModelSets })
         : [];
-    if (chosenModelSets.length > 0 && lifestyleMockups.length !== 4) {
+    const expectedLifestyleMockups = availableModelSets
+        .filter((set) => chosenModelSets.includes(set.id))
+        .reduce((count, set) => count + 1 + (set.backTemplateId ? 1 : 0), 0);
+    if (chosenModelSets.length > 0 && lifestyleMockups.length !== expectedLifestyleMockups) {
         throw new Error("Selected model mockups could not be generated. Try again before saving.");
     }
     const baseSlug = toSlug(title) || "designed-product";
@@ -796,6 +945,7 @@ export async function createDesignedProductAction(formData: FormData) {
                 category,
                 description,
                 price_cents: Math.round(price * 100),
+                artist_cut_cents: liveCatalogProduct.production.artistProfitCents ?? 0,
                 currency: "AUD",
                 is_published: false,
                 fulfillment_flow: "supplier_on_demand",
@@ -831,14 +981,16 @@ export async function createDesignedProductAction(formData: FormData) {
             });
 
         let backPath: string | null = null;
-        backPath = `${createdProductId}/mockups/back-${randomUUID()}.${canonicalBackMockup.extension}`;
-        await uploadImageBuffer(rateLimitSupabase, backPath, canonicalBackMockup, "designed product mockup upload failed");
-        imageRows.push({
-            product_id: createdProductId,
-            path: backPath,
-            sort_order: 1,
-            side: "back",
-        });
+        if (canonicalBackMockup) {
+            backPath = `${createdProductId}/mockups/back-${randomUUID()}.${canonicalBackMockup.extension}`;
+            await uploadImageBuffer(rateLimitSupabase, backPath, canonicalBackMockup, "designed product mockup upload failed");
+            imageRows.push({
+                product_id: createdProductId,
+                path: backPath,
+                sort_order: 1,
+                side: "back",
+            });
+        }
 
         const lifestyleOrder = [
             femaleModelSet && lifestyleMockups.find((mockup) => mockup.modelSetId === femaleModelSet && mockup.side === "front"),
@@ -852,13 +1004,44 @@ export async function createDesignedProductAction(formData: FormData) {
             imageRows.push({
                 product_id: createdProductId,
                 path: imagePath,
-                sort_order: index + 2,
+                sort_order: index + Math.max(2, posterTargets.length),
                 side: mockup.side,
             });
         }
 
         const frontPrintAssetPath = `${createdProductId}/print-assets/front-${randomUUID()}.png`;
         await uploadImageBuffer(rateLimitSupabase, frontPrintAssetPath, canonicalFrontPrintAsset);
+
+        const posterPrintAssets: Array<PosterFormat & { path: string; sha256: string }> = [];
+        if (canonicalPosterTarget) {
+            posterPrintAssets.push({
+                ...canonicalPosterTarget.format,
+                path: frontPrintAssetPath,
+                sha256: canonicalFrontPrintAsset.sha256,
+            });
+            let posterImageOrder = 1;
+            for (const target of posterTargets) {
+                if (target.format.key === canonicalPosterTarget.format.key) continue;
+                const asset = await renderServerPrintAsset(
+                    target.design,
+                    "front",
+                    { width: target.format.width, height: target.format.height },
+                );
+                const assetPath = `${createdProductId}/print-assets/poster-${target.format.key}-${randomUUID()}.png`;
+                await uploadImageBuffer(rateLimitSupabase, assetPath, asset);
+                posterPrintAssets.push({ ...target.format, path: assetPath, sha256: asset.sha256 });
+
+                const mockup = await renderServerMockup(target.design, "front");
+                const mockupPath = `${createdProductId}/mockups/poster-${target.format.key}-${randomUUID()}.webp`;
+                await uploadImageBuffer(rateLimitSupabase, mockupPath, mockup, "designed poster format mockup upload failed");
+                imageRows.push({
+                    product_id: createdProductId,
+                    path: mockupPath,
+                    sort_order: posterImageOrder++,
+                    side: "front",
+                });
+            }
+        }
 
         let backPrintAssetPath: string | null = null;
         let backPrintHash: string | null = null;
@@ -870,8 +1053,12 @@ export async function createDesignedProductAction(formData: FormData) {
 
         const savedDesign = await replaceLayerAssets(rateLimitSupabase, createdProductId, user.id, design);
         savedDesign.printSideCount = hasFrontDesign && hasBackDesign ? 2 : 1;
-        if (femaleModelSet && maleModelSet && availableModelSets.length > 0) {
-            savedDesign.listingModelSets = { female: femaleModelSet, male: maleModelSet };
+        if (posterPrintAssets.length > 0) savedDesign.posterPrintAssets = posterPrintAssets;
+        if (chosenModelSets.length > 0) {
+            savedDesign.listingModelSets = {
+                ...(femaleModelSet ? { female: femaleModelSet } : {}),
+                ...(maleModelSet ? { male: maleModelSet } : {}),
+            };
         }
         const savedCatalogProduct = savedDesign.catalogProduct ?? {
             key: catalogProductKey ?? "unknown",
@@ -926,14 +1113,12 @@ export async function createDesignedProductAction(formData: FormData) {
                 const colorDesign = { ...design, garment: { ...design.garment, color: color.value } };
                 const [front, back] = await Promise.all([
                     renderServerMockup(colorDesign, "front"),
-                    renderServerMockup(colorDesign, "back"),
+                    isSingleSided ? Promise.resolve(null) : renderServerMockup(colorDesign, "back"),
                 ]);
                 const colorFrontPath = `${createdProductId}/mockups/front-${randomUUID()}.${front.extension}`;
-                const colorBackPath = `${createdProductId}/mockups/back-${randomUUID()}.${back.extension}`;
-                await Promise.all([
-                    uploadImageBuffer(rateLimitSupabase, colorFrontPath, front),
-                    uploadImageBuffer(rateLimitSupabase, colorBackPath, back),
-                ]);
+                const colorBackPath = back ? `${createdProductId}/mockups/back-${randomUUID()}.${back.extension}` : null;
+                await uploadImageBuffer(rateLimitSupabase, colorFrontPath, front);
+                if (back && colorBackPath) await uploadImageBuffer(rateLimitSupabase, colorBackPath, back);
                 colorRows.push({
                     product_id: createdProductId,
                     hex: color.value,
@@ -1049,9 +1234,7 @@ export async function createDesignedProductAction(formData: FormData) {
                 moderation_notes: publish ? "Awaiting operator review after artist self-service designer publish." : null,
                 moderation_reviewed_at: null,
                 moderation_reviewed_by: null,
-                readiness_notes: publish
-                    ? "Designer V1 payload validated, published, and queued for moderation review."
-                    : "Designer V1 payload validated and saved as draft.",
+                readiness_notes: null,
             })
             .eq("id", createdProductId);
 

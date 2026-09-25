@@ -23,6 +23,10 @@ import { redeemMerchCreditReservation } from "@/lib/merch-credits/checkout";
 import { recordPlatformEvent, type PlatformEventSeverity } from "@/lib/platform-events";
 import { checkoutShippingAmountCents } from "@/lib/shipping-methods";
 import { NO_STORE_HEADERS, noStoreJson } from "@/lib/api/no-store";
+import {
+    isAmplifySubscriptionEvent,
+    syncAmplifyStripeSubscription,
+} from "@/lib/amplify/stripe-subscription";
 
 function isUuidLike(s: string | null | undefined): s is string {
     if (!s) return false;
@@ -419,6 +423,22 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    if (isAmplifySubscriptionEvent(event)) {
+        try {
+            await syncAmplifyStripeSubscription(event.data.object as Stripe.Subscription, event.id);
+            await finishWebhookLedger(event.id, "processed");
+            return noStoreJson({ ok: true, amplify: true });
+        } catch (err) {
+            logger.error("Unhandled error in Amplify subscription webhook", {
+                event_id: event.id,
+                event_type: event.type,
+                ...errorContext(err),
+            });
+            await finishWebhookLedger(event.id, "failed", err);
+            return noStoreJson({ ok: false }, { status: 500 });
+        }
+    }
+
     if (await handleFinancialAttentionWebhook(event)) {
         await finishWebhookLedger(event.id, "processed");
         return noStoreJson({ ok: true, attention: true });
@@ -431,6 +451,26 @@ export async function POST(req: NextRequest) {
     }
 
     const session = event.data.object as Stripe.Checkout.Session;
+    if (session.mode === "subscription" && session.metadata?.checkout_type === "artist_amplify") {
+        try {
+            const subscriptionId = typeof session.subscription === "string"
+                ? session.subscription
+                : session.subscription?.id;
+            if (!subscriptionId) throw new Error("Amplify checkout completed without a subscription.");
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            await syncAmplifyStripeSubscription(subscription, event.id);
+            await finishWebhookLedger(event.id, "processed");
+            return noStoreJson({ ok: true, amplify: true });
+        } catch (err) {
+            logger.error("Amplify checkout completion sync failed", {
+                event_id: event.id,
+                stripe_session_id: session.id,
+                ...errorContext(err),
+            });
+            await finishWebhookLedger(event.id, "failed", err);
+            return noStoreJson({ ok: false }, { status: 500 });
+        }
+    }
     await logPlatformEvent({
         scope: "stripe",
         action: "checkout_session_received",
@@ -523,7 +563,6 @@ export async function POST(req: NextRequest) {
         }
 
         const itemsToProcess = lineItemsData
-            .filter((li) => li.amount_subtotal > 0)
             .map((li) => {
                 const pd = li.price?.product as Stripe.Product | string | null;
                 const productMeta =
@@ -549,6 +588,14 @@ export async function POST(req: NextRequest) {
                         stripe_price_id: li.price?.id ?? null,
                         amount_subtotal: li.amount_subtotal ?? null,
                         amount_total: li.amount_total ?? null,
+                        purchase_type: productMeta?.purchase_type ?? "retail",
+                        artist_discount_cents: Number(productMeta?.artist_discount_cents ?? 0),
+                        artist_bulk_discount_cents: Number(productMeta?.artist_bulk_discount_cents ?? 0),
+                        artist_bulk_discount_bps: Number(productMeta?.artist_bulk_discount_bps ?? 0),
+                        base_artist_cut_cents: Number(productMeta?.base_artist_cut_cents ?? productMeta?.artist_cut_cents ?? 0),
+                        amplify_boost_cents: Number(productMeta?.amplify_boost_cents ?? 0),
+                        artist_plan_key: productMeta?.artist_plan_key ?? "standard",
+                        artist_cut_cents: Number(productMeta?.artist_cut_cents ?? 0),
                     },
                 };
             })
@@ -579,6 +626,7 @@ export async function POST(req: NextRequest) {
                     postal_code: session.metadata?.postal_code ?? null,
                     country: session.metadata?.country ?? null,
                     phone: session.metadata?.phone ?? null,
+                    purchase_type: session.metadata?.purchase_type ?? "retail",
                 },
                 p_items: itemsToProcess,
             })

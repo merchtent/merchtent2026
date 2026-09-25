@@ -243,12 +243,12 @@ export default async function OrdersPage() {
                     />
                     <SummaryCard
                         label="Merch credits"
-                        value={creditBalanceError ? "Unavailable" : `${creditBalance?.points_balance ?? 0} pts`}
+                        value={creditBalanceError ? "Unavailable" : `${creditBalance?.points_balance ?? 0} credits`}
                         icon={<Coins className="h-4 w-4" />}
                         sub={
                             creditBalanceError
                                 ? "Credit balance could not be loaded right now"
-                                : `${Math.min(creditBalance?.points_balance ?? 0, 20)}/20 toward a free tee`
+                                : `${Math.min(creditBalance?.points_balance ?? 0, 20)}/20 toward $20 off`
                         }
                     />
                 </div>

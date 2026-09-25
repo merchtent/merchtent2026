@@ -12,8 +12,11 @@ import { getPublicServerSupabase } from "@/lib/supabase/public-server";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
 import { publicEnv } from "@/lib/env";
 import { ArrowRight, CalendarDays, Camera, Disc3, Heart, ShoppingBag, Star } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export const revalidate = 60;
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function generateMetadata({
     params,
@@ -21,12 +24,14 @@ export async function generateMetadata({
     params: Promise<{ id: string }>;
 }): Promise<Metadata> {
     const { id } = await params;
-    const { data: artist } = await getPublicServerSupabase()
+    let artistQuery = getPublicServerSupabase()
         .from("artists")
         .select("display_name, slug, hero_image_path, bio")
-        .eq("slug", id)
-        .eq("is_public", true)
-        .maybeSingle();
+        .eq("is_public", true);
+    artistQuery = UUID_PATTERN.test(id)
+        ? artistQuery.or(`slug.eq.${id},id.eq.${id}`)
+        : artistQuery.eq("slug", id);
+    const { data: artist } = await artistQuery.maybeSingle();
 
     if (!artist) {
         return {
@@ -95,11 +100,14 @@ export default async function ArtistPage({
     const supabase = getPublicServerSupabase();
 
     // 🔥 GET ARTIST
-    const { data: artist } = await supabase
+    let artistQuery = supabase
         .from("artists")
         .select("id, display_name, slug, hero_image_path, bio")
-        .eq("slug", id)
-        .single();
+        .eq("is_public", true);
+    artistQuery = UUID_PATTERN.test(id)
+        ? artistQuery.or(`slug.eq.${id},id.eq.${id}`)
+        : artistQuery.eq("slug", id);
+    const { data: artist } = await artistQuery.maybeSingle();
 
     if (!artist) {
         return (
@@ -107,6 +115,10 @@ export default async function ArtistPage({
                 <p>Artist not found.</p>
             </main>
         );
+    }
+
+    if (artist.slug && artist.slug !== id) {
+        redirect(`/artists/${artist.slug}`);
     }
 
 

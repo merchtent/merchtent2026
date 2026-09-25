@@ -14,7 +14,7 @@ function StatusPill({ published }: { published?: boolean | null }) {
         : "bg-yellow-500/15 text-yellow-300 border-yellow-500/30";
     return (
         <span className={`border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.08em] ${styles}`}>
-            {published ? "Published" : "Draft"}
+            {published ? "Live" : "Draft"}
         </span>
     );
 }
@@ -77,6 +77,13 @@ function moderationTone(status?: string | null): "neutral" | "good" | "warn" | "
     return "neutral";
 }
 
+function moderationLabel(status?: string | null) {
+    if (status === "approved") return "Shop approved";
+    if (status === "pending_review") return "Shop check pending";
+    if (status === "blocked") return "Needs attention";
+    return status;
+}
+
 export default async function MyProductsPage() {
     const { supabase, artist } = await requireArtistPage();
 
@@ -116,7 +123,8 @@ export default async function MyProductsPage() {
     const { data: orderItems } = await supabase
         .from("order_items")
         .select("product_id, qty")
-        .eq("artist_id", artist.id);
+        .eq("artist_id", artist.id)
+        .eq("purchase_type", "retail");
 
     const unitsByProduct = new Map<string, number>();
     (orderItems ?? []).forEach((oi) => {
@@ -194,10 +202,10 @@ export default async function MyProductsPage() {
             <section className="border-b border-neutral-800 bg-black">
                 <div className="grid lg:grid-cols-[1fr_auto]">
                     <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
-                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Product floor</p>
-                        <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">My products.</h1>
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#b7ff3c]">Merch catalogue</p>
+                        <h1 className="mt-3 text-3xl font-black uppercase leading-tight md:text-5xl">Your drops.</h1>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-                            Drafts, live drops, generated mockups, moderation state, and production readiness in one place.
+                            See what is live, what still needs finishing, and how each release is performing.
                         </p>
                     </div>
                     <div className="flex flex-col justify-end gap-3 p-5 md:p-8">
@@ -217,9 +225,9 @@ export default async function MyProductsPage() {
                         <div className="flex items-center gap-3">
                             <Box className="h-6 w-6 text-[#b7ff3c]" />
                             <div>
-                                <p className="text-2xl font-black uppercase">No products yet.</p>
+                                <p className="text-2xl font-black uppercase">No drops yet.</p>
                                 <p className="mt-1 text-sm text-neutral-400">
-                                    Start your first drop with the designer and publish shop-ready mockups from saved design data.
+                                    Start your first release in the designer and build the merch your fans will see in the shop.
                                 </p>
                             </div>
                         </div>
@@ -233,10 +241,10 @@ export default async function MyProductsPage() {
                     <div className="border border-neutral-800">
                         <div className="grid border-b border-neutral-800 bg-neutral-950 p-4 md:grid-cols-[1fr_auto] md:items-center">
                             <div>
-                                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#b7ff3c]">Inventory state</p>
-                                <h2 className="mt-1 text-3xl font-black uppercase leading-none">{rows.length} product{rows.length === 1 ? "" : "s"}</h2>
+                                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#b7ff3c]">Drop lineup</p>
+                                <h2 className="mt-1 text-3xl font-black uppercase leading-none">{rows.length} drop{rows.length === 1 ? "" : "s"}</h2>
                             </div>
-                            <p className="mt-2 text-sm text-neutral-500 md:mt-0">Live, draft, production and moderation checks.</p>
+                            <p className="mt-2 text-sm text-neutral-500 md:mt-0">Live releases, drafts and the final checks before fans can buy.</p>
                         </div>
                         <ul>
                         {rows.map((p) => {
@@ -255,7 +263,11 @@ export default async function MyProductsPage() {
                             const readyCount = readinessChecks.filter((check) => check.ok).length;
                             const readyForLaunch = readyCount === readinessChecks.length;
                             return (
-                                <li key={p.id} className="border-b border-neutral-800 bg-neutral-950 p-5 last:border-b-0 md:p-7">
+                                <li
+                                    key={p.id}
+                                    id={`product-${p.id}`}
+                                    className="scroll-mt-4 border-b border-neutral-800 bg-neutral-950 p-5 last:border-b-0 target:relative target:z-10 target:bg-lime-300/10 target:ring-2 target:ring-inset target:ring-lime-300 md:p-7"
+                                >
                                     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_190px] xl:gap-8">
                                         <div className="min-w-0">
                                             <div className="flex min-w-0 items-start gap-4 md:gap-6">
@@ -282,11 +294,10 @@ export default async function MyProductsPage() {
                                                             />
                                                         ) : null}
                                                         {lifecycle?.moderation_status && lifecycle.moderation_status !== "draft" ? (
-                                                            <LifecyclePill label={lifecycle.moderation_status} tone={moderationTone(lifecycle.moderation_status)} />
+                                                            <LifecyclePill label={moderationLabel(lifecycle.moderation_status)} tone={moderationTone(lifecycle.moderation_status)} />
                                                         ) : null}
                                                     </div>
                                                     {p.description ? <p className="mt-4 text-sm leading-6 text-neutral-300">{p.description}</p> : null}
-                                                    {lifecycle?.readiness_notes ? <p className="mt-3 text-sm leading-6 text-neutral-500">{lifecycle.readiness_notes}</p> : null}
                                                 </div>
                                             </div>
 
@@ -351,13 +362,13 @@ function buildReadinessChecks({
     const designValidated = isManual || design?.validation_status === "validated";
 
     return [
-        { label: "Image present", ok: mockupsGenerated },
-        { label: "Price set", ok: Number(product?.price_cents ?? 0) > 0 },
-        { label: "Artist cut set", ok: Number(product?.artist_cut_cents ?? 0) >= 0 },
-        { label: "Category set", ok: Boolean(product?.category) },
-        { label: "Mockups generated", ok: mockupsGenerated },
-        { label: "Design data saved", ok: isManual || designed },
-        { label: "Print asset ready", ok: printAssetsReady && designValidated },
-        { label: "Moderation approved", ok: product?.moderation_status === "approved" || !product?.is_published },
+        { label: "Shop cover ready", ok: mockupsGenerated },
+        { label: "Fan price set", ok: Number(product?.price_cents ?? 0) > 0 },
+        { label: "Your earnings set", ok: Number(product?.artist_cut_cents ?? 0) >= 0 },
+        { label: "Shop section chosen", ok: Boolean(product?.category) },
+        { label: "Merch photos ready", ok: mockupsGenerated },
+        { label: "Artwork saved", ok: isManual || designed },
+        { label: "Print file ready", ok: printAssetsReady && designValidated },
+        { label: "Shop review complete", ok: product?.moderation_status === "approved" || !product?.is_published },
     ];
 }

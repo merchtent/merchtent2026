@@ -23,7 +23,16 @@ function fmt(amount_cents: number, currency: string | null) {
 
 export default function CartPageClient() {
     const router = useRouter();
-    const { items, setQty, remove, clear, subtotal_cents, currency } = useCart();
+    const {
+        items,
+        setQty,
+        remove,
+        clear,
+        subtotal_cents,
+        artist_bulk_discount_cents,
+        payable_subtotal_cents,
+        currency,
+    } = useCart();
 
     function goToCheckout() {
         // no POST needed anymore — checkout reads local cart
@@ -109,6 +118,11 @@ export default function CartPageClient() {
                                                         <p className="mt-1 text-sm font-black text-[#b6ff3f]">
                                                             {fmt(item.price_cents, item.currency)}
                                                         </p>
+                                                        {item.purchase_type === "artist_self_order" ? (
+                                                            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-lime-300">
+                                                                Artist price · {fmt(item.artist_discount_cents ?? 0, item.currency)} cut removed · no payout
+                                                            </p>
+                                                        ) : null}
 
                                                         {hasVariantLine ? (
                                                             <div className="mt-2 text-[11px] uppercase tracking-[0.16em] text-white/45 space-x-2">
@@ -205,14 +219,31 @@ export default function CartPageClient() {
                                 <h2 className="text-xs font-black uppercase tracking-[0.28em] text-red-600">
                                     Summary
                                 </h2>
+                                {items.every((item) => item.purchase_type === "artist_self_order") ? (
+                                    <p className="mt-3 border border-[#477a00]/30 bg-[#477a00]/10 p-3 text-xs leading-5 text-black/65">
+                                        Artist pricing is applied now. This order will not generate an artist payout or merch credits.
+                                    </p>
+                                ) : null}
 
                                 <div className="mt-4 space-y-2 text-sm">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-black/60">Subtotal</span>
-                                        <span className="text-2xl font-black text-black">
+                                        <span className="text-black/60">Artist subtotal</span>
+                                        <span className={artist_bulk_discount_cents > 0 ? "text-black/45 line-through" : "text-2xl font-black text-black"}>
                                             {fmt(subtotal_cents, currency)}
                                         </span>
                                     </div>
+                                    {artist_bulk_discount_cents > 0 ? (
+                                        <>
+                                            <div className="flex items-center justify-between font-black text-[#477a00]">
+                                                <span>10+ artist order saving</span>
+                                                <span>-{fmt(artist_bulk_discount_cents, currency)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between border-t border-black/10 pt-2">
+                                                <span className="font-black uppercase">Discounted subtotal</span>
+                                                <span className="text-2xl font-black">{fmt(payable_subtotal_cents, currency)}</span>
+                                            </div>
+                                        </>
+                                    ) : null}
                                     <div className="flex items-center justify-between">
                                         <span className="text-black/55">Shipping</span>
                                         <span className="text-black/55">Calculated at checkout</span>

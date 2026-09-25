@@ -4,15 +4,24 @@
 import * as React from "react";
 import { placeOrderAndGoToStripe } from "./actions";
 import { useCart } from "@/components/CartProvider";
-import { checkoutShippingAmountCents, SHIPPING_METHOD_OPTIONS, type ShippingMethodId } from "@/lib/shipping-methods";
+import {
+    checkoutShippingAmountCents,
+    shippingDeliveryLabel,
+    SHIPPING_METHOD_OPTIONS,
+    type ShippingMethodId,
+} from "@/lib/shipping-methods";
+import {
+    AUSTRALIAN_STATE_OPTIONS,
+    COUNTRY_OPTIONS,
+    normaliseAustralianState,
+    normaliseCountryCode,
+} from "@/lib/address-options";
 import { marketingAttributionJson } from "@/lib/marketing/attribution";
 import { trackMarketingEvent } from "@/lib/marketing/events";
-
-const SHIPPING_OPTIONS = SHIPPING_METHOD_OPTIONS.map((option) => ({
-    ...option,
-    label: `${option.label} (${option.deliveryLabel})`,
-    amount_cents: option.checkoutAmountCents,
-}));
+import {
+    MERCH_CREDIT_REDEMPTION_CENTS,
+    MERCH_CREDIT_REDEMPTION_POINTS,
+} from "@/lib/merch-credits/constants";
 
 const DRAFT_KEY = "checkout_draft_v1";
 
@@ -91,6 +100,7 @@ type CheckoutFormClientProps = {
     isSubmitting: boolean;
     merchCreditBalance: number;
     canUseMerchCredits: boolean;
+    isArtistOrder: boolean;
     useMerchCredits: boolean;
     setUseMerchCredits: (value: boolean) => void;
     setShippingCountry: (country: string) => void;
@@ -105,15 +115,17 @@ export default function CheckoutFormClient({
     isSubmitting,
     merchCreditBalance,
     canUseMerchCredits,
+    isArtistOrder,
     useMerchCredits,
     setUseMerchCredits,
     setShippingCountry,
 }: CheckoutFormClientProps) {
-    const { items: cartItems, subtotal_cents } = useCart();
+    const { items: cartItems, payable_subtotal_cents } = useCart();
     const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
     // form state (controlled inputs)
     const [form, setForm] = React.useState<Draft>(() => {
+        const defaultCountry = normaliseCountryCode(defaultAddress?.country);
         const emptyDraft: Draft = {
             email: userEmail || "",
             first_name: defaultAddress?.first_name || "",
@@ -121,21 +133,26 @@ export default function CheckoutFormClient({
             line1: defaultAddress?.line1 || "",
             line2: defaultAddress?.line2 || "",
             city: defaultAddress?.city || "",
-            state: defaultAddress?.state || "",
+            state: defaultCountry === "AU" ? normaliseAustralianState(defaultAddress?.state) : defaultAddress?.state || "",
             postal_code: defaultAddress?.postal_code || "",
-            country: defaultAddress?.country || "AU",
+            country: defaultCountry,
             phone: defaultAddress?.phone || "",
             voucher: "",
         };
         const savedDraft = loadDraft();
-        return savedDraft
-            ? {
+        if (savedDraft) {
+            const savedCountry = normaliseCountryCode(savedDraft.country, emptyDraft.country);
+            return {
                 ...emptyDraft,
                 ...savedDraft,
                 email: savedDraft.email || userEmail || "",
-                country: savedDraft.country || emptyDraft.country,
-            }
-            : emptyDraft;
+                country: savedCountry,
+                state: savedCountry === "AU"
+                    ? normaliseAustralianState(savedDraft.state || emptyDraft.state)
+                    : savedDraft.state,
+            };
+        }
+        return emptyDraft;
     });
 
     // debounce save
@@ -154,12 +171,20 @@ export default function CheckoutFormClient({
         cartItems.length,
         cartItems.reduce((sum, item) => sum + item.qty, 0)
     );
-    const totalCents = subtotal_cents + shippingCents;
+    const totalCents = payable_subtotal_cents + shippingCents;
 
     React.useEffect(() => setShippingCountry(form.country), [form.country, setShippingCountry]);
 
     function update<K extends keyof Draft>(key: K, val: Draft[K]) {
         setForm((f) => ({ ...f, [key]: val }));
+    }
+
+    function changeCountry(country: string) {
+        setForm((current) => ({
+            ...current,
+            country,
+            state: country === "AU" ? normaliseAustralianState(current.state) : current.state,
+        }));
     }
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -218,6 +243,14 @@ export default function CheckoutFormClient({
 
     return (
         <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
+            {isArtistOrder ? (
+                <div className="border border-lime-300/40 bg-lime-300/10 p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-lime-300">Artist order</p>
+                    <p className="mt-2 text-sm leading-6 text-white/70">
+                        Your artist cut has already been removed from each item. This order will be fulfilled normally but will not generate an artist payout or merch credits.
+                    </p>
+                </div>
+            ) : null}
             <div className="border border-white/10 bg-black p-5 space-y-4">
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b6ff3f]">
                     Email Address
@@ -282,14 +315,30 @@ export default function CheckoutFormClient({
                         required
                         className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
                     />
-                    <input
-                        name="state"
-                        placeholder="State"
-                        value={form.state}
-                        onChange={(e) => update("state", e.target.value)}
-                        required
-                        className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
-                    />
+                    {form.country === "AU" ? (
+                        <select
+                            name="state"
+                            value={form.state}
+                            onChange={(event) => update("state", event.target.value)}
+                            required
+                            aria-label="State or territory"
+                            className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
+                        >
+                            <option value="" disabled>Select state</option>
+                            {AUSTRALIAN_STATE_OPTIONS.map(([code, name]) => (
+                                <option key={code} value={code}>{name}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <input
+                            name="state"
+                            placeholder="State / Province / Region"
+                            value={form.state}
+                            onChange={(event) => update("state", event.target.value)}
+                            required
+                            className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
+                        />
+                    )}
                     <input
                         name="postal_code"
                         placeholder="Postcode"
@@ -299,16 +348,18 @@ export default function CheckoutFormClient({
                         className="h-11 border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
                     />
                 </div>
-                <input
+                <select
                     name="country"
                     value={form.country}
-                    onChange={(e) => update("country", e.target.value.toUpperCase().slice(0, 2))}
+                    onChange={(event) => changeCountry(event.target.value)}
                     required
-                    maxLength={2}
-                pattern="[A-Za-z]{2}"
-                aria-label="Country code"
-                className="h-11 w-full border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
-            />
+                    aria-label="Country"
+                    className="h-11 w-full border border-white/15 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#b6ff3f]"
+                >
+                    {COUNTRY_OPTIONS.map(([code, name]) => (
+                        <option key={code} value={code}>{name}</option>
+                    ))}
+                </select>
                 <input
                     name="phone"
                     placeholder="Phone (for delivery)"
@@ -324,7 +375,7 @@ export default function CheckoutFormClient({
                     Shipping method
                 </p>
                 <div className="space-y-2">
-                    {SHIPPING_OPTIONS.map((opt) => (
+                    {SHIPPING_METHOD_OPTIONS.map((opt) => (
                         <label key={opt.id} className="flex items-center gap-3 border border-white/10 bg-white/[0.03] px-3 py-3 text-sm transition hover:border-[#b6ff3f]">
                             <input
                                 type="radio"
@@ -333,7 +384,7 @@ export default function CheckoutFormClient({
                                 checked={shippingMethod === opt.id}
                                 onChange={() => setShippingMethod(opt.id)}
                             />
-                            <span>{opt.label}</span>
+                            <span>{opt.label} ({shippingDeliveryLabel(form.country)})</span>
                             <span className="ml-auto text-xs font-black text-white">
                                 {(shippingCents / 100).toLocaleString("en-AU", {
                                     style: "currency",
@@ -356,17 +407,23 @@ export default function CheckoutFormClient({
                     <input
                         type="checkbox"
                         checked={useMerchCredits}
-                        disabled={!canUseMerchCredits || merchCreditBalance < 20}
+                        disabled={
+                            !canUseMerchCredits ||
+                            merchCreditBalance < MERCH_CREDIT_REDEMPTION_POINTS ||
+                            payable_subtotal_cents < MERCH_CREDIT_REDEMPTION_CENTS
+                        }
                         onChange={(event) => setUseMerchCredits(event.target.checked)}
                         className="mt-1"
                     />
                     <span>
                         <span className="block text-neutral-100">
-                            Use 20 credits for a free tee discount
+                            Use 20 credits for $20 off merchandise
                         </span>
                         <span className="block text-xs text-white/45">
-                            {canUseMerchCredits
-                                ? `${merchCreditBalance} credits available. Credits are reserved for this checkout and only redeemed after payment succeeds.`
+                            {isArtistOrder
+                                ? "Artist pricing cannot be combined with merch credits."
+                                : canUseMerchCredits
+                                ? `${merchCreditBalance} credits available. Each credit is worth $1. Shipping is excluded, and credits are only redeemed after payment succeeds.`
                                 : "Sign in to redeem merch credits."}
                         </span>
                     </span>

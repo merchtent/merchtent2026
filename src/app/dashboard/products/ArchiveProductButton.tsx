@@ -37,7 +37,7 @@ export default function ArchiveProductButton({ productId, productTitle }: { prod
                 <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2 border border-neutral-700 bg-neutral-950 p-6 text-white shadow-2xl">
                     <Dialog.Title className="text-xl font-black uppercase">Delete product?</Dialog.Title>
                     <Dialog.Description className="mt-3 text-sm leading-6 text-neutral-300">
-                        <span className="font-bold text-white">{productTitle}</span> will disappear from your product list and the shop. Past orders and records stay intact.
+                        <span className="font-bold text-white">{productTitle}</span> will disappear from your product list and the shop immediately. You can restore it as a draft from Deleted products for 14 days. Past orders and records stay intact.
                     </Dialog.Description>
                     {error ? <p className="mt-4 text-sm text-red-300" role="alert">{error}</p> : null}
                     <div className="mt-7 flex justify-end gap-3">

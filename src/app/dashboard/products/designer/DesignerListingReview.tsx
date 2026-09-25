@@ -8,8 +8,9 @@ import type { LifestyleModelSet, LifestyleModelSetId } from "@/lib/products/mock
 export type DesignerMockupPreview = {
     front: string;
     back: string | null;
-    colorMockups: { label: string; value: string; front: string; back: string }[];
+    colorMockups: { label: string; value: string; front: string; back: string | null }[];
     lifestyle: { id: string; label: string; src: string }[];
+    posterFormats: { key: string; label: string; width: number; height: number; src: string }[];
 };
 
 type Props = {
@@ -61,12 +62,17 @@ export default function DesignerListingReview({
     ].filter((set): set is LifestyleModelSet => Boolean(set));
     const images: ProductGalleryImage[] = selectedColor ? [
         { id: "flat-front", label: "Front", src: selectedColor.front },
-        { id: "flat-back", label: "Back", src: selectedColor.back },
+        ...(selectedColor.back ? [{ id: "flat-back", label: "Back", src: selectedColor.back }] : []),
     ] : [];
+    for (const format of preview.posterFormats ?? []) {
+        if (!images.some((image) => image.src === format.src)) {
+            images.push({ id: `poster-${format.key}`, label: format.label, src: format.src });
+        }
+    }
     for (const set of isPrimaryColor ? selectedSets : []) {
         const front = previewImage(set.frontTemplateId);
-        const back = previewImage(set.backTemplateId);
-        if (front) images.push({ id: `${set.id}-front`, label: `${set.label} - front`, src: front });
+        const back = set.backTemplateId ? previewImage(set.backTemplateId) : undefined;
+        if (front) images.push({ id: `${set.id}-front`, label: set.backTemplateId ? `${set.label} - front` : set.label, src: front });
         if (back) images.push({ id: `${set.id}-back`, label: `${set.label} - back`, src: back });
     }
 
@@ -78,13 +84,15 @@ export default function DesignerListingReview({
                         <p className="text-[11px] font-black uppercase tracking-[0.24em] text-lime-300">Listing photos</p>
                         <h2 className="mt-2 text-2xl font-black uppercase md:text-3xl">Choose your model sets.</h2>
                         <div className="mt-5 grid gap-6 lg:grid-cols-2">
-                            {(["female", "male"] as const).map((audience) => (
+                            {(["female", "male"] as const).filter((audience) =>
+                                modelSets.some((set) => set.audience === audience)
+                            ).map((audience) => (
                                 <div key={audience}>
                                     <h3 className="mb-2 text-sm font-black uppercase text-white">{audience === "female" ? "Female model" : "Male model"}</h3>
                                     <div className="grid grid-cols-2 gap-2" role="group" aria-label={`${audience} model set`}>
                                         {modelSets.filter((set) => set.audience === audience).map((set) => {
                                             const src = previewImage(set.frontTemplateId);
-                                            const available = Boolean(src) && Boolean(previewImage(set.backTemplateId));
+                                            const available = Boolean(src) && (!set.backTemplateId || Boolean(previewImage(set.backTemplateId)));
                                             const selected = (audience === "female" ? femaleModelSet : maleModelSet) === set.id;
                                             return (
                                                 <button

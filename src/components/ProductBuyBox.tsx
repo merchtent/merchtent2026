@@ -133,7 +133,6 @@ export default function ProductBuyBox({
                 <ul className="mt-3 space-y-1.5 text-neutral-400">
                     <li>Usually produced in 2–3 business days</li>
                     <li>Tracked shipping selected at checkout</li>
-                    <li>Damaged, misprinted or incorrect items are covered</li>
                 </ul>
             </div>
 

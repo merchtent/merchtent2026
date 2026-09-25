@@ -3,8 +3,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { CatalogProduct } from "@/lib/product-catalog";
 import { getMockupTemplate } from "@/lib/products/mockup-templates";
+
+const CATALOG_KIND_ORDER: Record<CatalogProduct["garmentKind"], number> = {
+    tee: 0,
+    hoodie: 1,
+    tank: 2,
+    hat: 3,
+    bag: 4,
+    poster: 5,
+};
 
 function formatMoney(cents: number) {
     return new Intl.NumberFormat("en-AU", {
@@ -30,17 +40,42 @@ function friendlyPlacement(placement: string) {
     return placement.replace(/ side$/i, "").replace(/ inner$/i, "");
 }
 
+function hasVariableRrp(product: CatalogProduct) {
+    const availablePrintAreas = new Set(product.production.placements.map(friendlyPlacement)).size;
+    const includedPrintSides = product.production.includedPrintSides ?? 1;
+    const additionalPrintSideRetailCents =
+        product.production.additionalPrintSideRetailCents
+        ?? product.production.additionalPrintSideCents
+        ?? 0;
+
+    return availablePrintAreas > includedPrintSides && additionalPrintSideRetailCents > 0;
+}
+
 function CatalogProductPreview({ product }: { product: CatalogProduct }) {
-    const front = getMockupTemplate(product, "#111111", "front");
-    const back = getMockupTemplate(product, "#111111", "back");
+    const preferredPreviewColors = product.garmentKind === "tank"
+        ? ["black stone", "black"]
+        : product.garmentKind === "bag"
+            ? ["cream", "white"]
+            : ["ash stone", "black"];
+    const previewColor = preferredPreviewColors
+        .map((preferred) => product.colors.find((color) =>
+            (color.supplierColorName ?? color.label).toLowerCase() === preferred
+        ))
+        .find(Boolean) ?? product.colors[0];
+    const previewColorName = previewColor?.supplierColorName ?? previewColor?.label;
+    const front = getMockupTemplate(product, previewColor?.value ?? "#111111", "front", previewColorName);
+    const back = getMockupTemplate(product, previewColor?.value ?? "#111111", "back", previewColorName);
+    const previewPath = product.garmentKind === "poster"
+        ? "/images/mockups/prima-1079/poster-blank.jpg"
+        : front?.publicPath;
 
     return (
         <div className="relative aspect-[4/5] overflow-hidden bg-white">
-            {front ? (
+            {previewPath ? (
                 <>
                     <Image
-                        src={front.publicPath}
-                        alt={`${product.name} black tee, front view`}
+                        src={previewPath}
+                        alt={`${product.name}, front view`}
                         fill
                         sizes="220px"
                         className="object-contain"
@@ -48,11 +83,11 @@ function CatalogProductPreview({ product }: { product: CatalogProduct }) {
                     <span className="absolute bottom-3 left-3 bg-black px-2 py-1 text-[10px] font-black uppercase text-white">
                         Front
                     </span>
-                    {back ? (
+                    {back && product.garmentKind !== "poster" ? (
                         <div className="absolute bottom-3 right-3 h-24 w-20 border border-neutral-300 bg-white shadow-lg">
                             <Image
                                 src={back.publicPath}
-                                alt={`${product.name} black tee, back view`}
+                                alt={`${product.name}, back view`}
                                 fill
                                 sizes="80px"
                                 className="object-contain"
@@ -81,28 +116,42 @@ function CatalogProductPreview({ product }: { product: CatalogProduct }) {
 }
 
 export default function CatalogChooser({ products }: { products: CatalogProduct[] }) {
+    const [query, setQuery] = useState("");
+    const orderedProducts = useMemo(() => products
+        .map((product, index) => ({ product, index }))
+        .sort((a, b) =>
+            CATALOG_KIND_ORDER[a.product.garmentKind] - CATALOG_KIND_ORDER[b.product.garmentKind]
+            || a.index - b.index
+        )
+        .map(({ product }) => product), [products]);
+    const normalizedQuery = query.trim().toLowerCase();
+    const filteredProducts = useMemo(() => {
+        if (!normalizedQuery) return orderedProducts;
+
+        return orderedProducts.filter((product) => [
+            product.name,
+            product.brand,
+            product.model,
+            product.category,
+            product.garmentKind,
+            ...product.sizes,
+            ...product.colors.flatMap((color) => [color.label, color.supplierColorName ?? ""]),
+        ].join(" ").toLowerCase().includes(normalizedQuery));
+    }, [normalizedQuery, orderedProducts]);
+
     return (
         <div>
             <section className="border border-neutral-800 bg-neutral-950">
-                <div className="grid gap-6 border-b border-neutral-800 p-5 md:grid-cols-[1fr_360px] md:p-8">
-                    <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-500">
-                            Catalogue
-                        </p>
-                        <h2 className="mt-3 text-3xl font-black uppercase leading-none md:text-5xl">
-                            Pick your product.
-                        </h2>
-                        <p className="mt-4 max-w-3xl text-sm leading-6 text-neutral-400">
-                            Compare the fit, colours, sizes, retail price and your profit. Choose one to start
-                            adding your artwork.
-                        </p>
-                    </div>
-                    <label className="flex h-12 items-center gap-3 border border-neutral-800 bg-black px-4 text-sm text-neutral-400">
+                <div className="flex justify-end border-b border-neutral-800 p-4 md:p-5">
+                    <label className="flex h-12 w-full max-w-[360px] items-center gap-3 border border-neutral-800 bg-black px-4 text-sm text-neutral-400 focus-within:border-lime-300 focus-within:text-white">
                         <Search className="h-4 w-4 text-red-500" />
                         <input
-                            disabled
-                            placeholder="Search coming as the catalogue grows"
-                            className="w-full bg-transparent outline-none placeholder:text-neutral-600"
+                            type="search"
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            placeholder="Search products, brands or colours"
+                            aria-label="Search product catalogue"
+                            className="w-full bg-transparent text-white outline-none placeholder:text-neutral-600"
                         />
                     </label>
                 </div>
@@ -121,9 +170,27 @@ export default function CatalogChooser({ products }: { products: CatalogProduct[
                             </p>
                         </div>
                     </div>
+                ) : filteredProducts.length === 0 ? (
+                    <div className="p-5 md:p-8">
+                        <div className="border border-neutral-800 bg-black p-6">
+                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">
+                                No matches
+                            </p>
+                            <h3 className="mt-2 text-2xl font-black uppercase">
+                                Nothing found for &ldquo;{query.trim()}&rdquo;.
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setQuery("")}
+                                className="mt-4 border border-neutral-700 px-4 py-2 text-xs font-black uppercase text-white hover:border-lime-300 hover:text-lime-300"
+                            >
+                                Clear search
+                            </button>
+                        </div>
+                    </div>
                 ) : (
                 <div className="grid divide-y divide-neutral-800 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-                    {products.map((product) => (
+                    {filteredProducts.map((product) => (
                         <Link
                             key={product.key}
                             href={`/dashboard/products/designer/${product.key}`}
@@ -146,8 +213,10 @@ export default function CatalogChooser({ products }: { products: CatalogProduct[
 
                                 <div className="mt-6 grid grid-cols-2 gap-3 text-xs text-neutral-400">
                                     <div className="border border-neutral-800 bg-black p-3">
-                                        <b className="block text-white">RRP</b>
-                                        ${product.defaultPrice}
+                                        <b className="block text-white">
+                                            {hasVariableRrp(product) ? "From" : "RRP"}
+                                        </b>
+                                        ${product.defaultPrice}{hasVariableRrp(product) ? " RRP" : ""}
                                     </div>
                                     <div className="border border-neutral-800 bg-black p-3">
                                         <b className="block text-white">Band profit / sale*</b>

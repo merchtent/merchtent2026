@@ -1,32 +1,50 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import {
-    AlignCenter,
     AlignCenterHorizontal,
     AlignCenterVertical,
+    CircleAlert,
+    CircleCheck,
+    Copy,
+    Download,
     ArrowLeft,
     ArrowRight,
+    ClipboardList,
     Eye,
+    EyeOff,
+    Grid3X3,
+    Group,
     Image as ImageIcon,
+    Images,
     Layers,
     Loader2,
+    Lock,
     MoveDown,
     MoveHorizontal,
     MoveLeft,
     MoveRight,
     MoveUp,
     MoveVertical,
+    Redo2,
+    RefreshCw,
+    Ruler,
     RotateCw,
     Save,
     Shirt,
     Trash2,
     Type,
+    Undo2,
+    Ungroup,
+    Unlock,
+    ZoomIn,
+    ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publicImageUrl } from "@/lib/storage";
 import type { CatalogProduct } from "@/lib/product-catalog";
+import type { ArtistArtworkAsset } from "@/lib/products/artist-artwork-library";
 import {
     DESIGN_CANVAS_HEIGHT,
     DESIGN_CANVAS_WIDTH,
@@ -36,6 +54,8 @@ import {
     type PixelRect,
 } from "@/lib/products/design-geometry";
 import { getLifestyleModelSets, getMockupTemplate, type LifestyleModelSetId } from "@/lib/products/mockup-templates";
+import { posterCanvasArea, posterFormatForKey, remapPosterLayers } from "@/lib/products/poster-formats";
+import { buildDesignedProductName, extractDesignedProductDropName } from "@/lib/products/designed-product-name";
 import { createDesignedProductAction, generateDesignerMockupPreviewAction } from "./actions";
 import {
     fitImageToPrintArea,
@@ -44,6 +64,7 @@ import {
     type LayerQuickAction,
 } from "./layer-quick-actions";
 import DesignerListingReview, { type DesignerMockupPreview } from "./DesignerListingReview";
+import { estimateArtworkPrintQuality } from "./artwork-print-quality";
 
 const CANVAS_WIDTH = DESIGN_CANVAS_WIDTH;
 const CANVAS_HEIGHT = DESIGN_CANVAS_HEIGHT;
@@ -51,8 +72,8 @@ const PRINT_ASSET_WIDTH = 2400;
 const PRINT_ASSET_HEIGHT = 3200;
 
 type Side = "front" | "back";
-type GarmentKind = "tee" | "hoodie" | "tank";
-type ToolPanel = "product" | "blank" | "layers" | "selection";
+type GarmentKind = "tee" | "hoodie" | "hat" | "tank" | "bag" | "poster";
+type ToolPanel = "product" | "blank" | "layers" | "selection" | "advanced";
 
 type DesignLayer = {
     id: string;
@@ -71,6 +92,24 @@ type DesignLayer = {
     fontWeight?: string;
     src?: string;
     aspectRatio?: number;
+    sourcePixelWidth?: number;
+    sourcePixelHeight?: number;
+    name?: string;
+    locked?: boolean;
+    hidden?: boolean;
+    groupId?: string;
+    fileType?: string;
+    hasTransparency?: boolean;
+    colorProfile?: string;
+};
+
+type CanvasGuideOptions = {
+    advanced: boolean;
+    showGrid: boolean;
+    showRulers: boolean;
+    showSafeArea: boolean;
+    showBleed: boolean;
+    gridSize: number;
 };
 
 export type DesignerInitialProduct = {
@@ -81,6 +120,8 @@ export type DesignerInitialProduct = {
     colorLabel?: string;
     saleColorNames?: string[];
     layers: DesignLayer[];
+    posterFormatKey?: string | null;
+    posterLayouts?: Array<{ key: string; layers: DesignLayer[] }>;
     referenceImageUrl?: string | null;
 };
 
@@ -126,14 +167,50 @@ function formatMoneyFromCents(cents: number) {
     });
 }
 
-function buildLockedProductTitle(artistName: string, title: string) {
-    const suffix = title.trim();
-    const fullTitle = suffix ? `${artistName} ${suffix}` : `${artistName} ...`;
-    return fullTitle.slice(0, 120);
+function hasDesignerProductPreview(product: CatalogProduct, color: CatalogProduct["colors"][number]) {
+    if (product.garmentKind === "poster") return true;
+    const supplierColorName = color.supplierColorName ?? color.label;
+    return Boolean(getMockupTemplate(product, color.value, "front", supplierColorName));
 }
 
 function clamp(value: number, min: number, max: number) {
     return Math.min(Math.max(value, min), max);
+}
+
+function printTargetPixels(
+    product: CatalogProduct,
+    printArea: PixelRect,
+    posterFormat: { width: number; height: number } | null,
+) {
+    if (product.garmentKind === "poster" && posterFormat) {
+        return { width: posterFormat.width, height: posterFormat.height, isSupplierSpecified: true };
+    }
+
+    const supplierTargets: Record<string, { width: number; height: number }> = {
+        "995": { width: 3071, height: 3508 },
+        "553": { width: 2835, height: 3425 },
+        "1703": { width: 1654, height: 750 },
+    };
+    const supplierTarget = supplierTargets[product.supplier.externalProductId];
+    if (supplierTarget) return { ...supplierTarget, isSupplierSpecified: true };
+
+    const width = 3600;
+    return {
+        width,
+        height: Math.round(width * printArea.height / printArea.width),
+        isSupplierSpecified: false,
+    };
+}
+
+function printTargetPhysicalSize(target: { width: number; height: number }) {
+    return {
+        widthCm: target.width / 300 * 2.54,
+        heightCm: target.height / 300 * 2.54,
+    };
+}
+
+function omitInlineLayerSources(layers: DesignLayer[]) {
+    return layers.map((layer) => layer.type === "image" ? { ...layer, src: undefined } : layer);
 }
 
 function loadImage(src: string) {
@@ -164,6 +241,40 @@ function readFileAsDataUrl(file: File) {
         reader.onerror = () => reject(new Error("Could not read that artwork file."));
         reader.readAsDataURL(file);
     });
+}
+
+function imageHasTransparency(image: HTMLImageElement) {
+    const canvas = document.createElement("canvas");
+    const scale = Math.min(1, 128 / Math.max(image.naturalWidth, image.naturalHeight));
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let index = 3; index < pixels.length; index += 4) {
+        if (pixels[index] < 255) return true;
+    }
+    return false;
+}
+
+async function detectColorProfile(file: File) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const searchable = new TextDecoder("latin1").decode(bytes);
+    if (searchable.includes("ICC_PROFILE") || searchable.includes("iCCP") || searchable.includes("ICCP")) {
+        return "Embedded ICC profile";
+    }
+    if (searchable.includes("sRGB")) return "sRGB";
+    return "No embedded profile";
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
 }
 
 function drawImageCover(
@@ -199,6 +310,26 @@ function drawImageCover(
         y,
         width,
         height
+    );
+}
+
+function drawImageContain(
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+) {
+    const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+    const renderedWidth = image.naturalWidth * scale;
+    const renderedHeight = image.naturalHeight * scale;
+    ctx.drawImage(
+        image,
+        x + (width - renderedWidth) / 2,
+        y + (height - renderedHeight) / 2,
+        renderedWidth,
+        renderedHeight
     );
 }
 
@@ -240,7 +371,8 @@ function drawGarment(
     ctx: CanvasRenderingContext2D,
     kind: GarmentKind,
     side: Side,
-    color: string
+    color: string,
+    posterArea?: PixelRect,
 ) {
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
@@ -289,6 +421,24 @@ function drawGarment(
         ctx.quadraticCurveTo(450, 870, 365, 820);
         ctx.closePath();
         ctx.stroke();
+    } else if (kind === "hat") {
+        ctx.beginPath();
+        ctx.moveTo(190, 565);
+        ctx.bezierCurveTo(190, 260, 300, 155, 450, 155);
+        ctx.bezierCurveTo(600, 155, 710, 260, 710, 565);
+        ctx.quadraticCurveTo(450, 650, 190, 565);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(190, 565);
+        ctx.quadraticCurveTo(450, 650, 710, 565);
+        ctx.quadraticCurveTo(745, 710, 450, 745);
+        ctx.quadraticCurveTo(155, 710, 190, 565);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
     } else if (kind === "tank") {
         ctx.beginPath();
         ctx.moveTo(325, 150);
@@ -307,6 +457,30 @@ function drawGarment(
         ctx.beginPath();
         ctx.arc(450, side === "front" ? 145 : 132, side === "front" ? 74 : 58, 0.08 * Math.PI, 0.92 * Math.PI);
         ctx.stroke();
+    } else if (kind === "bag") {
+        ctx.beginPath();
+        ctx.moveTo(275, 475);
+        ctx.lineTo(625, 475);
+        ctx.lineTo(650, 1030);
+        ctx.lineTo(250, 1030);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(330, 475);
+        ctx.lineTo(330, 210);
+        ctx.quadraticCurveTo(450, 125, 570, 210);
+        ctx.lineTo(570, 475);
+        ctx.stroke();
+    } else if (kind === "poster") {
+        const area = posterArea ?? { x: 150, y: 150, width: 600, height: 900 };
+        ctx.shadowColor = "rgba(0,0,0,0.28)";
+        ctx.shadowBlur = 28;
+        ctx.shadowOffsetY = 18;
+        ctx.fillRect(area.x, area.y, area.width, area.height);
+        ctx.shadowColor = "transparent";
+        ctx.strokeRect(area.x, area.y, area.width, area.height);
     } else {
         ctx.beginPath();
         ctx.moveTo(318, 160);
@@ -327,7 +501,7 @@ function drawGarment(
         ctx.stroke();
     }
 
-    if (side === "back") {
+    if (side === "back" && kind !== "hat" && kind !== "bag" && kind !== "poster") {
         ctx.strokeStyle = "rgba(255,255,255,0.12)";
         ctx.beginPath();
         const backNeckY = kind === "hoodie" ? 245 : kind === "tank" ? 150 : 196;
@@ -402,9 +576,12 @@ async function renderDesign(
     side: Side,
     kind: GarmentKind,
     garmentColor: string,
+    supplierColorName: string,
     catalogProduct: Pick<CatalogProduct, "key" | "brand" | "model">,
     printAreas: Record<Side, PixelRect>,
+    printTarget: { width: number; height: number },
     showGuides: boolean,
+    guideOptions: CanvasGuideOptions,
     selectedLayerId?: string | null
 ) {
     const ctx = canvas.getContext("2d");
@@ -412,19 +589,42 @@ async function renderDesign(
 
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
-    const template = getMockupTemplate(catalogProduct, garmentColor, side);
+    const template = getMockupTemplate(catalogProduct, garmentColor, side, supplierColorName);
     if (template) {
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         ctx.fillStyle = template.background;
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         const background = await loadImage(template.publicPath);
         const placement = resolveGeometryRect(template.canvasPlacement, CANVAS_WIDTH, CANVAS_HEIGHT);
-        drawImageCover(ctx, background, placement.x, placement.y, placement.width, placement.height);
+        if (template.fit === "contain") {
+            drawImageContain(ctx, background, placement.x, placement.y, placement.width, placement.height);
+        } else {
+            drawImageCover(ctx, background, placement.x, placement.y, placement.width, placement.height);
+        }
     } else {
-        drawGarment(ctx, kind, side, garmentColor);
+        drawGarment(ctx, kind, side, garmentColor, printAreas[side]);
     }
 
-    for (const layer of layers.filter((item) => item.side === side)) {
+    if (guideOptions.advanced && guideOptions.showGrid) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(17,24,39,0.15)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= CANVAS_WIDTH; x += guideOptions.gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, CANVAS_HEIGHT);
+            ctx.stroke();
+        }
+        for (let y = 0; y <= CANVAS_HEIGHT; y += guideOptions.gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(CANVAS_WIDTH, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    for (const layer of layers.filter((item) => item.side === side && !item.hidden)) {
         await drawLayer(ctx, layer);
     }
 
@@ -435,9 +635,60 @@ async function renderDesign(
         ctx.setLineDash([16, 12]);
         ctx.lineWidth = 4;
         ctx.strokeRect(area.x, area.y, area.width, area.height);
+        if (guideOptions.advanced && guideOptions.showBleed) {
+            const bleed = Math.max(6, Math.min(area.width, area.height) * 0.025);
+            ctx.strokeStyle = "rgba(251,146,60,0.95)";
+            ctx.setLineDash([8, 8]);
+            ctx.strokeRect(area.x - bleed, area.y - bleed, area.width + bleed * 2, area.height + bleed * 2);
+        }
+        if (guideOptions.advanced && guideOptions.showSafeArea) {
+            const inset = Math.max(10, Math.min(area.width, area.height) * 0.05);
+            ctx.strokeStyle = "rgba(34,197,94,0.95)";
+            ctx.setLineDash([10, 7]);
+            ctx.strokeRect(area.x + inset, area.y + inset, area.width - inset * 2, area.height - inset * 2);
+        }
+        const guideLabel = `${printTarget.width} x ${printTarget.height} px`;
+        ctx.font = "800 18px Arial";
+        const labelWidth = ctx.measureText(guideLabel).width + 20;
+        const labelY = Math.max(4, area.y - 30);
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(0,0,0,0.9)";
+        ctx.fillRect(area.x, labelY, labelWidth, 26);
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(guideLabel, area.x + 10, labelY + 13);
+        if (guideOptions.advanced && guideOptions.showRulers) {
+            ctx.fillStyle = "rgba(0,0,0,0.78)";
+            ctx.fillRect(0, 0, CANVAS_WIDTH, 24);
+            ctx.fillRect(0, 0, 24, CANVAS_HEIGHT);
+            ctx.strokeStyle = "rgba(255,255,255,0.75)";
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "700 10px Arial";
+            for (let x = 0; x <= CANVAS_WIDTH; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 24);
+                ctx.lineTo(x, x % 100 === 0 ? 12 : 17);
+                ctx.stroke();
+                if (x % 100 === 0 && x > 0) ctx.fillText(String(x), x + 3, 9);
+            }
+            for (let y = 0; y <= CANVAS_HEIGHT; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(24, y);
+                ctx.lineTo(y % 100 === 0 ? 12 : 17, y);
+                ctx.stroke();
+                if (y % 100 === 0 && y > 0) {
+                    ctx.save();
+                    ctx.translate(8, y + 3);
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.fillText(String(y), 0, 0);
+                    ctx.restore();
+                }
+            }
+        }
         ctx.restore();
 
-        const selectedLayer = layers.find((layer) => layer.id === selectedLayerId && layer.side === side);
+        const selectedLayer = layers.find((layer) => layer.id === selectedLayerId && layer.side === side && !layer.hidden);
         if (selectedLayer) drawSelection(ctx, selectedLayer);
     }
 }
@@ -455,35 +706,69 @@ export default function DesignerClient({
     catalogProduct,
     artistName,
     initialProduct,
+    recentArtwork = [],
 }: {
     catalogProduct: CatalogProduct;
     artistName: string;
     initialProduct?: DesignerInitialProduct;
+    recentArtwork?: ArtistArtworkAsset[];
 }) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const workspaceRef = useRef<HTMLDivElement | null>(null);
     const dragRef = useRef<DragState | null>(null);
+    const dragHistorySnapshotRef = useRef<DesignLayer[] | null>(null);
     const layersRef = useRef<DesignLayer[]>([]);
+    const historyRef = useRef<{ past: DesignLayer[][]; future: DesignLayer[][] }>({ past: [], future: [] });
+    const spacePressedRef = useRef(false);
+    const panRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
     const renderGenerationRef = useRef(0);
     const dragFrameRef = useRef<number | null>(null);
     const pendingDragUpdateRef = useRef<{ id: string; patch: Partial<DesignLayer> } | null>(null);
     const saveModeRef = useRef<"draft" | "publish">("draft");
 
-    const [title, setTitle] = useState(() => initialProduct?.title.startsWith(`${artistName} `)
-        ? initialProduct.title.slice(artistName.length + 1)
-        : initialProduct?.title ?? catalogProduct.name);
+    const [title, setTitle] = useState(() => extractDesignedProductDropName(
+        initialProduct?.title,
+        artistName,
+        catalogProduct.name
+    ));
     const [description, setDescription] = useState(initialProduct?.description ?? "");
     const category = catalogProduct.category;
     const [activeSide, setActiveSide] = useState<Side>("front");
     const [activeToolPanel, setActiveToolPanel] = useState<ToolPanel>("product");
+    const [advancedMode, setAdvancedMode] = useState(false);
+    const [zoom, setZoom] = useState(100);
+    const [showGrid, setShowGrid] = useState(true);
+    const [showRulers, setShowRulers] = useState(true);
+    const [showSafeArea, setShowSafeArea] = useState(true);
+    const [showBleed, setShowBleed] = useState(true);
+    const [snapEnabled, setSnapEnabled] = useState(true);
+    const [gridSize, setGridSize] = useState(10);
+    const [lockAspectRatio, setLockAspectRatio] = useState(true);
     const garmentKind = catalogProduct.garmentKind;
+    const isSingleSided = garmentKind === "poster" || garmentKind === "hat";
+    const posterFormats = catalogProduct.production.posterFormats ?? [];
+    const [selectedPosterFormatKey, setSelectedPosterFormatKey] = useState(() =>
+        posterFormatForKey(posterFormats, initialProduct?.posterFormatKey)?.key ?? ""
+    );
+    const selectedPosterFormat = posterFormatForKey(posterFormats, selectedPosterFormatKey);
+    const designerPreviewColors = catalogProduct.colors.filter((item) =>
+        hasDesignerProductPreview(catalogProduct, item)
+    );
+    const designerPreviewColorNames = new Set(
+        designerPreviewColors.map((item) => item.supplierColorName ?? item.label)
+    );
     const [selectedColorName, setSelectedColorName] = useState(() => {
-        const matching = catalogProduct.colors.find((item) =>
+        const matching = designerPreviewColors.find((item) =>
             (item.supplierColorName ?? item.label) === initialProduct?.colorLabel
-        ) ?? catalogProduct.colors.find((item) => item.value === initialProduct?.color);
-        const black = catalogProduct.colors.find((item) =>
-            (item.supplierColorName ?? item.label).trim().toLowerCase() === "black"
-        );
+        ) ?? designerPreviewColors.find((item) => item.value === initialProduct?.color);
+        const preferredBlackNames = garmentKind === "tank" ? ["black stone", "black"] : ["black"];
+        const black = preferredBlackNames
+            .map((preferred) => designerPreviewColors.find((item) =>
+                (item.supplierColorName ?? item.label).trim().toLowerCase() === preferred
+            ))
+            .find(Boolean);
         return matching?.supplierColorName ?? matching?.label ?? black?.supplierColorName ?? black?.label
+            ?? designerPreviewColors[0]?.supplierColorName ?? designerPreviewColors[0]?.label
             ?? catalogProduct.colors[0]?.supplierColorName ?? catalogProduct.colors[0]?.label ?? "";
     });
     const selectedColor = catalogProduct.colors.find((item) => (item.supplierColorName ?? item.label) === selectedColorName)
@@ -495,28 +780,90 @@ export default function DesignerClient({
     const saleColors = catalogProduct.colors.filter((item) => saleColorNames.includes(item.supplierColorName ?? item.label));
     const listingColor = saleColors.find((item) => (item.supplierColorName ?? item.label).toLowerCase() === "black") ?? saleColors[0];
     const [layers, setLayers] = useState<DesignLayer[]>(initialProduct?.layers ?? []);
+    const [posterLayouts, setPosterLayouts] = useState<Record<string, DesignLayer[]>>(() =>
+        Object.fromEntries((initialProduct?.posterLayouts ?? []).map((layout) => [
+            layout.key,
+            layout.layers.map((layer) => ({
+                ...layer,
+                src: layer.src ?? initialProduct?.layers.find((source) => source.id === layer.id)?.src,
+            })),
+        ]))
+    );
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+    const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>([]);
+    const [historyStatus, setHistoryStatus] = useState({ canUndo: false, canRedo: false });
     const [isSaving, setIsSaving] = useState(false);
     const [savingMode, setSavingMode] = useState<"draft" | "publish">("draft");
     const [error, setError] = useState<string | null>(null);
     const [activeView, setActiveView] = useState<"designer" | "colors" | "mockups" | "review">("designer");
     const [isGeneratingMockups, setIsGeneratingMockups] = useState(false);
     const [isUploadingArtwork, setIsUploadingArtwork] = useState(false);
+    const [isArtworkLibraryOpen, setIsArtworkLibraryOpen] = useState(false);
     const [mockupPreview, setMockupPreview] = useState<DesignerMockupPreview | null>(null);
     const [femaleModelSet, setFemaleModelSet] = useState<LifestyleModelSetId | null>(null);
     const [maleModelSet, setMaleModelSet] = useState<LifestyleModelSetId | null>(null);
-    const printAreas = useMemo(
-        () => resolveGeometryAreas(catalogProduct.printAreas, CANVAS_WIDTH, CANVAS_HEIGHT),
-        [catalogProduct.printAreas]
+    const printAreas = useMemo(() => {
+        const resolved = resolveGeometryAreas(catalogProduct.printAreas, CANVAS_WIDTH, CANVAS_HEIGHT);
+        if (!isSingleSided || !selectedPosterFormat) return resolved;
+        const area = posterCanvasArea(selectedPosterFormat.width, selectedPosterFormat.height);
+        return { front: area, back: area };
+    }, [catalogProduct.printAreas, isSingleSided, selectedPosterFormat]);
+    const activePrintTarget = useMemo(
+        () => printTargetPixels(catalogProduct, printAreas[activeSide], selectedPosterFormat),
+        [activeSide, catalogProduct, printAreas, selectedPosterFormat],
     );
+    const activePrintPhysicalSize = printTargetPhysicalSize(activePrintTarget);
+    const canvasGuideOptions = useMemo<CanvasGuideOptions>(() => ({
+        advanced: advancedMode,
+        showGrid,
+        showRulers,
+        showSafeArea,
+        showBleed,
+        gridSize,
+    }), [advancedMode, gridSize, showBleed, showGrid, showRulers, showSafeArea]);
 
     const selectedLayer = useMemo(
         () => layers.find((layer) => layer.id === selectedLayerId) ?? null,
         [layers, selectedLayerId]
     );
+    const missingImageDimensionsKey = useMemo(() => layers
+        .filter((layer) => layer.type === "image" && layer.src && (!layer.sourcePixelWidth || !layer.sourcePixelHeight))
+        .map((layer) => `${layer.id}:${layer.src}`)
+        .join("|"), [layers]);
     const activeLayers = layers.filter((layer) => layer.side === activeSide);
-    const hasFrontDesign = layers.some((layer) => layer.side === "front");
-    const hasBackDesign = layers.some((layer) => layer.side === "back");
+    const selectedLayers = layers.filter((layer) => selectedLayerIds.includes(layer.id));
+    const preflightChecks = activeLayers.flatMap((layer) => {
+        const checks: Array<{ level: "pass" | "warning"; message: string }> = [];
+        const area = printAreas[layer.side];
+        const safeInset = Math.max(10, Math.min(area.width, area.height) * 0.05);
+        const outsidePrintArea = layer.x < area.x || layer.y < area.y ||
+            layer.x + layer.width > area.x + area.width || layer.y + layer.height > area.y + area.height;
+        const outsideSafeArea = layer.x < area.x + safeInset || layer.y < area.y + safeInset ||
+            layer.x + layer.width > area.x + area.width - safeInset ||
+            layer.y + layer.height > area.y + area.height - safeInset;
+        if (outsidePrintArea) checks.push({ level: "warning", message: `${layer.name ?? "Layer"} is clipped by the print boundary.` });
+        else if (outsideSafeArea) checks.push({ level: "warning", message: `${layer.name ?? "Layer"} extends beyond the safe area.` });
+        if (layer.hidden) checks.push({ level: "warning", message: `${layer.name ?? "Layer"} is hidden and will not print.` });
+        if (layer.type === "image" && layer.sourcePixelWidth && layer.sourcePixelHeight) {
+            const quality = estimateArtworkPrintQuality({
+                sourceWidth: layer.sourcePixelWidth,
+                sourceHeight: layer.sourcePixelHeight,
+                layerWidth: layer.width,
+                layerHeight: layer.height,
+                printAreaWidth: area.width,
+                printAreaHeight: area.height,
+                targetPixelWidth: activePrintTarget.width,
+                targetPixelHeight: activePrintTarget.height,
+            });
+            if (quality?.level === "low") checks.push({ level: "warning", message: `${layer.name ?? "Artwork"} is only ${quality.dpi} DPI at this size.` });
+        }
+        return checks;
+    });
+    if (activeLayers.length > 0 && preflightChecks.length === 0) {
+        preflightChecks.push({ level: "pass", message: "No print issues found on this side." });
+    }
+    const hasFrontDesign = layers.some((layer) => layer.side === "front" && !layer.hidden);
+    const hasBackDesign = layers.some((layer) => layer.side === "back" && !layer.hidden);
     const hasTwoPrintSides = hasFrontDesign && hasBackDesign;
     const printSideCount = hasTwoPrintSides ? 2 : 1;
     const additionalPrintSideRetailCents =
@@ -535,19 +882,57 @@ export default function DesignerClient({
     const activePriceCents = hasTwoPrintSides ? doublePriceCents : singlePriceCents;
     const artistProfitCents = catalogProduct.production.artistProfitCents ?? 0;
     const productTitlePreview = useMemo(() => {
-        return buildLockedProductTitle(artistName, title);
-    }, [artistName, title]);
+        return buildDesignedProductName(artistName, title, catalogProduct.name);
+    }, [artistName, catalogProduct.name, title]);
     const modelSets = getLifestyleModelSets(catalogProduct, listingColor?.value ?? garmentColor);
     const femaleOptions = modelSets.filter((set) => set.audience === "female");
     const maleOptions = modelSets.filter((set) => set.audience === "male");
+    const hasModelSetPreview = (set: (typeof modelSets)[number]) => Boolean(
+        mockupPreview?.lifestyle.some((image) => image.id === set.frontTemplateId) &&
+        (!set.backTemplateId || mockupPreview?.lifestyle.some((image) => image.id === set.backTemplateId))
+    );
+    const hasAudienceSelection = (
+        options: typeof modelSets,
+        selected: LifestyleModelSetId | null
+    ) => options.length === 0 || options.some((set) => set.id === selected && hasModelSetPreview(set));
     const canSaveReview = Boolean(mockupPreview) && (modelSets.length === 0 || (
-        femaleOptions.some((set) => set.id === femaleModelSet && mockupPreview?.lifestyle.some((image) => image.id === set.frontTemplateId) && mockupPreview?.lifestyle.some((image) => image.id === set.backTemplateId)) &&
-        maleOptions.some((set) => set.id === maleModelSet && mockupPreview?.lifestyle.some((image) => image.id === set.frontTemplateId) && mockupPreview?.lifestyle.some((image) => image.id === set.backTemplateId))
+        hasAudienceSelection(femaleOptions, femaleModelSet) &&
+        hasAudienceSelection(maleOptions, maleModelSet)
     ));
 
     useEffect(() => {
         layersRef.current = layers;
     }, [layers]);
+
+    useEffect(() => {
+        const missingLayers = layersRef.current.filter((layer) =>
+            layer.type === "image" && layer.src && (!layer.sourcePixelWidth || !layer.sourcePixelHeight)
+        );
+        if (!missingLayers.length) return;
+
+        let cancelled = false;
+        void Promise.all(missingLayers.map(async (layer) => {
+            const image = await loadImage(layer.src!);
+            return [layer.id, image.naturalWidth, image.naturalHeight] as const;
+        })).then((dimensions) => {
+            if (cancelled) return;
+            const byId = new Map(dimensions.map(([id, width, height]) => [id, { width, height }]));
+            setLayers((current) => current.map((layer) => {
+                const size = byId.get(layer.id);
+                return size ? {
+                    ...layer,
+                    sourcePixelWidth: size.width,
+                    sourcePixelHeight: size.height,
+                } : layer;
+            }));
+        }).catch(() => {
+            // The canvas renderer reports inaccessible artwork separately.
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [missingImageDimensionsKey]);
 
     useEffect(() => {
         const generation = ++renderGenerationRef.current;
@@ -560,9 +945,12 @@ export default function DesignerClient({
                 activeSide,
                 garmentKind,
                 garmentColor,
+                selectedColorName,
                 catalogProduct,
                 printAreas,
+                activePrintTarget,
                 true,
+                canvasGuideOptions,
                 selectedLayerId
             );
             if (generation === renderGenerationRef.current && canvasRef.current) {
@@ -575,29 +963,98 @@ export default function DesignerClient({
                 setError(err instanceof Error ? err.message : "Could not render design preview");
             }
         });
-    }, [activeSide, catalogProduct, garmentColor, garmentKind, layers, printAreas, selectedLayerId]);
-
-    useEffect(() => {
-        function handleKeyDown(event: KeyboardEvent) {
-            const target = event.target as HTMLElement | null;
-            if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
-            if ((event.key === "Delete" || event.key === "Backspace") && selectedLayerId) {
-                event.preventDefault();
-                setLayers((current) => current.filter((layer) => layer.id !== selectedLayerId));
-                setSelectedLayerId(null);
-            }
-        }
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [selectedLayerId]);
+    }, [activePrintTarget, activeSide, canvasGuideOptions, catalogProduct, garmentColor, garmentKind, layers, printAreas, selectedColorName, selectedLayerId]);
 
     useEffect(() => () => {
         if (dragFrameRef.current !== null) cancelAnimationFrame(dragFrameRef.current);
     }, []);
 
+    function commitLayers(updater: (current: DesignLayer[]) => DesignLayer[]) {
+        setLayers((current) => {
+            const next = updater(current);
+            if (next === current) return current;
+            historyRef.current.past = [...historyRef.current.past.slice(-49), current];
+            historyRef.current.future = [];
+            setHistoryStatus({ canUndo: true, canRedo: false });
+            return next;
+        });
+    }
+
+    function undo() {
+        const previous = historyRef.current.past.at(-1);
+        if (!previous) return;
+        historyRef.current.past = historyRef.current.past.slice(0, -1);
+        historyRef.current.future = [layersRef.current, ...historyRef.current.future.slice(0, 49)];
+        setLayers(previous);
+        setSelectedLayerId(null);
+        setSelectedLayerIds([]);
+        setHistoryStatus({ canUndo: historyRef.current.past.length > 0, canRedo: true });
+    }
+
+    function redo() {
+        const next = historyRef.current.future[0];
+        if (!next) return;
+        historyRef.current.future = historyRef.current.future.slice(1);
+        historyRef.current.past = [...historyRef.current.past.slice(-49), layersRef.current];
+        setLayers(next);
+        setSelectedLayerId(null);
+        setSelectedLayerIds([]);
+        setHistoryStatus({ canUndo: true, canRedo: historyRef.current.future.length > 0 });
+    }
+
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            const target = event.target as HTMLElement | null;
+            if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+            if (event.code === "Space") {
+                spacePressedRef.current = true;
+                event.preventDefault();
+                return;
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+                event.preventDefault();
+                if (event.shiftKey) redo(); else undo();
+                return;
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+                event.preventDefault();
+                redo();
+                return;
+            }
+            if ((event.key === "Delete" || event.key === "Backspace") && selectedLayerId) {
+                event.preventDefault();
+                commitLayers((current) => current.filter((layer) => !selectedLayerIds.includes(layer.id)));
+                setSelectedLayerId(null);
+                setSelectedLayerIds([]);
+            }
+        }
+
+        function handleKeyUp(event: KeyboardEvent) {
+            if (event.code === "Space") spacePressedRef.current = false;
+        }
+
+        window.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("keyup", handleKeyUp);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("keyup", handleKeyUp);
+        };
+    }, [selectedLayerId, selectedLayerIds]);
+
+    function selectLayer(id: string, additive = false) {
+        const layer = layersRef.current.find((item) => item.id === id);
+        const groupedIds = advancedMode && layer?.groupId
+            ? layersRef.current.filter((item) => item.groupId === layer.groupId).map((item) => item.id)
+            : [id];
+        setSelectedLayerId(id);
+        setSelectedLayerIds((current) => additive
+            ? current.includes(id) ? current.filter((item) => !groupedIds.includes(item)) : Array.from(new Set([...current, ...groupedIds]))
+            : groupedIds
+        );
+    }
+
     function updateLayer(id: string, patch: Partial<DesignLayer>) {
-        setLayers((current) =>
+        commitLayers((current) =>
             current.map((layer) => (layer.id === id ? { ...layer, ...patch } : layer))
         );
     }
@@ -618,10 +1075,11 @@ export default function DesignerClient({
             fontSize: 76,
             fontFamily: "Arial",
             fontWeight: "900",
+            name: "Text",
         };
 
-        setLayers((current) => [...current, layer]);
-        setSelectedLayerId(layer.id);
+        commitLayers((current) => [...current, layer]);
+        selectLayer(layer.id);
         setActiveToolPanel("selection");
     }
 
@@ -643,27 +1101,12 @@ export default function DesignerClient({
                 throw new Error(typeof result.error === "string" ? result.error : "Could not upload artwork.");
             }
 
-            const fitted = fitImageToPrintArea(
-                image.naturalWidth,
-                image.naturalHeight,
-                printAreas[activeSide],
-            );
-            const layer: DesignLayer = {
-                id: uid(),
-                side: activeSide,
-                type: "image",
-                x: fitted.x,
-                y: fitted.y,
-                width: fitted.width,
-                height: fitted.height,
-                rotation: 0,
-                opacity: 1,
-                src: result.path,
-                aspectRatio: image.naturalWidth / image.naturalHeight,
-            };
-            setLayers((current) => [...current, layer]);
-            setSelectedLayerId(layer.id);
-            setActiveToolPanel("selection");
+            insertImageLayer(result.path, image, {
+                fileType: file.type || "Unknown",
+                hasTransparency: imageHasTransparency(image),
+                colorProfile: await detectColorProfile(file),
+                name: file.name.replace(/\.[^.]+$/, "") || "Artwork",
+            });
         } catch (error) {
             setError(error instanceof Error ? error.message : "Could not load that image. Try a PNG, JPEG or WebP file.");
         } finally {
@@ -671,16 +1114,261 @@ export default function DesignerClient({
         }
     }
 
+    function insertImageLayer(
+        source: string,
+        image: HTMLImageElement,
+        diagnostics: Pick<DesignLayer, "fileType" | "hasTransparency" | "colorProfile" | "name"> = {},
+    ) {
+        const fitted = fitImageToPrintArea(
+            image.naturalWidth,
+            image.naturalHeight,
+            printAreas[activeSide],
+        );
+        const layer: DesignLayer = {
+            id: uid(),
+            side: activeSide,
+            type: "image",
+            x: fitted.x,
+            y: fitted.y,
+            width: fitted.width,
+            height: fitted.height,
+            rotation: 0,
+            opacity: 1,
+            src: source,
+            aspectRatio: image.naturalWidth / image.naturalHeight,
+            sourcePixelWidth: image.naturalWidth,
+            sourcePixelHeight: image.naturalHeight,
+            name: diagnostics.name ?? "Artwork",
+            fileType: diagnostics.fileType,
+            hasTransparency: diagnostics.hasTransparency,
+            colorProfile: diagnostics.colorProfile,
+        };
+        commitLayers((current) => [...current, layer]);
+        selectLayer(layer.id);
+        setActiveToolPanel("selection");
+    }
+
+    async function addRecentArtwork(asset: ArtistArtworkAsset) {
+        setIsUploadingArtwork(true);
+        setError(null);
+        try {
+            const image = await loadImage(asset.previewUrl);
+            insertImageLayer(asset.path, image);
+            setIsArtworkLibraryOpen(false);
+        } catch {
+            setError("That saved artwork could not be loaded. Try uploading it again.");
+        } finally {
+            setIsUploadingArtwork(false);
+        }
+    }
+
     function removeSelectedLayer() {
-        if (!selectedLayerId) return;
-        setLayers((current) => current.filter((layer) => layer.id !== selectedLayerId));
+        if (!selectedLayerIds.length) return;
+        commitLayers((current) => current.filter((layer) => !selectedLayerIds.includes(layer.id)));
         setSelectedLayerId(null);
+        setSelectedLayerIds([]);
+    }
+
+    async function replaceSelectedArtwork(file: File | null) {
+        if (!file || selectedLayer?.type !== "image") return;
+        setIsUploadingArtwork(true);
+        setError(null);
+        try {
+            const previewSource = await readFileAsDataUrl(file);
+            const image = await loadImage(previewSource);
+            const upload = new FormData();
+            upload.set("file", file);
+            const response = await fetch("/api/designer/artwork", { method: "POST", body: upload });
+            const result = await response.json() as { path?: unknown; error?: unknown };
+            if (!response.ok || typeof result.path !== "string") {
+                throw new Error(typeof result.error === "string" ? result.error : "Could not replace artwork.");
+            }
+            updateLayer(selectedLayer.id, {
+                src: result.path,
+                aspectRatio: image.naturalWidth / image.naturalHeight,
+                sourcePixelWidth: image.naturalWidth,
+                sourcePixelHeight: image.naturalHeight,
+                fileType: file.type || "Unknown",
+                hasTransparency: imageHasTransparency(image),
+                colorProfile: await detectColorProfile(file),
+                name: file.name.replace(/\.[^.]+$/, "") || selectedLayer.name,
+            });
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Could not replace artwork.");
+        } finally {
+            setIsUploadingArtwork(false);
+        }
     }
 
     function applyQuickAction(action: LayerQuickAction) {
         if (!selectedLayer) return;
         const area = printAreas[selectedLayer.side];
         updateLayer(selectedLayer.id, getLayerQuickActionPatch(selectedLayer, area, action));
+    }
+
+    function reorderLayer(id: string, direction: -1 | 1) {
+        commitLayers((current) => {
+            const index = current.findIndex((layer) => layer.id === id);
+            if (index < 0) return current;
+            const target = clamp(index + direction, 0, current.length - 1);
+            if (target === index) return current;
+            const next = [...current];
+            const [layer] = next.splice(index, 1);
+            next.splice(target, 0, layer);
+            return next;
+        });
+    }
+
+    function duplicateSelectedLayers() {
+        if (!selectedLayers.length) return;
+        const duplicates = selectedLayers.map((layer) => ({
+            ...layer,
+            id: uid(),
+            x: clamp(layer.x + 12, 0, CANVAS_WIDTH - layer.width),
+            y: clamp(layer.y + 12, 0, CANVAS_HEIGHT - layer.height),
+            name: `${layer.name ?? (layer.type === "text" ? "Text" : "Artwork")} copy`,
+        }));
+        commitLayers((current) => [...current, ...duplicates]);
+        setSelectedLayerIds(duplicates.map((layer) => layer.id));
+        setSelectedLayerId(duplicates.at(-1)?.id ?? null);
+    }
+
+    function groupSelectedLayers() {
+        if (selectedLayerIds.length < 2) return;
+        const groupId = uid();
+        commitLayers((current) => current.map((layer) => selectedLayerIds.includes(layer.id)
+            ? { ...layer, groupId }
+            : layer
+        ));
+    }
+
+    function ungroupSelectedLayers() {
+        const groupIds = new Set(selectedLayers.map((layer) => layer.groupId).filter(Boolean));
+        commitLayers((current) => current.map((layer) => layer.groupId && groupIds.has(layer.groupId)
+            ? { ...layer, groupId: undefined }
+            : layer
+        ));
+    }
+
+    function alignSelectedLayers(mode: "left" | "center-x" | "right" | "top" | "center-y" | "bottom" | "space-x" | "space-y") {
+        if (selectedLayers.length < 2) return;
+        const left = Math.min(...selectedLayers.map((layer) => layer.x));
+        const right = Math.max(...selectedLayers.map((layer) => layer.x + layer.width));
+        const top = Math.min(...selectedLayers.map((layer) => layer.y));
+        const bottom = Math.max(...selectedLayers.map((layer) => layer.y + layer.height));
+        const sorted = [...selectedLayers].sort((a, b) => mode === "space-x" ? a.x - b.x : a.y - b.y);
+        const first = sorted[0];
+        const last = sorted.at(-1)!;
+        commitLayers((current) => current.map((layer) => {
+            if (!selectedLayerIds.includes(layer.id)) return layer;
+            if (mode === "left") return { ...layer, x: left };
+            if (mode === "center-x") return { ...layer, x: (left + right - layer.width) / 2 };
+            if (mode === "right") return { ...layer, x: right - layer.width };
+            if (mode === "top") return { ...layer, y: top };
+            if (mode === "center-y") return { ...layer, y: (top + bottom - layer.height) / 2 };
+            if (mode === "bottom") return { ...layer, y: bottom - layer.height };
+            const index = sorted.findIndex((item) => item.id === layer.id);
+            if (mode === "space-x") {
+                const step = (last.x - first.x) / Math.max(1, sorted.length - 1);
+                return { ...layer, x: first.x + step * index };
+            }
+            const step = (last.y - first.y) / Math.max(1, sorted.length - 1);
+            return { ...layer, y: first.y + step * index };
+        }));
+    }
+
+    function copyPlacement() {
+        if (!selectedLayer) return;
+        const area = printAreas[selectedLayer.side];
+        localStorage.setItem("merch-tent-designer-placement", JSON.stringify({
+            x: (selectedLayer.x - area.x) / area.width,
+            y: (selectedLayer.y - area.y) / area.height,
+            width: selectedLayer.width / area.width,
+            height: selectedLayer.height / area.height,
+            rotation: selectedLayer.rotation,
+        }));
+    }
+
+    function pastePlacement() {
+        if (!selectedLayer) return;
+        try {
+            const placement = JSON.parse(localStorage.getItem("merch-tent-designer-placement") ?? "null") as {
+                x: number; y: number; width: number; height: number; rotation: number;
+            } | null;
+            if (!placement) return;
+            const area = printAreas[selectedLayer.side];
+            updateLayer(selectedLayer.id, {
+                x: area.x + placement.x * area.width,
+                y: area.y + placement.y * area.height,
+                width: placement.width * area.width,
+                height: placement.height * area.height,
+                rotation: placement.rotation,
+            });
+        } catch {
+            setError("The copied placement could not be read.");
+        }
+    }
+
+    function copyToOtherSide() {
+        if (!selectedLayer || isSingleSided) return;
+        const sourceArea = printAreas[selectedLayer.side];
+        const targetSide: Side = selectedLayer.side === "front" ? "back" : "front";
+        const targetArea = printAreas[targetSide];
+        const duplicate: DesignLayer = {
+            ...selectedLayer,
+            id: uid(),
+            side: targetSide,
+            x: targetArea.x + (selectedLayer.x - sourceArea.x) / sourceArea.width * targetArea.width,
+            y: targetArea.y + (selectedLayer.y - sourceArea.y) / sourceArea.height * targetArea.height,
+            width: selectedLayer.width / sourceArea.width * targetArea.width,
+            height: selectedLayer.height / sourceArea.height * targetArea.height,
+            name: `${selectedLayer.name ?? "Layer"} ${targetSide}`,
+        };
+        commitLayers((current) => [...current, duplicate]);
+        setActiveSide(targetSide);
+        selectLayer(duplicate.id);
+    }
+
+    function downloadTemplate() {
+        const area = printAreas[activeSide];
+        const safeInset = Math.max(10, Math.min(area.width, area.height) * 0.05);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${activePrintTarget.width}" height="${activePrintTarget.height}" viewBox="0 0 ${activePrintTarget.width} ${activePrintTarget.height}"><rect width="100%" height="100%" fill="none" stroke="#ef4444" stroke-width="8"/><rect x="${activePrintTarget.width * safeInset / area.width}" y="${activePrintTarget.height * safeInset / area.height}" width="${activePrintTarget.width * (area.width - safeInset * 2) / area.width}" height="${activePrintTarget.height * (area.height - safeInset * 2) / area.height}" fill="none" stroke="#22c55e" stroke-width="6" stroke-dasharray="24 16"/><text x="24" y="48" font-family="Arial" font-size="28" font-weight="700">${catalogProduct.name} - ${activeSide} - ${activePrintTarget.width} x ${activePrintTarget.height} px</text></svg>`;
+        downloadBlob(new Blob([svg], { type: "image/svg+xml" }), `${catalogProduct.model}-${activeSide}-template.svg`);
+    }
+
+    function exportProof() {
+        const source = canvasRef.current;
+        if (!source) return;
+        const proof = document.createElement("canvas");
+        proof.width = 1200;
+        proof.height = 1700;
+        const ctx = proof.getContext("2d");
+        if (!ctx) return;
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillRect(0, 0, proof.width, proof.height);
+        ctx.fillStyle = "#b7ff3c";
+        ctx.font = "700 22px Arial";
+        ctx.fillText("MERCH TENT PRODUCTION PROOF", 60, 60);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "700 34px Arial";
+        ctx.fillText(productTitlePreview, 60, 110);
+        ctx.font = "700 20px Arial";
+        ctx.fillText(`${catalogProduct.name} / ${activeSide.toUpperCase()}`, 60, 150);
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#a3a3a3";
+        ctx.fillText(`Print area: ${activePrintTarget.width} x ${activePrintTarget.height} px`, 60, 182);
+        ctx.drawImage(source, 150, 220, 900, 1200);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "700 18px Arial";
+        ctx.fillText("PREFLIGHT", 60, 1470);
+        ctx.font = "15px Arial";
+        preflightChecks.slice(0, 6).forEach((check, index) => {
+            ctx.fillStyle = check.level === "pass" ? "#b7ff3c" : "#fbbf24";
+            ctx.fillText(`${check.level === "pass" ? "PASS" : "CHECK"}: ${check.message}`, 60, 1505 + index * 28);
+        });
+        proof.toBlob((blob) => {
+            if (blob) downloadBlob(blob, `${catalogProduct.model}-${activeSide}-proof.png`);
+        }, "image/png");
     }
 
     function getCanvasPoint(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -690,6 +1378,10 @@ export default function DesignerClient({
             x: ((event.clientX - rect.left) / rect.width) * CANVAS_WIDTH,
             y: ((event.clientY - rect.top) / rect.height) * CANVAS_HEIGHT,
         };
+    }
+
+    function snapValue(value: number) {
+        return advancedMode && snapEnabled ? Math.round(value / gridSize) * gridSize : value;
     }
 
     function queueDragUpdate(id: string, patch: Partial<DesignLayer>) {
@@ -720,12 +1412,14 @@ export default function DesignerClient({
     }
 
     function handlePointerDown(event: React.PointerEvent<HTMLCanvasElement>) {
+        if (spacePressedRef.current) return;
         const point = getCanvasPoint(event);
         const currentSelected = activeLayers.find((layer) => layer.id === selectedLayerId);
 
-        if (currentSelected) {
+        if (currentSelected && !currentSelected.locked) {
             const handles = layerHandles(currentSelected);
             if (pointNear(point, handles.rotate)) {
+                dragHistorySnapshotRef.current = layersRef.current;
                 dragRef.current = {
                     id: currentSelected.id,
                     mode: "rotate",
@@ -738,6 +1432,7 @@ export default function DesignerClient({
                 return;
             }
             if (pointNear(point, handles.resize)) {
+                dragHistorySnapshotRef.current = layersRef.current;
                 dragRef.current = {
                     id: currentSelected.id,
                     mode: "resize",
@@ -753,16 +1448,20 @@ export default function DesignerClient({
         }
 
         const hit = [...activeLayers]
+            .filter((layer) => !layer.hidden)
             .reverse()
             .find((layer) => pointHitsLayer(point, layer));
 
         if (!hit) {
             setSelectedLayerId(null);
+            if (!event.shiftKey) setSelectedLayerIds([]);
             return;
         }
 
-        setSelectedLayerId(hit.id);
+        selectLayer(hit.id, advancedMode && event.shiftKey);
         setActiveToolPanel("selection");
+        if (hit.locked) return;
+        dragHistorySnapshotRef.current = layersRef.current;
         dragRef.current = {
             id: hit.id,
             mode: "move",
@@ -780,10 +1479,21 @@ export default function DesignerClient({
         if (!layer) return;
 
         if (drag.mode === "move") {
-            queueDragUpdate(drag.id, {
-                x: clamp(point.x - drag.offsetX, 0, CANVAS_WIDTH - layer.width),
-                y: clamp(point.y - drag.offsetY, 0, CANVAS_HEIGHT - layer.height),
-            });
+            const nextX = clamp(snapValue(point.x - drag.offsetX), 0, CANVAS_WIDTH - layer.width);
+            const nextY = clamp(snapValue(point.y - drag.offsetY), 0, CANVAS_HEIGHT - layer.height);
+            const movingIds = layer.groupId
+                ? layersRef.current.filter((item) => item.groupId === layer.groupId).map((item) => item.id)
+                : selectedLayerIds.includes(layer.id) && selectedLayerIds.length > 1 ? selectedLayerIds : [layer.id];
+            const deltaX = nextX - layer.x;
+            const deltaY = nextY - layer.y;
+            setLayers((current) => current.map((item) => movingIds.includes(item.id)
+                ? {
+                    ...item,
+                    x: clamp(item.x + deltaX, 0, CANVAS_WIDTH - item.width),
+                    y: clamp(item.y + deltaY, 0, CANVAS_HEIGHT - item.height),
+                }
+                : item
+            ));
             return;
         }
 
@@ -791,12 +1501,14 @@ export default function DesignerClient({
             const distance = Math.hypot(point.x - drag.centerX, point.y - drag.centerY);
             const scale = clamp(distance / drag.startDistance, 0.2, 4);
             const width = clamp(drag.startWidth * scale, 60, 650);
-            const height = clamp(drag.startHeight * scale, 40, 760);
+            const height = lockAspectRatio
+                ? clamp(width / (layer.aspectRatio ?? drag.startWidth / drag.startHeight), 40, 760)
+                : clamp(drag.startHeight * scale, 40, 760);
             queueDragUpdate(drag.id, {
-                width,
-                height,
-                x: drag.centerX - width / 2,
-                y: drag.centerY - height / 2,
+                width: snapValue(width),
+                height: snapValue(height),
+                x: snapValue(drag.centerX - width / 2),
+                y: snapValue(drag.centerY - height / 2),
             });
             return;
         }
@@ -808,13 +1520,60 @@ export default function DesignerClient({
 
     function handlePointerUp(event: React.PointerEvent<HTMLCanvasElement>) {
         flushDragUpdate();
+        if (dragHistorySnapshotRef.current) {
+            historyRef.current.past = [...historyRef.current.past.slice(-49), dragHistorySnapshotRef.current];
+            historyRef.current.future = [];
+            dragHistorySnapshotRef.current = null;
+            setHistoryStatus({ canUndo: true, canRedo: false });
+        }
         dragRef.current = null;
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
         }
     }
 
+    function handleWorkspacePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+        if (!advancedMode || !spacePressedRef.current || !workspaceRef.current) return;
+        const workspace = workspaceRef.current;
+        panRef.current = {
+            x: event.clientX,
+            y: event.clientY,
+            left: workspace.scrollLeft,
+            top: workspace.scrollTop,
+        };
+        workspace.setPointerCapture(event.pointerId);
+        event.preventDefault();
+    }
+
+    function handleWorkspacePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+        if (!panRef.current || !workspaceRef.current) return;
+        workspaceRef.current.scrollLeft = panRef.current.left - (event.clientX - panRef.current.x);
+        workspaceRef.current.scrollTop = panRef.current.top - (event.clientY - panRef.current.y);
+    }
+
+    function handleWorkspacePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+        panRef.current = null;
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+    }
+
     function buildDesignPayload(color = selectedColor) {
+        const sourceArea = selectedPosterFormat
+            ? posterCanvasArea(selectedPosterFormat.width, selectedPosterFormat.height)
+            : printAreas.front;
+        const resolvedPosterLayouts = garmentKind === "poster"
+            ? posterFormats.map((format) => ({
+                key: format.key,
+                layers: omitInlineLayerSources(format.key === selectedPosterFormat?.key
+                    ? layers
+                    : posterLayouts[format.key] ?? remapPosterLayers(
+                        layers,
+                        sourceArea,
+                        posterCanvasArea(format.width, format.height),
+                    )),
+            }))
+            : undefined;
         return {
             version: 1 as const,
             templateKey: `merch-tent-${garmentKind}-v1`,
@@ -831,6 +1590,9 @@ export default function DesignerClient({
                 production: catalogProduct.production,
             },
             printSideCount,
+            posterFormatKey: selectedPosterFormat?.key,
+            posterFormats,
+            posterLayouts: resolvedPosterLayouts,
             canvas: {
                 width: CANVAS_WIDTH,
                 height: CANVAS_HEIGHT,
@@ -852,6 +1614,27 @@ export default function DesignerClient({
         };
     }
 
+    function changePosterFormat(nextKey: string) {
+        const next = posterFormatForKey(posterFormats, nextKey);
+        if (!next || next.key === selectedPosterFormat?.key) return;
+        const sourceArea = selectedPosterFormat
+            ? posterCanvasArea(selectedPosterFormat.width, selectedPosterFormat.height)
+            : printAreas.front;
+        const targetArea = posterCanvasArea(next.width, next.height);
+        const nextLayers = posterLayouts[next.key] ?? remapPosterLayers(layers, sourceArea, targetArea);
+        if (selectedPosterFormat?.key) {
+            setPosterLayouts((current) => ({
+                ...current,
+                [selectedPosterFormat.key]: layers,
+                [next.key]: nextLayers,
+            }));
+        }
+        setLayers(nextLayers);
+        setSelectedLayerId(null);
+        setSelectedPosterFormatKey(next.key);
+        setMockupPreview(null);
+    }
+
     function chooseModelSets(preview: DesignerMockupPreview) {
         const randomItem = <T,>(items: T[]) => {
             const values = new Uint32Array(1);
@@ -861,7 +1644,7 @@ export default function DesignerClient({
         const available = (audience: "female" | "male") => modelSets.filter((set) =>
             set.audience === audience &&
             preview.lifestyle.some((image) => image.id === set.frontTemplateId) &&
-            preview.lifestyle.some((image) => image.id === set.backTemplateId)
+            (!set.backTemplateId || preview.lifestyle.some((image) => image.id === set.backTemplateId))
         );
         const females = available("female");
         const males = available("male");
@@ -875,7 +1658,7 @@ export default function DesignerClient({
                 ? current
                 : randomItem(males).id);
         }
-        if (modelSets.length && (!females.length || !males.length)) {
+        if ((femaleOptions.length > 0 && females.length === 0) || (maleOptions.length > 0 && males.length === 0)) {
             setError("Some model photos could not be generated. Try again before saving.");
         }
     }
@@ -888,7 +1671,7 @@ export default function DesignerClient({
             return;
         }
         if (view === "review" && (layers.length === 0 || !title.trim())) {
-            setError("Add artwork and a product name before reviewing the listing.");
+            setError("Add artwork and a drop name before reviewing the listing.");
             return;
         }
         if (view === "review" && activeView === "mockups" && mockupPreview) {
@@ -927,12 +1710,18 @@ export default function DesignerClient({
             setActiveView("colors");
             return;
         }
+        if (!title.trim()) {
+            setError("Enter a drop name before saving the product.");
+            setActiveView("designer");
+            setActiveToolPanel("product");
+            return;
+        }
         if (layers.length === 0) {
             setError("Add artwork or text before saving the product.");
             return;
         }
         if (!canSaveReview) {
-            setError("Choose one available female and male model set before saving.");
+            setError("Choose one available model from each listed group before saving.");
             return;
         }
 
@@ -946,7 +1735,7 @@ export default function DesignerClient({
 
             const formData = new FormData();
             if (initialProduct) formData.set("product_id", initialProduct.id);
-            formData.set("title", productTitlePreview);
+            formData.set("drop_name", title.trim());
             formData.set("description", description);
             formData.set("price", price);
             formData.set("category", category);
@@ -959,10 +1748,8 @@ export default function DesignerClient({
             formData.set("supplier_product_id", catalogProduct.supplier.externalProductId);
             formData.set("supplier_automation_mode", catalogProduct.supplier.automationMode);
             formData.set("provider_options_json", JSON.stringify(catalogProduct.providerOptions ?? []));
-            if (modelSets.length > 0 && femaleModelSet && maleModelSet) {
-                formData.set("female_model_set", femaleModelSet);
-                formData.set("male_model_set", maleModelSet);
-            }
+            if (femaleModelSet) formData.set("female_model_set", femaleModelSet);
+            if (maleModelSet) formData.set("male_model_set", maleModelSet);
             if (catalogProduct.supplier.printify) {
                 formData.set("printify_blueprint_id", String(catalogProduct.supplier.printify.blueprintId));
                 if (catalogProduct.supplier.printify.printProviderId) {
@@ -980,6 +1767,8 @@ export default function DesignerClient({
             setIsSaving(false);
         }
     }
+
+    const sizeGuide = catalogProduct.production.customerInfo?.sizeGuide;
 
     return (
         <form
@@ -1021,7 +1810,9 @@ export default function DesignerClient({
                                 <div className="mx-auto max-w-4xl">
                                     <p className="text-xs font-black uppercase text-lime-300">Colours to sell</p>
                                     <h2 className="mt-2 text-3xl font-black uppercase">Choose the final colours.</h2>
-                                    <p className="mt-3 text-sm text-neutral-400">Your front and back artwork is shared across every selected colour. The colour you used while designing was only a preview.</p>
+                                    <p className="mt-3 text-sm text-neutral-400">
+                                        {isSingleSided ? "Your front artwork" : "Your front and back artwork"} is shared across every selected colour. The colour you used while designing was only a preview.
+                                    </p>
                                     <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                         {catalogProduct.colors.map((item) => {
                                             const name = item.supplierColorName ?? item.label;
@@ -1033,7 +1824,7 @@ export default function DesignerClient({
                                             </label>;
                                         })}
                                     </div>
-                                    <p className="mt-5 text-xs text-neutral-400">Choose up to six colours. Black has photographed model mockups. Other colours use flat front and back garment previews.</p>
+                                    <p className="mt-5 text-xs text-neutral-400">Choose up to six colours. Supplier photography is used where configured; other colours use generated product previews.</p>
                                     {error ? <p className="mt-4 text-sm text-red-300" role="alert">{error}</p> : null}
                                     <button type="button" disabled={!saleColors.length || isGeneratingMockups || isUploadingArtwork} onClick={() => void openPreview("mockups")} className="mt-7 inline-flex h-11 items-center gap-2 bg-lime-300 px-5 text-sm font-black text-black disabled:opacity-50">Generate mockups <ArrowRight className="h-4 w-4" /></button>
                                 </div>
@@ -1108,13 +1899,14 @@ export default function DesignerClient({
             ) : null}
 
             <section className="flex min-h-0 flex-col border-b border-neutral-800 bg-neutral-950 xl:border-b-0 xl:border-r">
-                <div className="grid grid-cols-4 border-b border-neutral-800">
+                <div className={`grid border-b border-neutral-800 ${advancedMode ? "grid-cols-5" : "grid-cols-4"}`}>
                     {([
                         ["product", Shirt, "Product"],
-                        ["blank", AlignCenter, "Blank"],
+                        ["blank", ClipboardList, "Specs"],
                         ["layers", Layers, "Layers"],
                         ["selection", RotateCw, "Edit"],
-                    ] as const).map(([panel, Icon, label]) => (
+                        ...(advancedMode ? [["advanced", Grid3X3, "Advanced"] as const] : []),
+                    ] as Array<readonly [ToolPanel, typeof Shirt, string]>).map(([panel, Icon, label]) => (
                         <button
                             key={panel}
                             type="button"
@@ -1147,15 +1939,16 @@ export default function DesignerClient({
                             </div>
                             <label className="block">
                                 <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">
-                                    Merch name
+                                    Drop name <span aria-hidden="true">*</span>
                                 </span>
                                 <input
                                     value={title}
                                     onChange={(event) => setTitle(event.target.value)}
                                     required
+                                    maxLength={80}
                                     disabled={isSaving}
                                     className="h-11 w-full border border-neutral-700 bg-black px-3 text-sm outline-none"
-                                    placeholder={catalogProduct.name}
+                                    placeholder="e.g. Anniversary Edition"
                                 />
                                 <span className="mt-2 block border border-neutral-800 bg-black p-3 text-xs leading-5 text-neutral-400">
                                     <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">
@@ -1163,8 +1956,8 @@ export default function DesignerClient({
                                     </span>
                                     <span className="mt-1 block font-black text-white">{productTitlePreview}</span>
                                     <span className="mt-1 block">
-                                        Artist name is locked in first. Blank details like {catalogProduct.brand}{" "}
-                                        {catalogProduct.model} stay in product specs, not the shop title.
+                                        Artist name is locked first and {catalogProduct.name} is locked last. Enter the
+                                        distinctive drop name that appears between them.
                                     </span>
                                 </span>
                             </label>
@@ -1187,7 +1980,7 @@ export default function DesignerClient({
                                 </p>
                                 <p className="mt-1 text-sm font-black uppercase text-white">{category}</p>
                                 <p className="mt-1 text-xs leading-5 text-neutral-500">
-                                    Locked from the catalogue blank selected before opening the designer.
+                                    Locked from the catalogue product selected before opening the designer.
                                 </p>
                             </div>
                         </div>
@@ -1197,7 +1990,7 @@ export default function DesignerClient({
                         <div className="space-y-4">
                             <div>
                                 <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#b7ff3c]">
-                                    Catalogue blank
+                                    Product specs
                                 </p>
                                 <h2 className="mt-2 text-2xl font-black uppercase">{catalogProduct.name}</h2>
                                 <p className="mt-2 text-xs uppercase tracking-[0.18em] text-neutral-500">
@@ -1221,26 +2014,142 @@ export default function DesignerClient({
                                     <span className="uppercase tracking-wide text-neutral-500">Sync</span>
                                 </div>
                             </div>
+                            {designerPreviewColors.length < catalogProduct.colors.length ? (
+                                <div className="border border-amber-400/40 bg-amber-400/10 p-3 text-[11px] leading-4 text-amber-100">
+                                    <b className="block font-black uppercase text-amber-300">Preview availability</b>
+                                    <span className="mt-1 block">
+                                        All {catalogProduct.colors.length} colours can be sold. Dimmed colours only lack
+                                        product photography for this design preview.
+                                    </span>
+                                </div>
+                            ) : null}
                             <div className="grid grid-cols-2 gap-2">
-                                {catalogProduct.colors.map((item) => (
+                                {catalogProduct.colors.map((item) => {
+                                    const colorName = item.supplierColorName ?? item.label;
+                                    const hasPreview = designerPreviewColorNames.has(colorName);
+                                    return (
                                     <button
-                                        key={item.supplierColorName ?? item.label}
+                                        key={colorName}
                                         type="button"
-                                        onClick={() => setSelectedColorName(item.supplierColorName ?? item.label)}
-                                        className={`flex h-10 items-center gap-2 border px-2 text-xs ${
-                                            selectedColorName === (item.supplierColorName ?? item.label)
+                                        disabled={!hasPreview}
+                                        aria-label={hasPreview
+                                            ? `${item.label}: preview ready`
+                                            : `${item.label}: available to sell, product preview unavailable`}
+                                        title={hasPreview ? `Preview ${item.label}` : `${item.label} needs a product preview image`}
+                                        onClick={() => setSelectedColorName(colorName)}
+                                        className={`flex min-h-12 items-center gap-2 border px-2 py-1.5 text-xs ${
+                                            selectedColorName === colorName
                                                 ? "border-lime-300 bg-lime-300/15"
-                                                : "border-neutral-700 bg-black"
+                                                : hasPreview
+                                                    ? "border-neutral-700 bg-black"
+                                                    : "cursor-not-allowed border-neutral-800 bg-neutral-950 text-neutral-600 opacity-45"
                                         }`}
                                     >
                                         <span
                                             className="h-4 w-4 rounded-full border border-white/20"
                                             style={{ backgroundColor: item.value }}
                                         />
-                                        {item.label}
+                                        <span className="min-w-0 text-left">
+                                            <span className="block truncate">{item.label}</span>
+                                            <span className={`mt-0.5 block text-[9px] font-black uppercase ${
+                                                hasPreview ? "text-lime-300" : "text-amber-300"
+                                            }`}>
+                                                {hasPreview ? "Preview ready" : "Available · no preview"}
+                                            </span>
+                                        </span>
                                     </button>
-                                ))}
+                                    );
+                                })}
                             </div>
+                            {designerPreviewColors.length < catalogProduct.colors.length ? (
+                                <p className="text-[11px] leading-4 text-neutral-500">
+                                    {designerPreviewColors.length} of {catalogProduct.colors.length} colours currently have product image previews.
+                                    Choose the full range later under Colours to sell.
+                                </p>
+                            ) : null}
+                            {catalogProduct.production.customerInfo ? (
+                                <div className="border-t border-neutral-800 pt-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+                                        Specifications
+                                    </p>
+                                    {catalogProduct.production.customerInfo.about ? (
+                                        <p className="mt-3 text-xs leading-5 text-neutral-400">
+                                            {catalogProduct.production.customerInfo.about}
+                                        </p>
+                                    ) : null}
+                                    <dl className="mt-3 divide-y divide-neutral-800 border-y border-neutral-800">
+                                        {catalogProduct.production.customerInfo.features.map((feature) => (
+                                            <div key={feature.title} className="py-3">
+                                                <dt className="text-xs font-black uppercase text-white">{feature.title}</dt>
+                                                <dd className="mt-1 text-xs leading-5 text-neutral-400">{feature.description}</dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+
+                                    {sizeGuide ? (
+                                        <div className="mt-4">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+                                                Size guide / cm
+                                            </p>
+                                            <div className="mt-2 divide-y divide-neutral-800 border-y border-neutral-800 text-[11px]">
+                                                {sizeGuide.measurements.map((item) => (
+                                                    <section key={item.size} className="py-3">
+                                                        <h3 className="font-black uppercase text-white">{item.size}</h3>
+                                                        <dl className="mt-2 divide-y divide-neutral-900">
+                                                            {item.width !== undefined ? (
+                                                                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-1.5">
+                                                                    <dt className="font-black uppercase text-neutral-500">Width</dt>
+                                                                    <dd className="text-right text-neutral-200">{item.width}</dd>
+                                                                </div>
+                                                            ) : null}
+                                                            {item.length !== undefined ? (
+                                                                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-1.5">
+                                                                    <dt className="font-black uppercase text-neutral-500">
+                                                                        {sizeGuide.lengthLabel ?? "Length"}
+                                                                    </dt>
+                                                                    <dd className="text-right text-neutral-200">{item.length}</dd>
+                                                                </div>
+                                                            ) : null}
+                                                            {item.metrics?.map((metric) => (
+                                                                <div key={metric.label} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-1.5">
+                                                                    <dt className="font-black uppercase text-neutral-500">{metric.label}</dt>
+                                                                    <dd className="text-right text-neutral-200">{metric.value}</dd>
+                                                                </div>
+                                                            ))}
+                                                            {item.sleeveLength !== undefined ? (
+                                                                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-1.5">
+                                                                    <dt className="font-black uppercase text-neutral-500">
+                                                                        {sizeGuide.sleeveLabel ?? "Sleeve length"}
+                                                                    </dt>
+                                                                    <dd className="text-right text-neutral-200">{item.sleeveLength}</dd>
+                                                                </div>
+                                                            ) : null}
+                                                            {item.sizeTolerance !== undefined ? (
+                                                                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-1.5">
+                                                                    <dt className="font-black uppercase text-neutral-500">Tolerance</dt>
+                                                                    <dd className="text-right text-neutral-200">{item.sizeTolerance}</dd>
+                                                                </div>
+                                                            ) : null}
+                                                        </dl>
+                                                    </section>
+                                                ))}
+                                            </div>
+                                            <p className="mt-2 text-[11px] leading-4 text-neutral-500">
+                                                {sizeGuide.measurementNote}
+                                            </p>
+                                        </div>
+                                    ) : null}
+
+                                    {catalogProduct.production.customerInfo.careInstructions.length ? (
+                                        <div className="mt-4">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Care</p>
+                                            <p className="mt-2 text-xs leading-5 text-neutral-400">
+                                                {catalogProduct.production.customerInfo.careInstructions.join(" · ")}
+                                            </p>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ) : null}
                         </div>
                     ) : null}
 
@@ -1255,28 +2164,113 @@ export default function DesignerClient({
                                 </p>
                             ) : (
                                 <div className="space-y-2">
-                                    {activeLayers.map((layer) => (
-                                        <button
-                                            key={layer.id}
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedLayerId(layer.id);
-                                                setActiveToolPanel("selection");
-                                            }}
-                                            className={`flex w-full items-center justify-between border px-3 py-2 text-left text-sm ${
-                                                selectedLayerId === layer.id
-                                                    ? "border-lime-300 bg-lime-300/10"
-                                                    : "border-neutral-800 bg-black"
-                                            }`}
-                                        >
-                                            <span className="truncate">
-                                                {layer.type === "text" ? layer.text || "Text" : "Image"}
-                                            </span>
-                                            <span className="text-[11px] uppercase text-neutral-500">{layer.type}</span>
-                                        </button>
+                                    {[...activeLayers].reverse().map((layer) => (
+                                        <div key={layer.id} className={`border ${selectedLayerIds.includes(layer.id) ? "border-lime-300 bg-lime-300/10" : "border-neutral-800 bg-black"}`}>
+                                            <div className="flex items-center gap-2 p-2">
+                                                {advancedMode ? (
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedLayerIds.includes(layer.id)}
+                                                        onChange={() => selectLayer(layer.id, true)}
+                                                        className="h-4 w-4 accent-lime-300"
+                                                        aria-label={`Select ${layer.name ?? layer.type}`}
+                                                    />
+                                                ) : null}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        selectLayer(layer.id);
+                                                        setActiveToolPanel("selection");
+                                                    }}
+                                                    className="min-w-0 flex-1 text-left text-sm"
+                                                >
+                                                    <span className="block truncate">{layer.name ?? (layer.type === "text" ? layer.text || "Text" : "Artwork")}</span>
+                                                    <span className="text-[10px] uppercase text-neutral-500">{layer.groupId ? "Grouped · " : ""}{layer.type}</span>
+                                                </button>
+                                                {advancedMode ? (
+                                                    <>
+                                                        <button type="button" onClick={() => updateLayer(layer.id, { hidden: !layer.hidden })} title={layer.hidden ? "Show layer" : "Hide layer"} className="grid h-7 w-7 place-items-center text-neutral-400 hover:text-white">{layer.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+                                                        <button type="button" onClick={() => updateLayer(layer.id, { locked: !layer.locked })} title={layer.locked ? "Unlock layer" : "Lock layer"} className="grid h-7 w-7 place-items-center text-neutral-400 hover:text-white">{layer.locked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
+                                                    </>
+                                                ) : null}
+                                            </div>
+                                            {advancedMode ? (
+                                                <div className="flex border-t border-neutral-800">
+                                                    <button type="button" onClick={() => reorderLayer(layer.id, 1)} title="Move layer forward" className="grid h-7 flex-1 place-items-center text-neutral-500 hover:text-white"><MoveUp className="h-3.5 w-3.5" /></button>
+                                                    <button type="button" onClick={() => reorderLayer(layer.id, -1)} title="Move layer backward" className="grid h-7 flex-1 place-items-center border-l border-neutral-800 text-neutral-500 hover:text-white"><MoveDown className="h-3.5 w-3.5" /></button>
+                                                </div>
+                                            ) : null}
+                                        </div>
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    ) : null}
+
+                    {activeToolPanel === "advanced" && advancedMode ? (
+                        <div className="space-y-5">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-lime-300">Canvas</p>
+                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                    <AdvancedToggle label="Grid" icon={Grid3X3} checked={showGrid} onChange={setShowGrid} />
+                                    <AdvancedToggle label="Rulers" icon={Ruler} checked={showRulers} onChange={setShowRulers} />
+                                    <AdvancedToggle label="Safe area" icon={CircleCheck} checked={showSafeArea} onChange={setShowSafeArea} />
+                                    <AdvancedToggle label="Bleed" icon={CircleAlert} checked={showBleed} onChange={setShowBleed} />
+                                    <AdvancedToggle label="Snap" icon={AlignCenterHorizontal} checked={snapEnabled} onChange={setSnapEnabled} />
+                                    <label className="border border-neutral-800 bg-black p-2 text-[11px] uppercase text-neutral-400">
+                                        Grid px
+                                        <input type="number" min="5" max="100" step="5" value={gridSize} onChange={(event) => setGridSize(clamp(Number(event.target.value) || 10, 5, 100))} className="mt-1 h-7 w-full border border-neutral-700 bg-neutral-950 px-2 text-sm text-white" />
+                                    </label>
+                                </div>
+                                <p className="mt-2 text-[11px] leading-4 text-neutral-500">Orange is bleed, red is the maximum print boundary and green is the safe area.</p>
+                            </div>
+
+                            <div className="border-t border-neutral-800 pt-4">
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-neutral-400">Selection</p>
+                                <p className="mt-1 text-xs text-neutral-500">{selectedLayerIds.length} layers selected</p>
+                                <div className="mt-3 grid grid-cols-3 gap-1">
+                                    {([
+                                        ["left", "Left"], ["center-x", "Centre X"], ["right", "Right"],
+                                        ["top", "Top"], ["center-y", "Centre Y"], ["bottom", "Bottom"],
+                                        ["space-x", "Space X"], ["space-y", "Space Y"],
+                                    ] as const).map(([mode, label]) => (
+                                        <button key={mode} type="button" disabled={selectedLayerIds.length < 2} onClick={() => alignSelectedLayers(mode)} className="min-h-9 border border-neutral-700 px-1 text-[10px] font-bold text-neutral-300 hover:border-lime-300 hover:text-lime-300 disabled:opacity-30">{label}</button>
+                                    ))}
+                                </div>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                    <button type="button" disabled={selectedLayerIds.length < 2} onClick={groupSelectedLayers} className="inline-flex h-9 items-center justify-center gap-2 border border-neutral-700 text-xs font-bold disabled:opacity-30"><Group className="h-4 w-4" /> Group</button>
+                                    <button type="button" disabled={!selectedLayers.some((layer) => layer.groupId)} onClick={ungroupSelectedLayers} className="inline-flex h-9 items-center justify-center gap-2 border border-neutral-700 text-xs font-bold disabled:opacity-30"><Ungroup className="h-4 w-4" /> Ungroup</button>
+                                    <button type="button" disabled={!selectedLayers.length} onClick={duplicateSelectedLayers} className="inline-flex h-9 items-center justify-center gap-2 border border-neutral-700 text-xs font-bold disabled:opacity-30"><Copy className="h-4 w-4" /> Duplicate</button>
+                                    <button type="button" disabled={!selectedLayer || isSingleSided} onClick={copyToOtherSide} className="inline-flex h-9 items-center justify-center gap-2 border border-neutral-700 text-xs font-bold disabled:opacity-30"><RefreshCw className="h-4 w-4" /> Other side</button>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-neutral-800 pt-4">
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-neutral-400">Reusable placement</p>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                    <button type="button" disabled={!selectedLayer} onClick={copyPlacement} className="h-9 border border-neutral-700 text-xs font-bold disabled:opacity-30">Copy</button>
+                                    <button type="button" disabled={!selectedLayer} onClick={pastePlacement} className="h-9 border border-neutral-700 text-xs font-bold disabled:opacity-30">Paste</button>
+                                </div>
+                                <p className="mt-2 text-[11px] leading-4 text-neutral-500">Placement is stored proportionally, ready for another side or product.</p>
+                            </div>
+
+                            <div className="border-t border-neutral-800 pt-4">
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-neutral-400">Preflight</p>
+                                <div className="mt-2 space-y-2">
+                                    {preflightChecks.length ? preflightChecks.map((check, index) => (
+                                        <div key={`${check.message}-${index}`} className={`flex gap-2 border p-2 text-xs ${check.level === "pass" ? "border-lime-300/40 text-lime-300" : "border-yellow-400/40 text-yellow-200"}`}>
+                                            {check.level === "pass" ? <CircleCheck className="h-4 w-4 shrink-0" /> : <CircleAlert className="h-4 w-4 shrink-0" />}
+                                            <span>{check.message}</span>
+                                        </div>
+                                    )) : <p className="text-xs text-neutral-500">Add artwork to begin preflight checks.</p>}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 border-t border-neutral-800 pt-4">
+                                <button type="button" onClick={downloadTemplate} className="inline-flex min-h-10 items-center justify-center gap-2 border border-lime-300 text-xs font-black text-lime-300 hover:bg-lime-300 hover:text-black"><Download className="h-4 w-4" /> SVG template</button>
+                                <button type="button" onClick={exportProof} className="inline-flex min-h-10 items-center justify-center gap-2 border border-lime-300 text-xs font-black text-lime-300 hover:bg-lime-300 hover:text-black"><Download className="h-4 w-4" /> Proof PNG</button>
+                                <p className="col-span-2 text-[11px] leading-4 text-neutral-500">The SVG template opens in Illustrator, Photoshop and Affinity apps.</p>
+                            </div>
                         </div>
                     ) : null}
 
@@ -1284,9 +2278,14 @@ export default function DesignerClient({
                         <LayerEditor
                             selectedLayer={selectedLayer}
                             printArea={printAreas[activeSide]}
+                            printTarget={activePrintTarget}
+                            advancedMode={advancedMode}
+                            lockAspectRatio={lockAspectRatio}
+                            setLockAspectRatio={setLockAspectRatio}
                             updateLayer={updateLayer}
                             applyQuickAction={applyQuickAction}
                             removeSelectedLayer={removeSelectedLayer}
+                            replaceSelectedArtwork={replaceSelectedArtwork}
                         />
                     ) : null}
                 </div>
@@ -1295,7 +2294,7 @@ export default function DesignerClient({
             <section className="flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden p-4">
                 <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border border-neutral-800 bg-neutral-950 p-3">
                     <div className="inline-flex border border-neutral-800 bg-black p-1">
-                        {(["front", "back"] as Side[]).map((side) => (
+                        {([...(isSingleSided ? ["front"] : ["front", "back"])] as Side[]).map((side) => (
                             <button
                                 key={side}
                                 type="button"
@@ -1313,6 +2312,62 @@ export default function DesignerClient({
                             </button>
                         ))}
                     </div>
+
+                    <div className="min-w-[220px] border border-neutral-800 bg-black px-3 py-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
+                            {activePrintTarget.isSupplierSpecified ? `${activeSide} print area` : "Recommended artwork"}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                            <p className="text-sm font-black text-white">
+                                {activePrintTarget.width} x {activePrintTarget.height} px
+                            </p>
+                            <p className="text-[11px] text-neutral-400">
+                                {activePrintPhysicalSize.widthCm.toFixed(1)} x {activePrintPhysicalSize.heightCm.toFixed(1)} cm at 300 DPI
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center border border-neutral-800 bg-black p-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setAdvancedMode((current) => {
+                                    const next = !current;
+                                    if (next) setActiveToolPanel("advanced");
+                                    else if (activeToolPanel === "advanced") setActiveToolPanel("product");
+                                    return next;
+                                });
+                            }}
+                            className={`h-8 px-3 text-xs font-black uppercase ${advancedMode ? "bg-lime-300 text-black" : "text-neutral-300 hover:text-white"}`}
+                        >
+                            Advanced
+                        </button>
+                        {advancedMode ? (
+                            <>
+                                <button type="button" onClick={undo} disabled={!historyStatus.canUndo} title="Undo (Ctrl+Z)" className="grid h-8 w-8 place-items-center text-neutral-300 hover:text-white disabled:text-neutral-700"><Undo2 className="h-4 w-4" /></button>
+                                <button type="button" onClick={redo} disabled={!historyStatus.canRedo} title="Redo (Ctrl+Shift+Z)" className="grid h-8 w-8 place-items-center text-neutral-300 hover:text-white disabled:text-neutral-700"><Redo2 className="h-4 w-4" /></button>
+                                <button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} title="Zoom out" className="grid h-8 w-8 place-items-center text-neutral-300 hover:text-white"><ZoomOut className="h-4 w-4" /></button>
+                                <span className="w-12 text-center text-[11px] font-black text-white">{zoom}%</span>
+                                <button type="button" onClick={() => setZoom((value) => Math.min(200, value + 10))} title="Zoom in" className="grid h-8 w-8 place-items-center text-neutral-300 hover:text-white"><ZoomIn className="h-4 w-4" /></button>
+                            </>
+                        ) : null}
+                    </div>
+
+                    {isSingleSided && posterFormats.length > 0 ? (
+                        <label className="flex min-w-0 items-center gap-2 text-xs font-black uppercase text-neutral-400">
+                            <span className="hidden sm:inline">Preview format</span>
+                            <select
+                                value={selectedPosterFormat?.key ?? ""}
+                                onChange={(event) => changePosterFormat(event.target.value)}
+                                className="h-9 max-w-[260px] border border-neutral-700 bg-black px-3 text-xs font-black text-white outline-none focus:border-lime-300"
+                                aria-label="Poster preview format"
+                            >
+                                {posterFormats.map((format) => (
+                                    <option key={format.key} value={format.key}>{format.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                    ) : null}
 
                     <div className="flex items-center gap-2">
                         <button
@@ -1339,7 +2394,14 @@ export default function DesignerClient({
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col">
-                    <div className="relative grid min-h-0 flex-1 place-items-center overflow-hidden bg-white p-3 md:p-5">
+                    <div
+                        ref={workspaceRef}
+                        onPointerDown={handleWorkspacePointerDown}
+                        onPointerMove={handleWorkspacePointerMove}
+                        onPointerUp={handleWorkspacePointerUp}
+                        onPointerCancel={handleWorkspacePointerUp}
+                        className={`relative grid min-h-0 flex-1 bg-white p-3 md:p-5 ${advancedMode ? "place-items-start overflow-auto" : "place-items-center overflow-hidden"}`}
+                    >
                         <div className="absolute left-3 top-3 z-10 flex items-center gap-1 border border-neutral-700 bg-black p-1 shadow-lg md:left-5 md:top-5" aria-label="Add to design">
                             <label className={`inline-flex h-10 items-center gap-2 bg-lime-300 px-3 text-sm font-black text-black hover:bg-lime-200 ${isUploadingArtwork ? "cursor-wait opacity-60" : "cursor-pointer"}`}>
                                 {isUploadingArtwork ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
@@ -1355,6 +2417,17 @@ export default function DesignerClient({
                                     }}
                                 />
                             </label>
+                            {recentArtwork.length ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsArtworkLibraryOpen((current) => !current)}
+                                    aria-expanded={isArtworkLibraryOpen}
+                                    className={`inline-flex h-10 items-center gap-2 px-3 text-sm font-black ${isArtworkLibraryOpen ? "bg-neutral-800 text-lime-300" : "text-white hover:bg-neutral-800"}`}
+                                >
+                                    <Images className="h-4 w-4" />
+                                    Recent
+                                </button>
+                            ) : null}
                             <button
                                 type="button"
                                 onClick={addTextLayer}
@@ -1364,9 +2437,35 @@ export default function DesignerClient({
                                 Text
                             </button>
                         </div>
+                        {isArtworkLibraryOpen ? (
+                            <div className="absolute left-3 top-16 z-20 w-[min(360px,calc(100%-1.5rem))] border border-neutral-700 bg-black p-3 text-white shadow-2xl md:left-5 md:top-[4.5rem]">
+                                <div className="flex items-center justify-between gap-3">
+                                    <p className="text-xs font-black uppercase tracking-[0.16em]">Recent artwork</p>
+                                    <button type="button" onClick={() => setIsArtworkLibraryOpen(false)} className="text-xs font-black uppercase text-neutral-500 hover:text-white">Close</button>
+                                </div>
+                                <div className="mt-3 grid grid-cols-4 gap-2">
+                                    {recentArtwork.map((asset, index) => (
+                                        <button
+                                            key={asset.path}
+                                            type="button"
+                                            onClick={() => void addRecentArtwork(asset)}
+                                            disabled={isUploadingArtwork}
+                                            className="group aspect-square overflow-hidden border border-neutral-700 bg-white p-1 hover:border-lime-300 disabled:opacity-50"
+                                            title={`Reuse saved artwork ${index + 1}`}
+                                        >
+                                            <Image src={asset.previewUrl} alt={`Saved artwork ${index + 1}`} width={160} height={160} className="h-full w-full object-contain" unoptimized />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
                         <canvas
                             ref={canvasRef}
-                            className="block h-full min-h-0 w-auto max-w-full touch-none bg-white"
+                            className={advancedMode
+                                ? "m-auto block max-w-none touch-none bg-white shadow-xl"
+                                : "block h-full min-h-0 w-auto max-w-full touch-none bg-white"
+                            }
+                            style={advancedMode ? { width: `${CANVAS_WIDTH * zoom / 100}px`, height: `${CANVAS_HEIGHT * zoom / 100}px` } : undefined}
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
                             onPointerUp={handlePointerUp}
@@ -1375,7 +2474,7 @@ export default function DesignerClient({
                     </div>
                     <div className="mt-2 flex shrink-0 items-center justify-between text-xs uppercase tracking-wide text-neutral-500">
                         <span>{activeSide} view</span>
-                        <span>{selectedLayer ? "Drag to move | green handle resizes | red handle rotates" : "Select artwork to edit"}</span>
+                        <span>{advancedMode ? "Hold Space and drag to pan | Shift-click selects multiple" : selectedLayer ? "Drag to move | green handle resizes | red handle rotates" : "Select artwork to edit"}</span>
                     </div>
                 </div>
             </section>
@@ -1442,9 +2541,14 @@ function MockupGallery({ preview }: { preview: DesignerMockupPreview }) {
         ...(preview.back ? [{ id: "back", label: "Back", src: preview.back }] : []),
         ...preview.colorMockups.flatMap((color) => color.front === preview.front ? [] : [
             { id: `${color.label}-front`, label: `${color.label} front`, src: color.front },
-            { id: `${color.label}-back`, label: `${color.label} back`, src: color.back },
+            ...(color.back ? [{ id: `${color.label}-back`, label: `${color.label} back`, src: color.back }] : []),
         ]),
         ...preview.lifestyle,
+        ...(preview.posterFormats ?? []).map((format) => ({
+            id: `poster-${format.key}`,
+            label: format.label,
+            src: format.src,
+        })),
     ];
     const [slots, setSlots] = useState<[string, string]>([
         "front",
@@ -1551,15 +2655,25 @@ function PriceSummaryCard({
 function LayerEditor({
     selectedLayer,
     printArea,
+    printTarget,
+    advancedMode,
+    lockAspectRatio,
+    setLockAspectRatio,
     updateLayer,
     applyQuickAction,
     removeSelectedLayer,
+    replaceSelectedArtwork,
 }: {
     selectedLayer: DesignLayer | null;
     printArea: PixelRect;
+    printTarget: { width: number; height: number };
+    advancedMode: boolean;
+    lockAspectRatio: boolean;
+    setLockAspectRatio: (value: boolean) => void;
     updateLayer: (id: string, patch: Partial<DesignLayer>) => void;
     applyQuickAction: (action: LayerQuickAction) => void;
     removeSelectedLayer: () => void;
+    replaceSelectedArtwork: (file: File | null) => Promise<void>;
 }) {
     if (!selectedLayer) {
         return (
@@ -1572,9 +2686,100 @@ function LayerEditor({
         );
     }
 
+
+    const imageQuality = selectedLayer.type === "image" && selectedLayer.sourcePixelWidth && selectedLayer.sourcePixelHeight
+        ? estimateArtworkPrintQuality({
+            sourceWidth: selectedLayer.sourcePixelWidth,
+            sourceHeight: selectedLayer.sourcePixelHeight,
+            layerWidth: selectedLayer.width,
+            layerHeight: selectedLayer.height,
+            printAreaWidth: printArea.width,
+            printAreaHeight: printArea.height,
+            targetPixelWidth: printTarget.width,
+            targetPixelHeight: printTarget.height,
+        })
+        : null;
+    const qualityContent = imageQuality ? {
+        high: {
+            label: "High quality",
+            message: "This artwork should print sharply at its current size.",
+            classes: "border-lime-300/50 bg-lime-300/10 text-lime-300",
+            Icon: CircleCheck,
+        },
+        medium: {
+            label: "Medium quality",
+            message: "This should print well, though very fine detail may look softer.",
+            classes: "border-yellow-400/50 bg-yellow-400/10 text-yellow-300",
+            Icon: CircleAlert,
+        },
+        low: {
+            label: "Low quality",
+            message: "This may look soft or pixelated in print. A larger image or smaller layer will improve it.",
+            classes: "border-red-400/50 bg-red-400/10 text-red-300",
+            Icon: CircleAlert,
+        },
+    }[imageQuality.level] : null;
+    const fullPrintWidthCm = printTarget.width / 300 * 2.54;
+    const fullPrintHeightCm = printTarget.height / 300 * 2.54;
+    const layerWidthCm = selectedLayer.width / printArea.width * fullPrintWidthCm;
+    const layerHeightCm = selectedLayer.height / printArea.height * fullPrintHeightCm;
+    const activeLayer = selectedLayer;
+
+    function updateDimensions(patch: { width?: number; height?: number }) {
+        if (!lockAspectRatio || activeLayer.type !== "image") {
+            updateLayer(activeLayer.id, patch);
+            return;
+        }
+        const ratio = activeLayer.aspectRatio ?? activeLayer.width / activeLayer.height;
+        if (patch.width !== undefined) updateLayer(activeLayer.id, { width: patch.width, height: patch.width / ratio });
+        else if (patch.height !== undefined) updateLayer(activeLayer.id, { height: patch.height, width: patch.height * ratio });
+    }
+
     return (
         <div className="space-y-4">
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-400">Edit layer</p>
+            {advancedMode ? (
+                <label className="block">
+                    <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">Layer name</span>
+                    <input value={selectedLayer.name ?? ""} placeholder={selectedLayer.type === "image" ? "Artwork" : "Text"} onChange={(event) => updateLayer(selectedLayer.id, { name: event.target.value || undefined })} className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm text-white outline-none focus:border-lime-300" />
+                </label>
+            ) : null}
+            {selectedLayer.type === "image" ? (
+                qualityContent && imageQuality ? (
+                    <div className={`border p-3 ${qualityContent.classes}`}>
+                        <div className="flex items-start gap-2">
+                            <qualityContent.Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                            <div>
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                    <p className="text-xs font-black uppercase">{qualityContent.label}</p>
+                                    <p className="text-[11px] font-bold text-neutral-300">Approx. {imageQuality.dpi} DPI</p>
+                                </div>
+                                <p className="mt-1 text-xs leading-5 text-neutral-300">{qualityContent.message}</p>
+                                <p className="mt-1 text-[11px] text-neutral-500">You can still continue with this artwork.</p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="border border-neutral-800 bg-black p-3 text-xs text-neutral-500">
+                        Analysing image quality...
+                    </div>
+                )
+            ) : null}
+            {advancedMode && selectedLayer.type === "image" ? (
+                <div className="border border-neutral-800 bg-black p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">File diagnostics</p>
+                    <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-xs">
+                        <dt className="text-neutral-500">Source</dt><dd>{selectedLayer.sourcePixelWidth ?? "?"} x {selectedLayer.sourcePixelHeight ?? "?"} px</dd>
+                        <dt className="text-neutral-500">Format</dt><dd>{selectedLayer.fileType ?? "Unknown"}</dd>
+                        <dt className="text-neutral-500">Transparency</dt><dd>{selectedLayer.hasTransparency === undefined ? "Unknown" : selectedLayer.hasTransparency ? "Yes" : "No"}</dd>
+                        <dt className="text-neutral-500">Colour</dt><dd>{selectedLayer.colorProfile ?? "RGB preview"}</dd>
+                    </dl>
+                    <label className="mt-3 inline-flex h-9 cursor-pointer items-center gap-2 border border-neutral-700 px-3 text-xs font-black hover:border-lime-300 hover:text-lime-300">
+                        <RefreshCw className="h-4 w-4" /> Replace artwork
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => { void replaceSelectedArtwork(event.target.files?.[0] ?? null); event.target.value = ""; }} />
+                    </label>
+                </div>
+            ) : null}
             <div>
                 <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-neutral-400">Position in print area</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -1679,19 +2884,40 @@ function LayerEditor({
                 </>
             ) : null}
 
+            {advancedMode ? (
+                <div className="border border-neutral-800 bg-black p-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Exact transform</p>
+                        {selectedLayer.type === "image" ? (
+                            <label className="flex items-center gap-2 text-[10px] font-bold uppercase text-neutral-400">
+                                <input type="checkbox" checked={lockAspectRatio} onChange={(event) => setLockAspectRatio(event.target.checked)} className="accent-lime-300" /> Lock ratio
+                            </label>
+                        ) : null}
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                        <PositionInput key={`width-${selectedLayer.width}`} label="Width / px" value={Math.round(selectedLayer.width)} onCommit={(value) => updateDimensions({ width: clamp(value, 1, CANVAS_WIDTH) })} />
+                        <PositionInput key={`height-${selectedLayer.height}`} label="Height / px" value={Math.round(selectedLayer.height)} onCommit={(value) => updateDimensions({ height: clamp(value, 1, CANVAS_HEIGHT) })} />
+                        <DecimalInput key={`width-cm-${layerWidthCm}`} label="Width / cm" value={layerWidthCm} onCommit={(value) => updateDimensions({ width: value / fullPrintWidthCm * printArea.width })} />
+                        <DecimalInput key={`height-cm-${layerHeightCm}`} label="Height / cm" value={layerHeightCm} onCommit={(value) => updateDimensions({ height: value / fullPrintHeightCm * printArea.height })} />
+                        <PositionInput key={`rotation-${selectedLayer.rotation}`} label="Rotation" value={Math.round(selectedLayer.rotation)} onCommit={(value) => updateLayer(selectedLayer.id, { rotation: clamp(value, -180, 180) })} />
+                        <PositionInput key={`scale-${selectedLayer.width}`} label="Scale / %" value={Math.round(selectedLayer.width / printArea.width * 100)} onCommit={(value) => updateDimensions({ width: clamp(value, 1, 300) / 100 * printArea.width })} />
+                    </div>
+                </div>
+            ) : null}
+
             <RangeControl
                 label="Width"
                 min={80}
                 max={520}
                 value={Math.round(selectedLayer.width)}
-                onChange={(value) => updateLayer(selectedLayer.id, { width: value })}
+                onChange={(value) => updateDimensions({ width: value })}
             />
             <RangeControl
                 label="Height"
                 min={60}
                 max={520}
                 value={Math.round(selectedLayer.height)}
-                onChange={(value) => updateLayer(selectedLayer.id, { height: value })}
+                onChange={(value) => updateDimensions({ height: value })}
             />
             <RangeControl
                 label="Rotation"
@@ -1744,6 +2970,55 @@ function PositionInput({ label, value, onCommit }: { label: string; value: numbe
                 }}
                 className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm text-white outline-none focus:border-lime-300"
             />
+        </label>
+    );
+}
+
+function DecimalInput({ label, value, onCommit }: { label: string; value: number; onCommit: (value: number) => void }) {
+    const [draft, setDraft] = useState(value.toFixed(1));
+
+    return (
+        <label className="block">
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-400">{label}</span>
+            <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onBlur={() => {
+                    const number = Number(draft);
+                    if (Number.isFinite(number) && number > 0) onCommit(number);
+                    setDraft(value.toFixed(1));
+                }}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        event.currentTarget.blur();
+                    }
+                }}
+                className="h-10 w-full border border-neutral-700 bg-black px-3 text-sm text-white outline-none focus:border-lime-300"
+            />
+        </label>
+    );
+}
+
+function AdvancedToggle({
+    label,
+    icon: Icon,
+    checked,
+    onChange,
+}: {
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+    checked: boolean;
+    onChange: (value: boolean) => void;
+}) {
+    return (
+        <label className={`flex min-h-10 cursor-pointer items-center gap-2 border px-2 text-xs font-bold ${checked ? "border-lime-300 bg-lime-300/10 text-lime-300" : "border-neutral-800 bg-black text-neutral-400"}`}>
+            <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="sr-only" />
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
         </label>
     );
 }

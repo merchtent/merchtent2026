@@ -176,11 +176,12 @@ export default async function DashboardPage() {
                 `
         id,
         qty,
-        products ( artist_cut_cents ),
+        artist_cut_cents,
         orders ( created_at )
       `
             )
             .eq("artist_id", artist.id)
+            .eq("purchase_type", "retail")
             .gte("orders.created_at", since.toISOString()),
         supabase
             .from("order_items")
@@ -189,10 +190,11 @@ export default async function DashboardPage() {
         id,
         qty,
         cashed_out,
-        products ( artist_cut_cents )
+        artist_cut_cents
       `
             )
             .eq("artist_id", artist.id)
+            .eq("purchase_type", "retail")
             .eq("cashed_out", false),
     ]);
 
@@ -201,28 +203,24 @@ export default async function DashboardPage() {
     // Compute last 7d units + profit (artist cut)
     const sales7dRows = (sales7dRes.data ?? []) as Array<{
         qty: number | null;
-        products: { artist_cut_cents: number | null } | { artist_cut_cents: number | null }[] | null;
+        artist_cut_cents: number | null;
     }>;
     const units7d =
         sales7dRows.reduce((sum, row) => sum + (row.qty ?? 0), 0) ?? 0;
     const profit7dCents =
         sales7dRows.reduce((sum, row) => {
-            const prod = Array.isArray(row.products) ? row.products[0] : row.products;
-            const cut = prod?.artist_cut_cents ?? 0;
-            return sum + (row.qty ?? 0) * cut;
+            return sum + (row.qty ?? 0) * (row.artist_cut_cents ?? 0);
         }, 0) ?? 0;
 
     // Compute unpaid (payout ready)
     const unpaidRows = (unpaidRes.data ?? []) as Array<{
         qty: number | null;
-        products: { artist_cut_cents: number | null } | { artist_cut_cents: number | null }[] | null;
+        artist_cut_cents: number | null;
     }>;
     const unpaidItems = unpaidRows.length;
     const unpaidCents =
         unpaidRows.reduce((sum, row) => {
-            const prod = Array.isArray(row.products) ? row.products[0] : row.products;
-            const cut = prod?.artist_cut_cents ?? 0;
-            return sum + (row.qty ?? 0) * cut;
+            return sum + (row.qty ?? 0) * (row.artist_cut_cents ?? 0);
         }, 0) ?? 0;
 
     return (
@@ -423,11 +421,11 @@ function FanDashboard({
 }) {
     const points = balance?.points_balance ?? 0;
     const lifetimePoints = balance?.lifetime_points ?? 0;
-    const freeTeeProgress = Math.min(points, 20);
-    const creditValue = balanceUnavailable ? "Unavailable" : `${points} pts`;
+    const rewardProgress = Math.min(points, 20);
+    const creditValue = balanceUnavailable ? "Unavailable" : `${points} credits`;
     const creditSub = balanceUnavailable
         ? "Credit balance could not be loaded right now"
-        : `${freeTeeProgress}/20 toward a free tee`;
+        : `${rewardProgress}/20 toward $20 off`;
 
     const fmtMoney = (cents: number, currency = "AUD") =>
         new Intl.NumberFormat("en-AU", { style: "currency", currency }).format((cents || 0) / 100);
@@ -472,9 +470,9 @@ function FanDashboard({
                             icon={<Gift className="h-5 w-5" />}
                         />
                         <StatCard
-                            label="Lifetime points"
-                            value={`${lifetimePoints} pts`}
-                            sub="Earn 3 points per tee"
+                            label="Lifetime credits"
+                            value={`${lifetimePoints} credits`}
+                            sub="Earn 3 credits per product"
                             icon={<BadgePercent className="h-5 w-5" />}
                         />
                         <StatCard
@@ -542,18 +540,18 @@ function FanDashboard({
                             Merch credits
                         </p>
                         <h2 className="mt-2 text-4xl font-black uppercase leading-none">
-                            Back bands. Earn tees.
+                            Back bands. Save on merch.
                         </h2>
                         <div className="mt-6 h-3 overflow-hidden bg-neutral-800">
                             <div
                                 className="h-full bg-lime-300"
-                                style={{ width: `${balanceUnavailable ? 0 : (freeTeeProgress / 20) * 100}%` }}
+                                style={{ width: `${balanceUnavailable ? 0 : (rewardProgress / 20) * 100}%` }}
                             />
                         </div>
                         <p className="mt-4 text-sm leading-6 text-neutral-400">
                             {balanceUnavailable
                                 ? "Your orders are available, but the credit balance could not be loaded right now."
-                                : "Earn 3 points for every tee purchased. Every 20 points can be reserved at checkout for a free tee discount."}
+                                : "Earn 3 credits for every product purchased. Each credit is worth $1, and 20 credits gives you $20 off merchandise at checkout. Shipping is excluded."}
                         </p>
                         <Button asChild className="mt-5 w-full bg-lime-300 font-black text-black hover:bg-lime-200">
                             <Link href="/artists">Browse artists</Link>
@@ -569,7 +567,7 @@ function FanDashboard({
                             Credit ledger
                         </p>
                         <h2 className="mt-2 text-4xl font-black uppercase leading-none">
-                            Every point accounted for.
+                            Every credit accounted for.
                         </h2>
                         <div className="mt-6 border border-neutral-800 bg-neutral-950">
                             {creditLedger.length ? (

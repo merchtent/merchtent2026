@@ -7,24 +7,37 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { publicEnv } from "@/lib/env";
 import {
     attachMerchCreditReservationToStripeSession,
-    MERCH_CREDIT_REDEMPTION_POINTS,
     releaseMerchCreditReservation,
     reserveMerchCreditsForCheckout,
 } from "@/lib/merch-credits/checkout";
+import {
+    merchCreditDiscountCents as calculateMerchCreditDiscountCents,
+    MERCH_CREDIT_REDEMPTION_POINTS,
+} from "@/lib/merch-credits/constants";
 import { logger } from "@/lib/logger";
 import { publicCatalogProductQuery } from "@/lib/catalog/public-product-query";
 import { checkDurableRateLimit } from "@/lib/rate-limit";
 import { recordPlatformEvent } from "@/lib/platform-events";
 import { checkoutShippingAmountCents, normaliseShippingMethodId } from "@/lib/shipping-methods";
 import { stripe } from "@/lib/stripe/client";
+import {
+    ARTIST_SELF_ORDER_TYPE,
+    RETAIL_PURCHASE_TYPE,
+    artistBulkDiscountBps,
+    artistBulkUnitPriceCents,
+    artistSelfOrderUnitPriceCents,
+} from "@/lib/artist-self-orders";
 import Stripe from "stripe";
 import { z } from "zod";
+import { AUSTRALIAN_STATE_CODES, COUNTRY_CODES } from "@/lib/address-options";
+import { applyAmplifyEarnings, getActiveAmplifyEntitlements } from "@/lib/amplify/entitlements";
 
 const cartItemSchema = z.object({
     product_id: z.string().min(1).max(100),
     sku: z.string().max(200).nullish(),
     color_label: z.string().max(100).nullish(),
     size: z.string().max(20).nullish(),
+    purchase_type: z.enum([RETAIL_PURCHASE_TYPE, ARTIST_SELF_ORDER_TYPE]).default(RETAIL_PURCHASE_TYPE),
     qty: z.coerce.number().int().min(1).max(99),
 });
 
@@ -45,7 +58,17 @@ const checkoutDetailsSchema = z.object({
     phone: z.string().min(6).max(40),
     voucher: z.string().max(100).optional(),
     use_merch_credits: z.boolean().optional(),
-});
+}).superRefine((details, context) => {
+    if (!COUNTRY_CODES.has(details.country)) {
+        context.addIssue({ code: "custom", path: ["country"], message: "Country is invalid." });
+    }
+    if (details.country === "AU" && !AUSTRALIAN_STATE_CODES.has(details.state.toUpperCase())) {
+        context.addIssue({ code: "custom", path: ["state"], message: "Australian state or territory is invalid." });
+    }
+}).transform((details) => ({
+    ...details,
+    state: details.country === "AU" ? details.state.toUpperCase() : details.state,
+}));
 
 const checkoutAttemptIdSchema = z.uuid();
 const attributionSchema = z.record(z.string(), z.unknown());
@@ -151,6 +174,17 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
         return { error: "Cart contents are invalid" };
     }
 
+    const purchaseTypes = new Set(cartItems.map((item) => item.purchase_type));
+    if (purchaseTypes.size !== 1) {
+        return { error: "Retail items and artist-priced items must be checked out separately." };
+    }
+    const purchaseType = cartItems[0]?.purchase_type ?? RETAIL_PURCHASE_TYPE;
+    const isArtistSelfOrder = purchaseType === ARTIST_SELF_ORDER_TYPE;
+
+    if (isArtistSelfOrder && !user) {
+        return { error: "Sign in with your artist account to use artist pricing." };
+    }
+
     const shippingMethod = normaliseShippingMethodId(formData.get("shipping_method"));
     const shippingAmountCents = checkoutShippingAmountCents(
         shippingMethod,
@@ -170,11 +204,13 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
     ));
 
     const productIds = [...new Set(cartItems.map((item) => item.product_id))];
-    const { data: products, error: productsError } = await publicCatalogProductQuery(supabase
+    const productQuery = supabase
         .from("products")
-        .select("id, title, price_cents, currency, is_published")
-        .in("id", productIds)
-    );
+        .select("id, title, price_cents, artist_cut_cents, currency, is_published, artist_id")
+        .in("id", productIds);
+    const { data: products, error: productsError } = isArtistSelfOrder
+        ? await productQuery
+        : await publicCatalogProductQuery(productQuery);
 
     if (productsError) {
         logger.error("checkout product lookup failed", {
@@ -192,24 +228,62 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
         return { error: "One or more products in your cart are no longer available" };
     }
 
+    if (isArtistSelfOrder) {
+        const { data: artist, error: artistError } = await supabase
+            .from("artists")
+            .select("id")
+            .eq("user_id", user!.id)
+            .maybeSingle();
+
+        if (artistError || !artist) {
+            return { error: "Artist pricing is only available to verified artist accounts." };
+        }
+
+        if (products?.some((product) => product.artist_id !== artist.id)) {
+            return { error: "Artist pricing only applies to products owned by your artist account." };
+        }
+    }
+
     const currency = products?.[0]?.currency || "AUD";
     if (products?.some((product) => product.currency !== currency)) {
         return { error: "Cart contains products with mixed currencies" };
     }
 
+    const amplifyEntitlements = isArtistSelfOrder
+        ? new Map()
+        : await getActiveAmplifyEntitlements((products ?? []).map((product) => product.artist_id));
+    const artistEarningsFor = (product: NonNullable<typeof products>[number]) => applyAmplifyEarnings({
+        baseArtistCutCents: product.artist_cut_cents ?? 0,
+        retailPriceCents: product.price_cents,
+        entitlement: product.artist_id ? amplifyEntitlements.get(product.artist_id) : null,
+    });
+
+    const unitPriceFor = (product: NonNullable<typeof products>[number]) =>
+        isArtistSelfOrder
+            ? artistSelfOrderUnitPriceCents(product.price_cents, product.artist_cut_cents ?? 0)
+            : product.price_cents;
+    const totalItemQuantity = cartItems.reduce((sum, item) => sum + item.qty, 0);
+    const artistBulkDiscountRateBps = artistBulkDiscountBps(totalItemQuantity, purchaseType);
+    const checkoutUnitPriceFor = (product: NonNullable<typeof products>[number]) =>
+        artistBulkUnitPriceCents(unitPriceFor(product), totalItemQuantity, purchaseType);
+
     const cartSubtotalCents = cartItems.reduce((sum, item) => {
         const product = productsById.get(item.product_id)!;
-        return sum + product.price_cents * item.qty;
+        return sum + checkoutUnitPriceFor(product) * item.qty;
     }, 0);
-    const merchCreditDiscountCents = Math.min(
-        ...cartItems.map((item) => productsById.get(item.product_id)!.price_cents)
-    );
+    const merchCreditDiscountCents = calculateMerchCreditDiscountCents({
+        subtotalCents: cartSubtotalCents,
+        creditBalance: MERCH_CREDIT_REDEMPTION_POINTS,
+    });
     let creditReservation:
         | Awaited<ReturnType<typeof reserveMerchCreditsForCheckout>>
         | null = null;
     let merchCreditCouponId: string | null = null;
 
     if (details.use_merch_credits) {
+        if (isArtistSelfOrder) {
+            return { error: "Merch credits cannot be combined with artist pricing." };
+        }
         if (!user) {
             return { error: "Sign in to redeem merch credits." };
         }
@@ -266,12 +340,24 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = cartItems.map(
         (item) => {
             const product = productsById.get(item.product_id)!;
+            const artistEarnings = isArtistSelfOrder
+                ? applyAmplifyEarnings({
+                    baseArtistCutCents: product.artist_cut_cents ?? 0,
+                    retailPriceCents: product.price_cents,
+                })
+                : artistEarningsFor(product);
+            const artistDiscountCents = isArtistSelfOrder
+                ? Math.max(0, product.price_cents - unitPriceFor(product))
+                : 0;
+            const artistBulkDiscountCents = isArtistSelfOrder
+                ? Math.max(0, unitPriceFor(product) - checkoutUnitPriceFor(product))
+                : 0;
 
             return {
                 quantity: item.qty,
                 price_data: {
                     currency,
-                    unit_amount: product.price_cents,
+                    unit_amount: checkoutUnitPriceFor(product),
                     product_data: {
                         name: product.title,
                         metadata: {
@@ -279,6 +365,14 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
                             sku: item.sku ?? "",
                             color_label: item.color_label ?? "",
                             size: item.size ?? "",
+                            purchase_type: purchaseType,
+                            artist_discount_cents: String(artistDiscountCents),
+                            artist_bulk_discount_cents: String(artistBulkDiscountCents),
+                            artist_bulk_discount_bps: String(artistBulkDiscountRateBps),
+                            base_artist_cut_cents: String(artistEarnings.baseArtistCutCents),
+                            amplify_boost_cents: String(artistEarnings.amplifyBoostCents),
+                            artist_plan_key: artistEarnings.artistPlanKey,
+                            artist_cut_cents: String(artistEarnings.artistCutCents),
                         },
                     },
                 },
@@ -327,6 +421,8 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
                 shippingMethod,
                 shippingAmountCents: String(shippingAmountCents),
                 voucher,
+                purchase_type: purchaseType,
+                artist_bulk_discount_bps: String(artistBulkDiscountRateBps),
                 merch_credit_reservation_id: creditReservation?.reservation_id ?? "",
                 merch_credit_points: creditReservation ? String(creditReservation.points) : "",
                 merch_credit_discount_cents: creditReservation

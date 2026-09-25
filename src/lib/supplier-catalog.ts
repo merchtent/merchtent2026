@@ -3,7 +3,10 @@ import "server-only";
 import { getServerSupabase } from "@/lib/supabase/server";
 import type { CatalogProduct, CatalogProductColor, CatalogProviderOption } from "@/lib/product-catalog";
 import { publicCatalogProductKey } from "@/lib/catalog/public-product-key";
+import { resolvedCatalogColorHex } from "@/lib/catalog/color-swatch";
+import { parseCatalogProductInfo } from "@/lib/products/catalog-product-info";
 import { retailCentsForTaxSettings, type PublicTaxSettings } from "@/lib/tax";
+import type { PosterFormat } from "@/lib/products/poster-formats";
 
 type SupplierCatalogProductRow = {
     id: string;
@@ -38,6 +41,8 @@ type SupplierCatalogProductRow = {
             region?: string | null;
             city?: string | null;
         };
+        customer_info?: unknown;
+        variant_print_areas?: Record<string, { width?: number; height?: number; orientation?: string }>;
     };
     pricing?: {
         artist_profit_cents: number;
@@ -55,6 +60,33 @@ type SupplierCatalogProductRow = {
     }>;
 };
 
+function posterFormatsForRow(row: SupplierCatalogProductRow): PosterFormat[] | undefined {
+    if (row.garment_kind !== "poster") return undefined;
+    const printAreas = row.production_data.variant_print_areas ?? {};
+    const grouped = new Map<string, PosterFormat>();
+
+    for (const variant of row.supplier_catalog_variants?.filter((item) => item.is_enabled !== false) ?? []) {
+        const variantId = Number(variant.supplier_variant_id);
+        const dimensions = printAreas[variant.supplier_variant_id];
+        if (!variant.size_label || !Number.isInteger(variantId) || !dimensions?.width || !dimensions.height) continue;
+        const key = `${dimensions.width}x${dimensions.height}`;
+        const existing = grouped.get(key);
+        if (existing) {
+            existing.variantIds.push(variantId);
+        } else {
+            grouped.set(key, {
+                key,
+                label: variant.size_label,
+                width: dimensions.width,
+                height: dimensions.height,
+                variantIds: [variantId],
+            });
+        }
+    }
+
+    return Array.from(grouped.values()).sort((a, b) => row.sizes.indexOf(a.label) - row.sizes.indexOf(b.label));
+}
+
 type SupplierCatalogProductPricingRow = {
     supplier: string;
     supplier_product_id: string;
@@ -65,6 +97,33 @@ type SupplierCatalogProductPricingRow = {
     additional_print_side_cents: number;
     additional_print_side_retail_cents: number | null;
 };
+
+const AS_COLOUR_5039_PRINT_AREAS: CatalogProduct["printAreas"] = {
+    front: {
+        x: 296 / 900,
+        y: 387 / 1200,
+        width: 308 / 900,
+        height: (308 * 3508 / 3071) / 1200,
+        units: "ratio",
+        supplierPlacement: "front",
+    },
+    back: {
+        x: 296 / 900,
+        y: 338 / 1200,
+        width: 308 / 900,
+        height: (308 * 3508 / 3071) / 1200,
+        units: "ratio",
+        supplierPlacement: "back",
+    },
+};
+
+function designerPrintAreas(row: SupplierCatalogProductRow) {
+    if (row.supplier === "printify" && row.supplier_product_id === "995") {
+        return AS_COLOUR_5039_PRINT_AREAS;
+    }
+
+    return row.print_areas;
+}
 
 function catalogRowToProviderOption(row: SupplierCatalogProductRow): CatalogProviderOption {
     const enabledVariants = row.supplier_catalog_variants?.filter((variant) => variant.is_enabled !== false) ?? [];
@@ -137,7 +196,7 @@ export function catalogRowToDesignerProduct(
         providerOptions,
         sizes: uniqueSorted([...row.sizes, ...providerOptions.flatMap((provider) => provider.sizes)]),
         colors: availableColors(row.colors, providerOptions.flatMap((provider) => provider.colors)),
-        printAreas: row.print_areas,
+        printAreas: designerPrintAreas(row),
         printAsset: {
             width: 2400,
             height: 3200,
@@ -153,6 +212,8 @@ export function catalogRowToDesignerProduct(
                 retailCentsForTaxSettings(configuredAdditionalSideRetail, taxSettings),
             artistProfitCents: row.pricing?.artist_profit_cents,
             platformProfitCents: row.pricing?.platform_profit_cents,
+            customerInfo: parseCatalogProductInfo(row.production_data.customer_info),
+            posterFormats: posterFormatsForRow(row),
         },
     };
 }
@@ -288,11 +349,16 @@ function availableColors(approvedColors: CatalogProductColor[], providerColorLab
     const available = new Set(providerColorLabels.map((label) => label.toLowerCase()));
     return approvedColors
         .filter((color) => available.has((color.supplierColorName ?? color.label).toLowerCase()))
+        .map((color) => ({
+            ...color,
+            value: resolvedCatalogColorHex(color.supplierColorName ?? color.label, color.value),
+        }))
         .sort((a, b) => Number(!isBlackColor(a)) - Number(!isBlackColor(b)));
 }
 
 function isBlackColor(color: CatalogProductColor) {
-    return (color.supplierColorName ?? color.label).trim().toLowerCase() === "black";
+    const name = (color.supplierColorName ?? color.label).trim().toLowerCase();
+    return name === "black" || name === "black stone";
 }
 
 function supplierLabel(supplier: string) {

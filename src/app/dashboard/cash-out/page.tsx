@@ -27,10 +27,7 @@ type CashOutItem = {
     qty: number | null;
     title: string | null;
     product_id: string | null;
-    products:
-    | { artist_cut_cents: number | null }
-    | { artist_cut_cents: number | null }[]
-    | null;
+    artist_cut_cents: number | null;
 };
 
 export default async function CashOutPage() {
@@ -44,9 +41,10 @@ export default async function CashOutPage() {
       title,
       product_id,
       cashed_out,
-      products ( artist_cut_cents )
+      artist_cut_cents
     `)
         .eq("artist_id", artist.id)
+        .eq("purchase_type", "retail")
         .eq("cashed_out", false);
 
     const { data: paymentAccount } = await supabase
@@ -80,9 +78,7 @@ export default async function CashOutPage() {
     const cashOutItems = (items ?? []) as CashOutItem[];
     const totalCents =
         cashOutItems.reduce((sum, i) => {
-            const product = Array.isArray(i.products) ? i.products[0] : i.products;
-            const artistCut = product?.artist_cut_cents ?? 0;
-            return sum + ((i.qty ?? 0) * artistCut);
+            return sum + ((i.qty ?? 0) * (i.artist_cut_cents ?? 0));
         }, 0) ?? 0;
 
     const total = totalCents / 100;
@@ -188,8 +184,7 @@ export default async function CashOutPage() {
                                 </thead>
                                 <tbody>
                                     {cashOutItems.map((i) => {
-                                        const product = Array.isArray(i.products) ? i.products[0] : i.products;
-                                        const artistCut = product?.artist_cut_cents ?? 0;
+                                        const artistCut = i.artist_cut_cents ?? 0;
                                         const earn = ((i.qty ?? 0) * artistCut) / 100;
 
                                         return (

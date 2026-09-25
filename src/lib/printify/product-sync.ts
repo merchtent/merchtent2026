@@ -37,6 +37,7 @@ type DesignRow = {
     printify_product_id: string | null;
     printify_status: string | null;
     updated_at: string | null;
+    design_data?: unknown;
 };
 
 type DesignWithAssetsRow = DesignRow & {
@@ -111,6 +112,78 @@ function resolvePrintifyCatalogConfig(design: DesignRow) {
         printProviderId,
         variantIds,
     };
+}
+
+type SavedPosterPrintAsset = {
+    key: string;
+    label: string;
+    width: number;
+    height: number;
+    variantIds: number[];
+    path: string;
+    sha256: string;
+};
+
+function savedPosterPrintAssets(design: DesignRow): SavedPosterPrintAsset[] {
+    const data = design.design_data as { posterPrintAssets?: unknown } | null;
+    if (!Array.isArray(data?.posterPrintAssets)) return [];
+    return data.posterPrintAssets.filter((asset): asset is SavedPosterPrintAsset => {
+        if (!asset || typeof asset !== "object") return false;
+        const item = asset as Partial<SavedPosterPrintAsset>;
+        return typeof item.key === "string"
+            && typeof item.path === "string"
+            && Array.isArray(item.variantIds)
+            && item.variantIds.every((id) => Number.isInteger(id) && id > 0);
+    });
+}
+
+async function buildPrintifyPrintAreas(design: DesignRow, variantIds: number[], filePrefix: string) {
+    const posterAssets = savedPosterPrintAssets(design);
+    if (posterAssets.length > 0) {
+        const areas: PrintifyCreateProductPayload["print_areas"] = [];
+        const covered = new Set<number>();
+        for (const asset of posterAssets) {
+            const matchingIds = asset.variantIds.filter((id) => variantIds.includes(id));
+            if (matchingIds.length === 0) continue;
+            const upload = await uploadPrintifyImageFromUrl(
+                `${filePrefix}-${asset.key}.png`,
+                productImagePublicUrl(asset.path),
+            );
+            matchingIds.forEach((id) => covered.add(id));
+            areas.push({
+                variant_ids: matchingIds,
+                placeholders: [{
+                    position: "front",
+                    images: [{ id: upload.id, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
+                }],
+            });
+        }
+        if (variantIds.some((id) => !covered.has(id))) {
+            throw new Error("Poster print assets do not cover every enabled supplier variant.");
+        }
+        return areas;
+    }
+
+    if (!design.print_asset_front_path) throw new Error("Printify sync is missing a front print asset.");
+    const frontUpload = await uploadPrintifyImageFromUrl(
+        `${filePrefix}-front.png`,
+        productImagePublicUrl(design.print_asset_front_path),
+    );
+    const placeholders: PrintifyCreateProductPayload["print_areas"][number]["placeholders"] = [{
+        position: "front",
+        images: [{ id: frontUpload.id, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
+    }];
+    if (design.print_asset_back_path) {
+        const backUpload = await uploadPrintifyImageFromUrl(
+            `${filePrefix}-back.png`,
+            productImagePublicUrl(design.print_asset_back_path),
+        );
+        placeholders.push({
+            position: "back",
+            images: [{ id: backUpload.id, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
+        });
+    }
+    return [{ variant_ids: variantIds, placeholders }];
 }
 
 function isStalePrintifyProductSync(updatedAt?: string | null) {
@@ -213,7 +286,7 @@ export async function syncProductToPrintify(input: {
     const { data: design, error: designError } = await serviceSupabase
         .from("product_designs")
         .select(
-            "id, artist_id, product_id, print_asset_front_path, print_asset_back_path, printify_blueprint_id, printify_print_provider_id, printify_variant_ids, printify_product_id, printify_status, updated_at"
+            "id, artist_id, product_id, design_data, print_asset_front_path, print_asset_back_path, printify_blueprint_id, printify_print_provider_id, printify_variant_ids, printify_product_id, printify_status, updated_at"
         )
         .eq("product_id", typedProduct.id)
         .eq("artist_id", typedProduct.artist_id)
@@ -322,44 +395,7 @@ export async function syncProductToPrintify(input: {
     let createdPrintifyProductId: string | null = null;
 
     try {
-        const frontUpload = await uploadPrintifyImageFromUrl(
-            `${typedProduct.id}-front.png`,
-            productImagePublicUrl(typedDesign.print_asset_front_path)
-        );
-
-        const placeholders = [
-            {
-                position: "front",
-                images: [
-                    {
-                        id: frontUpload.id,
-                        x: 0.5,
-                        y: 0.5,
-                        scale: 1,
-                        angle: 0,
-                    },
-                ],
-            },
-        ];
-
-        if (typedDesign.print_asset_back_path) {
-            const backUpload = await uploadPrintifyImageFromUrl(
-                `${typedProduct.id}-back.png`,
-                productImagePublicUrl(typedDesign.print_asset_back_path)
-            );
-            placeholders.push({
-                position: "back",
-                images: [
-                    {
-                        id: backUpload.id,
-                        x: 0.5,
-                        y: 0.5,
-                        scale: 1,
-                        angle: 0,
-                    },
-                ],
-            });
-        }
+        const printAreas = await buildPrintifyPrintAreas(typedDesign, config.variantIds, typedProduct.id);
 
         const price = Math.max(Number(typedProduct.price_cents ?? 0), 100);
         const payload: PrintifyCreateProductPayload = {
@@ -372,12 +408,7 @@ export async function syncProductToPrintify(input: {
                 price,
                 is_enabled: true,
             })),
-            print_areas: [
-                {
-                    variant_ids: config.variantIds,
-                    placeholders,
-                },
-            ],
+            print_areas: printAreas,
         };
 
         const printifyProduct = await createPrintifyProduct(payload);
@@ -561,7 +592,7 @@ export async function ensurePrintifyProductForRoute(input: {
     const typedProduct = product as ProductRow;
     const { data: design, error: designError } = await serviceSupabase
         .from("product_designs")
-        .select("id, artist_id, product_id, print_asset_front_path, print_asset_back_path, printify_blueprint_id, printify_print_provider_id, printify_variant_ids, printify_product_id, printify_status, updated_at")
+        .select("id, artist_id, product_id, design_data, print_asset_front_path, print_asset_back_path, printify_blueprint_id, printify_print_provider_id, printify_variant_ids, printify_product_id, printify_status, updated_at")
         .eq("product_id", typedProduct.id)
         .eq("artist_id", typedProduct.artist_id)
         .maybeSingle();
@@ -629,27 +660,11 @@ export async function ensurePrintifyProductForRoute(input: {
     }
 
     try {
-        const frontUpload = await uploadPrintifyImageFromUrl(
-            `${typedProduct.id}-${input.route.supplierProviderId}-front.png`,
-            productImagePublicUrl(typedDesign.print_asset_front_path)
+        const printAreas = await buildPrintifyPrintAreas(
+            typedDesign,
+            input.route.allProviderVariantIds,
+            `${typedProduct.id}-${input.route.supplierProviderId}`,
         );
-        const placeholders = [
-            {
-                position: "front",
-                images: [{ id: frontUpload.id, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
-            },
-        ];
-
-        if (typedDesign.print_asset_back_path) {
-            const backUpload = await uploadPrintifyImageFromUrl(
-                `${typedProduct.id}-${input.route.supplierProviderId}-back.png`,
-                productImagePublicUrl(typedDesign.print_asset_back_path)
-            );
-            placeholders.push({
-                position: "back",
-                images: [{ id: backUpload.id, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
-            });
-        }
 
         const price = Math.max(Number(typedProduct.price_cents ?? 0), 100);
         const payload: PrintifyCreateProductPayload = {
@@ -662,12 +677,7 @@ export async function ensurePrintifyProductForRoute(input: {
                 price,
                 is_enabled: true,
             })),
-            print_areas: [
-                {
-                    variant_ids: input.route.allProviderVariantIds,
-                    placeholders,
-                },
-            ],
+            print_areas: printAreas,
         };
 
         const printifyProduct = await createPrintifyProduct(payload);

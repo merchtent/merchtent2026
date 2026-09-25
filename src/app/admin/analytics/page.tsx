@@ -23,7 +23,7 @@ type OrderItemRow = {
     title: string | null;
     qty: number | null;
     unit_price_cents: number | null;
-    products: { artist_cut_cents: number | null } | { artist_cut_cents: number | null }[] | null;
+    artist_cut_cents: number | null;
     artists: { display_name: string | null } | { display_name: string | null }[] | null;
 };
 
@@ -60,7 +60,7 @@ export default async function AdminAnalyticsPage() {
             .order("created_at", { ascending: false }),
         supabase
             .from("order_items")
-            .select("id, product_id, artist_id, title, qty, unit_price_cents, products ( artist_cut_cents ), artists ( display_name )")
+            .select("id, product_id, artist_id, title, qty, unit_price_cents, artist_cut_cents, artists ( display_name )")
             .gte("created_at", since.toISOString()),
         supabase
             .from("page_views")
@@ -189,9 +189,8 @@ function aggregateTopArtists(items: OrderItemRow[]) {
         const artist = firstJoined(item.artists);
         const key = item.artist_id ?? artist?.display_name ?? item.id;
         const qty = item.qty ?? 0;
-        const product = firstJoined(item.products);
         const existing = rows.get(key) ?? { label: artist?.display_name ?? "Unknown artist", detail: "0 units", value: 0 };
-        existing.value += qty * (product?.artist_cut_cents ?? 0);
+        existing.value += qty * (item.artist_cut_cents ?? 0);
         existing.detail = `${Number(existing.detail.split(" ")[0] || 0) + qty} units`;
         rows.set(key, existing);
     });

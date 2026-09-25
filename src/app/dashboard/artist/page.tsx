@@ -16,7 +16,7 @@ export default async function ArtistProfilePage() {
 
     const { data: artist, error } = await supabase
         .from("artists")
-        .select("id, display_name, hero_image_path, bio, website_url, facebook_url, instagram_url, bandcamp_url, spotify_url")
+        .select("id, display_name, slug, is_public, hero_image_path, bio, website_url, facebook_url, instagram_url, bandcamp_url, spotify_url")
         .eq("id", artistSummary.id)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -139,12 +139,18 @@ export default async function ArtistProfilePage() {
                                 The bits fans see first.
                             </h2>
                         </div>
-                        <Link
-                            href={`/artists/${artist.id}`}
-                            className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] hover:border-red-500"
-                        >
-                            View public page
-                        </Link>
+                        {artist.slug && artist.is_public ? (
+                            <Link
+                                href={`/artists/${artist.slug}`}
+                                className="inline-flex items-center gap-2 border border-neutral-700 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] hover:border-red-500"
+                            >
+                                View public page
+                            </Link>
+                        ) : (
+                            <span className="inline-flex items-center gap-2 border border-neutral-800 px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-neutral-600">
+                                Public page unavailable
+                            </span>
+                        )}
                     </div>
                         <EditArtistHeroForm
                             artistId={artist.id}

@@ -1,5 +1,5 @@
 export const SHIPPING_METHOD_OPTIONS = [
-    { id: "standard", label: "Standard", deliveryLabel: "3-30 business days", checkoutAmountCents: 1700 },
+    { id: "standard", label: "Standard", checkoutAmountCents: 1700 },
 ] as const;
 
 export type ShippingMethodId = (typeof SHIPPING_METHOD_OPTIONS)[number]["id"];
@@ -43,6 +43,19 @@ export function shippingZone(country: unknown): keyof typeof CONSERVATIVE_STANDA
     const code = String(country ?? "AU").trim().toUpperCase();
     if (code === "AU" || code === "NZ" || code === "US" || code === "CA") return code;
     return EUROPE.has(code) ? "EU" : "ROW";
+}
+
+const STANDARD_DELIVERY_LABELS: Record<keyof typeof CONSERVATIVE_STANDARD_RATES, string> = {
+    AU: "3-6 business days",
+    NZ: "5-10 business days",
+    US: "10-30 business days",
+    CA: "10-30 business days",
+    EU: "10-30 business days",
+    ROW: "10-30 business days",
+};
+
+export function shippingDeliveryLabel(country: unknown) {
+    return STANDARD_DELIVERY_LABELS[shippingZone(country)];
 }
 
 export function checkoutShippingAmountCents(

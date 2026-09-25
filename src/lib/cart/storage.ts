@@ -1,5 +1,9 @@
 // lib/cart/storage.ts
 import type { CartItem, CartState } from "./types";
+import {
+    ARTIST_SELF_ORDER_TYPE,
+    RETAIL_PURCHASE_TYPE,
+} from "@/lib/artist-self-orders";
 
 const KEY = "cart:v1";
 const MAX_CART_ITEMS = 99;
@@ -57,6 +61,12 @@ function normaliseCartItem(value: unknown): CartItem | null {
         sku: cleanOptionalString(raw.sku, 200),
         color_label: cleanOptionalString(raw.color_label, 100),
         size: cleanOptionalString(raw.size, 20),
+        purchase_type:
+            raw.purchase_type === ARTIST_SELF_ORDER_TYPE
+                ? ARTIST_SELF_ORDER_TYPE
+                : RETAIL_PURCHASE_TYPE,
+        artist_discount_cents:
+            cleanInteger(raw.artist_discount_cents, 0, MAX_PRICE_CENTS) ?? 0,
     };
 }
 

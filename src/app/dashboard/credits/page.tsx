@@ -102,26 +102,26 @@ export default async function DashboardCreditsPage() {
                     Fan credits
                 </p>
                 <h1 className="mt-3 max-w-4xl text-3xl font-black uppercase leading-tight md:text-5xl">
-                    Back bands. Earn tees.
+                    Back bands. Save on merch.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-                    Your merch credits live here: points earned, rewards reserved, and the trail behind every movement.
+                    Your merch credits live here: credits earned, rewards reserved, and the trail behind every movement.
                 </p>
             </section>
 
             <section className="grid border-b border-neutral-800 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="border-b border-neutral-800 p-5 md:p-8 lg:border-b-0 lg:border-r">
                     <div className="grid gap-px border border-neutral-800 bg-neutral-800 md:grid-cols-3">
-                        <CreditStat label="Current points" value={balanceError ? "Unavailable" : `${points} pts`} icon={<Coins className="h-5 w-5" />} />
-                        <CreditStat label="Lifetime earned" value={`${lifetimePoints} pts`} icon={<BadgePercent className="h-5 w-5" />} />
-                        <CreditStat label="Reward target" value={`${progress}/20`} icon={<TicketPercent className="h-5 w-5" />} />
+                        <CreditStat label="Current credits" value={balanceError ? "Unavailable" : `${points} credits`} icon={<Coins className="h-5 w-5" />} />
+                        <CreditStat label="Lifetime earned" value={`${lifetimePoints} credits`} icon={<BadgePercent className="h-5 w-5" />} />
+                        <CreditStat label="$20 reward" value={`${progress}/20`} icon={<TicketPercent className="h-5 w-5" />} />
                     </div>
                     <div className="mt-6 border border-neutral-800 bg-neutral-950 p-5">
                         <div className="h-3 bg-neutral-800">
                             <div className="h-full bg-lime-300" style={{ width: `${(progress / 20) * 100}%` }} />
                         </div>
                         <p className="mt-4 text-sm leading-6 text-neutral-400">
-                            Earn 3 points for every tee purchased. Every 20 points can be reserved at checkout for a free tee discount.
+                            Earn 3 credits for every product purchased. Each credit is worth $1, and 20 credits gives you $20 off merchandise at checkout. Shipping is excluded.
                         </p>
                         <Link
                             href="/artists"
@@ -143,7 +143,7 @@ export default async function DashboardCreditsPage() {
                                 <div key={reservation.id} className="border border-neutral-800 bg-black p-4">
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
-                                            <p className="font-black uppercase">{reservation.points ?? 0} points reserved</p>
+                                            <p className="font-black uppercase">{reservation.points ?? 0} credits reserved</p>
                                             <p className="mt-1 text-xs uppercase tracking-[0.16em] text-neutral-500">
                                                 {reservation.status ?? "pending"}
                                             </p>
@@ -173,7 +173,7 @@ export default async function DashboardCreditsPage() {
                     <Receipt className="h-4 w-4" />
                     Credit ledger
                 </p>
-                <h2 className="mt-2 text-4xl font-black uppercase leading-none">Every point accounted for.</h2>
+                <h2 className="mt-2 text-4xl font-black uppercase leading-none">Every credit accounted for.</h2>
                 <div className="mt-6 border border-neutral-800 bg-neutral-950">
                     {typedLedger.length ? (
                         typedLedger.map((entry) => (

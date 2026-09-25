@@ -5,6 +5,8 @@ import CheckoutFormClient from "./CheckoutFormClient";
 import CheckoutSummaryClient from "./CheckoutSummaryClient";
 import { normaliseShippingMethodId, type ShippingMethodId } from "@/lib/shipping-methods";
 import { useEffect, useState } from "react";
+import { useCart } from "@/components/CartProvider";
+import { isArtistSelfOrder } from "@/lib/artist-self-orders";
 
 type Props = {
     userEmail: string;
@@ -31,6 +33,8 @@ export default function CheckoutShellClient({
     canUseMerchCredits,
     defaultAddress,
 }: Props) {
+    const { items } = useCart();
+    const isArtistOrder = items.length > 0 && items.every((item) => isArtistSelfOrder(item.purchase_type));
     // shared shipping state
     const [shippingMethod, setShippingMethod] = useState<ShippingMethodId>(
         () => {
@@ -46,6 +50,7 @@ export default function CheckoutShellClient({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [useMerchCredits, setUseMerchCredits] = useState(false);
     const [shippingCountry, setShippingCountry] = useState(defaultAddress?.country || "AU");
+    const effectiveUseMerchCredits = isArtistOrder ? false : useMerchCredits;
 
     // save shipping method whenever it changes
     useEffect(() => {
@@ -64,17 +69,19 @@ export default function CheckoutShellClient({
                 setIsSubmitting={setIsSubmitting}
                 isSubmitting={isSubmitting}
                 merchCreditBalance={merchCreditBalance}
-                canUseMerchCredits={canUseMerchCredits}
-                useMerchCredits={useMerchCredits}
+                canUseMerchCredits={canUseMerchCredits && !isArtistOrder}
+                isArtistOrder={isArtistOrder}
+                useMerchCredits={effectiveUseMerchCredits}
                 setUseMerchCredits={setUseMerchCredits}
                 setShippingCountry={setShippingCountry}
             />
             <CheckoutSummaryClient
                 shippingMethod={shippingMethod}
                 isSubmitting={isSubmitting}
-                useMerchCredits={useMerchCredits}
+                useMerchCredits={effectiveUseMerchCredits}
                 merchCreditBalance={merchCreditBalance}
                 shippingCountry={shippingCountry}
+                isArtistOrder={isArtistOrder}
             />
         </section>
     );

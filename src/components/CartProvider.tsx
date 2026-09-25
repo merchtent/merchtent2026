@@ -15,6 +15,7 @@ import {
     loadCart,
     saveCart,
 } from "@/lib/cart/storage";
+import { artistBulkOrderDiscountCents } from "@/lib/artist-self-orders";
 
 type SetQtyOpts = { by?: "sku" | "product_id" };
 type RemoveOpts = { by?: "sku" | "product_id" };
@@ -26,6 +27,8 @@ type CartCtx = {
     setQty: (id: string, qty: number, opts?: SetQtyOpts) => void;
     clear: () => void;
     subtotal_cents: number;
+    artist_bulk_discount_cents: number;
+    payable_subtotal_cents: number;
     currency: string | null;
     isOpen: boolean;
     open: () => void;
@@ -45,7 +48,8 @@ function ensureSkuLike(item: Omit<CartItem, "qty">): string | null {
         // build one from product + variant
         const sizePart = (item.size || "nosize").toString().toLowerCase();
         const colorPart = (item.color_label || "nocolor").toString().toLowerCase();
-        return `${item.product_id}-${sizePart}-${colorPart}`;
+        const orderPart = item.purchase_type === "artist_self_order" ? "artist" : "retail";
+        return `${orderPart}-${item.product_id}-${sizePart}-${colorPart}`;
     }
 
     return null;
@@ -142,6 +146,8 @@ export default function CartProvider({ children }: { children: React.ReactNode }
         (sum, i) => sum + i.price_cents * i.qty,
         0
     );
+    const artist_bulk_discount_cents = artistBulkOrderDiscountCents(state.items);
+    const payable_subtotal_cents = Math.max(subtotal_cents - artist_bulk_discount_cents, 0);
     const currency = state.items[0]?.currency ?? null;
     const count = state.items.reduce((n, i) => n + i.qty, 0);
 
@@ -153,6 +159,8 @@ export default function CartProvider({ children }: { children: React.ReactNode }
             setQty,
             clear,
             subtotal_cents,
+            artist_bulk_discount_cents,
+            payable_subtotal_cents,
             currency,
             isOpen,
             open,
@@ -163,6 +171,8 @@ export default function CartProvider({ children }: { children: React.ReactNode }
         [
             state.items,
             subtotal_cents,
+            artist_bulk_discount_cents,
+            payable_subtotal_cents,
             currency,
             isOpen,
             add,
