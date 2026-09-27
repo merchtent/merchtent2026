@@ -21,6 +21,7 @@ import {
     Star,
     Users,
 } from "lucide-react";
+import { ProductCardSkeleton } from "@/components/shop/ContentSkeletons";
 
 type Product = {
     id?: string;
@@ -244,6 +245,9 @@ function LiveDrops({ products, loading }: { products: Product[]; loading: boolea
             <div className="grid border-t border-neutral-800 md:grid-cols-5">
                 {cards.map((product, index) => {
                     const item = product as Product | undefined;
+                    if (!item) {
+                        return <ProductCardSkeleton key={`live-drop-loading-${index}`} dark className="min-h-[260px] border-neutral-800" />;
+                    }
                     return (
                         <Link key={item?.id ?? index} href={item?.slug ? `/product/${item.slug}` : "/new"} className="group min-h-[260px] border-b border-r border-neutral-800 bg-neutral-950 p-4">
                             <div className="grid h-full grid-cols-[1fr_120px] gap-3">
@@ -253,7 +257,7 @@ function LiveDrops({ products, loading }: { products: Product[]; loading: boolea
                                             [ {item?.badge ?? "new drop"} ]
                                         </p>
                                         <h3 className="mt-8 line-clamp-3 text-2xl font-black uppercase leading-none">
-                                            {item?.title ?? "Loading drop"}
+                                            {item.title}
                                         </h3>
                                     </div>
                                     <div>
@@ -320,6 +324,9 @@ function QuickRacks({ products, loading }: { products: Product[]; loading: boole
             <div className="grid grid-cols-2 border-t border-neutral-800 sm:grid-cols-4 lg:grid-cols-6">
                 {cards.map((product, index) => {
                     const item = product as Product | undefined;
+                    if (!item) {
+                        return <ProductCardSkeleton key={`rack-loading-${index}`} dark mediaAspect="square" className="border-neutral-800" />;
+                    }
                     return (
                         <Link key={`${item?.id ?? "rack"}-${index}`} href={item?.slug ? `/product/${item.slug}` : "/new"} className="group border-b border-r border-neutral-800 bg-neutral-950">
                             <div className="relative aspect-square bg-white">
@@ -331,7 +338,7 @@ function QuickRacks({ products, loading }: { products: Product[]; loading: boole
                                 {index === 0 && <span className="absolute left-3 top-3 bg-red-600 px-2 py-1 text-[10px] font-black uppercase">Counter pick</span>}
                             </div>
                             <div className="p-3">
-                                <p className="line-clamp-1 text-xs font-black">{item?.title ?? "Loading drop"}</p>
+                                <p className="line-clamp-1 text-xs font-black">{item.title}</p>
                                 <p className="mt-1 text-xs text-red-400">{typeof item?.price === "number" ? `$${item.price}` : ""}</p>
                             </div>
                         </Link>
@@ -499,9 +506,12 @@ function SceneMarket({ products, artists, loading }: { products: Product[]; arti
                     <div className="mt-8 flex flex-wrap gap-2">
                         {(loading ? Array.from({ length: 8 }) : artists).map((artist, index) => {
                             const item = artist as Artist | undefined;
+                            if (!item) {
+                                return <span key={`artist-loading-${index}`} aria-hidden className="h-10 w-28 border border-neutral-800 bg-neutral-900 motion-safe:animate-pulse" />;
+                            }
                             return (
                                 <Link key={item?.id ?? index} href={item?.slug ? `/artists/${item.slug}` : "/artists"} className="border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm font-black hover:border-red-500">
-                                    {item?.name ?? "Artist loading"}
+                                    {item.name ?? "Merch Tent artist"}
                                 </Link>
                             );
                         })}
@@ -510,6 +520,9 @@ function SceneMarket({ products, artists, loading }: { products: Product[]; arti
                 <div className="grid grid-cols-2 md:grid-cols-3">
                     {(loading ? Array.from({ length: 6 }) : products).slice(0, 6).map((product, index) => {
                         const item = product as Product | undefined;
+                        if (!item) {
+                            return <ProductCardSkeleton key={`market-loading-${index}`} dark className="border-neutral-800" />;
+                        }
                         return (
                             <Link key={item?.id ?? index} href={item?.slug ? `/product/${item.slug}` : "/new"} className="group border-b border-r border-neutral-800 bg-neutral-950">
                                 <div className="relative aspect-[4/5] bg-neutral-100">
@@ -521,7 +534,7 @@ function SceneMarket({ products, artists, loading }: { products: Product[]; arti
                                     <span className="absolute left-3 top-3 bg-red-600 px-2 py-1 text-[10px] font-black uppercase">{item?.badge ?? "Live"}</span>
                                 </div>
                                 <div className="p-3">
-                                    <p className="line-clamp-2 text-sm font-black">{item?.title ?? "Loading product"}</p>
+                                    <p className="line-clamp-2 text-sm font-black">{item.title}</p>
                                     <p className="mt-1 text-sm text-red-400">{typeof item?.price === "number" ? `$${item.price}` : ""}</p>
                                 </div>
                             </Link>

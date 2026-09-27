@@ -50,6 +50,14 @@
 }
 
 :root {
+  --mt-ink: #080808;
+  --mt-paper: #f2f0ea;
+  --mt-lime: #bef264;
+  --mt-red: #ef0000;
+  --mt-border-dark: #262626;
+  --mt-border-light: #d4d4d4;
+  --mt-muted-dark: #a3a3a3;
+  --mt-muted-light: #525252;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

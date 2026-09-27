@@ -3,6 +3,7 @@
 import AddToCartButton from "@/components/AddToCartButton";
 import { BadgePercent, PackageCheck, RefreshCw, ShieldCheck, Truck } from "lucide-react";
 import * as React from "react";
+import { PRODUCT_TRUST_EVIDENCE } from "@/lib/trust-evidence";
 
 type ColorOption = {
     id: string;
@@ -131,8 +132,8 @@ export default function ProductBuyBox({
                     Made only when you order
                 </p>
                 <ul className="mt-3 space-y-1.5 text-neutral-400">
-                    <li>Usually produced in 2–3 business days</li>
-                    <li>Tracked shipping selected at checkout</li>
+                    <li>{PRODUCT_TRUST_EVIDENCE.production.value}</li>
+                    <li>{PRODUCT_TRUST_EVIDENCE.delivery.value}</li>
                 </ul>
             </div>
 
@@ -219,7 +220,7 @@ export default function ProductBuyBox({
             </div>
 
             <div className="mt-4 grid border border-neutral-800 bg-neutral-950 md:grid-cols-3">
-                <SceneSignal icon={<PackageCheck className="h-4 w-4" />} label="Made to order" body="2–3 day production" />
+                <SceneSignal icon={<PackageCheck className="h-4 w-4" />} label="Made to order" body="Usually 2–3 business days" />
                 <SceneSignal icon={<BadgePercent className="h-4 w-4" />} label="Fan credits" body="Earned on buys" />
                 <SceneSignal icon={<ShieldCheck className="h-4 w-4" />} label="Secure checkout" body="Tracked order" />
             </div>
@@ -232,7 +233,7 @@ export default function ProductBuyBox({
                 </div>
                 <div className="flex items-center gap-1 border-r border-neutral-800 p-2">
                     <RefreshCw className="h-3.5 w-3.5" />
-                    Order support
+                    No-cost replacement
                 </div>
                 <div className="flex items-center gap-1 p-2">
                     <ShieldCheck className="h-3.5 w-3.5" />

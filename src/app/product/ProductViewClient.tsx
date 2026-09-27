@@ -12,6 +12,7 @@ import SavedToggleButton from "@/components/SavedToggleButton";
 import { trackMarketingEvent } from "@/lib/marketing/events";
 import ProductImageGallery, { type ProductGalleryImage } from "@/components/shop/ProductImageGallery";
 import type { CatalogProductInfo } from "@/lib/products/catalog-product-info";
+import { PRODUCT_TRUST_EVIDENCE } from "@/lib/trust-evidence";
 
 type Artist = {
     id?: string | null;
@@ -289,24 +290,24 @@ export default function ProductViewClient({
             <section className="border-b border-neutral-800">
                 <div className="grid md:grid-cols-2 lg:grid-cols-4">
                     <InfoBlock
-                        kicker="About this drop"
-                        title="Made for the room, not a warehouse."
-                        body={`Designed by ${product.artist?.display_name ?? "the artist"}, this piece carries the identity of the drop without forcing artists to hold boxes of stock.`}
+                        kicker={PRODUCT_TRUST_EVIDENCE.production.label}
+                        title={PRODUCT_TRUST_EVIDENCE.production.value}
+                        body={PRODUCT_TRUST_EVIDENCE.production.detail}
                     />
                     <InfoBlock
-                        kicker="Production"
-                        title="Printed after the fan backs it."
-                        body="The order keeps the design data, colour, size, and product context together so fulfilment can move without guessing."
+                        kicker={PRODUCT_TRUST_EVIDENCE.delivery.label}
+                        title={PRODUCT_TRUST_EVIDENCE.delivery.value}
+                        body={PRODUCT_TRUST_EVIDENCE.delivery.detail}
                     />
                     <InfoBlock
-                        kicker="Support"
-                        title="Artist paid per order."
-                        body="Fans get a real product and credits. Artists get a clearer path from design to sale."
+                        kicker={PRODUCT_TRUST_EVIDENCE.reviews.label}
+                        title={PRODUCT_TRUST_EVIDENCE.reviews.value}
+                        body={PRODUCT_TRUST_EVIDENCE.reviews.detail}
                     />
                     <InfoBlock
-                        kicker="Delivery"
-                        title="Tracked once shipped."
-                        body="Checkout captures fulfilment-grade details, and order pages keep fans updated after purchase."
+                        kicker={PRODUCT_TRUST_EVIDENCE.replacement.label}
+                        title={PRODUCT_TRUST_EVIDENCE.replacement.value}
+                        body={PRODUCT_TRUST_EVIDENCE.replacement.detail}
                     />
                 </div>
             </section>

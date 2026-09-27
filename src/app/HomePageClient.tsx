@@ -26,6 +26,12 @@ import {
 } from "lucide-react";
 import { marketingAttributionJson } from "@/lib/marketing/attribution";
 import { trackMarketingEvent } from "@/lib/marketing/events";
+import {
+    ArtistCardSkeleton,
+    JournalCardSkeleton,
+    ProductCardSkeleton,
+    ProductListSkeleton,
+} from "@/components/shop/ContentSkeletons";
 
 type Product = {
     id?: string;
@@ -205,7 +211,7 @@ function Hero({ products, loading }: { products: Product[]; loading: boolean }) 
     return (
         <section className="relative overflow-hidden border-b border-neutral-800 bg-[#080808]">
             <div className="relative min-h-[430px] overflow-hidden md:min-h-[455px] xl:min-h-[475px]">
-                <Image src={heroMerchImage} alt="" fill priority sizes="100vw" className="object-cover object-[62%_center] md:object-[58%_center]" />
+                <Image src={heroMerchImage} alt="" fill priority loading="eager" sizes="100vw" className="object-cover object-[62%_center] md:object-[58%_center]" />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,7,0.78)_0%,rgba(7,7,7,0.55)_28%,rgba(7,7,7,0.12)_52%,rgba(7,7,7,0)_68%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_12%,rgba(255,255,255,0.1),transparent_22%)] opacity-70" />
                 <div className="absolute inset-y-0 left-0 w-[49%] bg-[linear-gradient(90deg,rgba(0,0,0,0.08),rgba(0,0,0,0))]" />
@@ -229,14 +235,14 @@ function Hero({ products, loading }: { products: Product[]; loading: boolean }) 
                         </h1>
                         <p className="mt-5 max-w-md text-lg leading-snug text-neutral-200 md:text-xl">
                             Shop official Australian band merch.
-                            <span className="block">Artists launch without upfront stock.</span>
+                            <span className="block">Fresh drops made after you order.</span>
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
                             <Link href="/new" className="inline-flex h-12 items-center gap-3 bg-[#ef0000] px-6 text-sm font-black shadow-[7px_7px_0_rgba(0,0,0,0.32)] hover:bg-red-500">
                                 Shop the scene <ArrowRight className="h-5 w-5" />
                             </Link>
                             <Link href="/start" className="inline-flex h-12 items-center gap-3 border border-lime-300 bg-black/35 px-6 text-sm font-black text-lime-300 shadow-[0_0_22px_rgba(190,242,100,0.18),7px_7px_0_rgba(0,0,0,0.22)] hover:bg-lime-300 hover:text-black">
-                                Sell merch <Zap className="h-5 w-5 fill-lime-300" />
+                                Artists: launch a drop <Zap className="h-5 w-5 fill-lime-300" />
                             </Link>
                         </div>
                     </div>
@@ -428,8 +434,11 @@ function QuickRacks({ products, loading }: { products: Product[]; loading: boole
             {cards.length > 0 ? (
                 <div className="mx-auto mt-8 grid max-w-[1600px] grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                     {cards.map((product, index) => {
-                    const item = product as Product | undefined;
-                    return (
+                        const item = product as Product | undefined;
+                        if (!item) {
+                            return <ProductCardSkeleton key={`rack-loading-${index}`} mediaAspect="square" className="shadow-[6px_6px_0_rgba(0,0,0,0.08)]" />;
+                        }
+                        return (
                         <Link key={`${item?.id ?? "rack"}-${index}`} href={item?.slug ? `/product/${item.slug}` : "/new"} className="group border border-black/15 bg-white shadow-[6px_6px_0_rgba(0,0,0,0.08)]">
                             <div className="relative aspect-square bg-[#f8f7f2]">
                                 {item?.image ? (
@@ -440,7 +449,7 @@ function QuickRacks({ products, loading }: { products: Product[]; loading: boole
                             </div>
                             <div className="border-t border-black/10 p-3">
                                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-red-600">{item?.badge ?? "Artist"}</p>
-                                <p className="mt-1 line-clamp-2 min-h-8 text-xs font-black leading-4">{item?.title ?? "Loading drop"}</p>
+                                <p className="mt-1 line-clamp-2 min-h-8 text-xs font-black leading-4">{item.title}</p>
                                 <p className="mt-2 text-sm font-black text-lime-700">{typeof item?.price === "number" ? `$${item.price}` : ""}</p>
                             </div>
                         </Link>
@@ -534,6 +543,7 @@ function SceneEngine({ products, loading }: { products: Product[]; loading: bool
                         <div className="mt-6 space-y-3">
                             {cards.map((product, index) => {
                                 const item = product as Product | undefined;
+                                if (!item) return <ProductListSkeleton key={`scene-loading-${index}`} />;
                                 return (
                                     <Link
                                         key={item?.id ?? index}
@@ -551,7 +561,7 @@ function SceneEngine({ products, loading }: { products: Product[]; loading: bool
                                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ef0000]">
                                                 {index === 0 ? "Counter pick" : "New drop"}
                                             </p>
-                                            <p className="mt-1 line-clamp-2 text-sm font-black leading-5">{item?.title ?? "Loading drop"}</p>
+                                            <p className="mt-1 line-clamp-2 text-sm font-black leading-5">{item.title}</p>
                                             {typeof item?.price === "number" ? (
                                                 <p className="mt-1 text-lg font-black text-lime-700">${item.price.toFixed(2)}</p>
                                             ) : (
@@ -830,7 +840,7 @@ function LatestDropWall({ products, loading }: { products: Product[]; loading: b
             <div className="mx-auto mt-8 grid max-w-[1600px] gap-4 md:grid-cols-4">
                 {cards.map((product, index) => {
                     const item = product as Product | undefined;
-                    if (!item) return <div key={`latest-loading-${index}`} className="min-h-[420px] animate-pulse bg-neutral-200" aria-hidden />;
+                    if (!item) return <ProductCardSkeleton key={`latest-loading-${index}`} mediaAspect="latest" className={index >= 6 ? "hidden shadow-[8px_8px_0_rgba(0,0,0,0.08)] md:block" : "shadow-[8px_8px_0_rgba(0,0,0,0.08)]"} />;
                     return (
                         <Link key={`${item?.id ?? "latest"}-${index}`} href={item?.slug ? `/product/${item.slug}` : "/new"} className={`group border border-black/15 bg-white text-black shadow-[8px_8px_0_rgba(0,0,0,0.08)] ${index >= 6 ? "hidden md:block" : ""}`}>
                             <div className="relative aspect-[4/4.5] bg-[#f7f6f1]">
@@ -880,7 +890,8 @@ function FeaturedArtistsNew({ artists, loading }: { artists: Artist[]; loading: 
             <div className="mt-7 grid gap-4 md:grid-cols-4">
                 {cards.map((artist, index) => {
                     const item = artist as Artist | undefined;
-                    const name = item?.display_name ?? item?.name ?? "Artist loading";
+                    if (!item) return <ArtistCardSkeleton key={`artist-loading-${index}`} />;
+                    const name = item.display_name ?? item.name ?? "Merch Tent artist";
                     return (
                         <Link key={item?.id ?? index} href={item?.slug ? `/artists/${item.slug}` : "/artists"} className="group overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-lime-300">
                             <div className="relative aspect-[4/3] bg-neutral-900">
@@ -1067,7 +1078,7 @@ function CommunityScene({ artists, posts, loading }: { artists: Artist[]; posts:
                             </div>
                         </Link>
                     ))}
-                    {loading ? Array.from({ length: 3 }).map((_, index) => <div key={index} className="min-h-[240px] animate-pulse border border-white/10 bg-black/35" />) : null}
+                    {loading ? Array.from({ length: 3 }).map((_, index) => <JournalCardSkeleton key={`journal-loading-${index}`} />) : null}
                     {!loading && posts.length === 0 ? <p className="text-sm text-neutral-400 md:col-span-3">No journal stories have been published yet.</p> : null}
                 </div>
             </div>
@@ -1213,7 +1224,7 @@ function JoinTheListNew() {
 
 function DropCard({ product, compact = false }: { product?: Product; index: number; compact?: boolean }) {
     if (!product) {
-        return <div className={`animate-pulse bg-[#e9e7df] shadow-[8px_8px_0_rgba(0,0,0,0.08)] ${compact ? "min-h-[290px]" : "min-h-[340px]"}`} aria-hidden />;
+        return <ProductCardSkeleton mediaAspect={compact ? "compact" : "portrait"} className="shadow-[8px_8px_0_rgba(0,0,0,0.08)]" />;
     }
     return (
         <Link

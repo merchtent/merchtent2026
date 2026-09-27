@@ -156,6 +156,18 @@ export default function RetailSceneFloor() {
                         {(products === null ? Array.from({ length: 16 }) : railProducts).map((product, index) => {
                             const typedProduct = product as Product | undefined;
 
+                            if (!typedProduct) {
+                                return (
+                                    <div key={`loading-rack-${activeAisle}-${index}`} aria-hidden className="overflow-hidden border border-neutral-800 bg-neutral-900 motion-safe:animate-pulse">
+                                        <div className="aspect-square bg-neutral-800" />
+                                        <div className="space-y-2 p-2">
+                                            <div className="h-3 w-4/5 bg-neutral-800" />
+                                            <div className="h-3 w-1/4 bg-neutral-800" />
+                                        </div>
+                                    </div>
+                                );
+                            }
+
                             return (
                                 <Link
                                     key={`${typedProduct?.id ?? "loading-rack"}-${activeAisle}-${index}`}
@@ -182,10 +194,10 @@ export default function RetailSceneFloor() {
                                     </div>
                                     <div className="p-2">
                                         <p className="line-clamp-1 text-[11px] font-black leading-tight">
-                                            {typedProduct?.title ?? "Loading drop"}
+                                            {typedProduct.title}
                                         </p>
                                         <p className="mt-0.5 text-[11px] text-neutral-500">
-                                            {typeof typedProduct?.price === "number" ? `$${typedProduct.price}` : "Checking rack"}
+                                            {typeof typedProduct.price === "number" ? `$${typedProduct.price}` : "View drop"}
                                         </p>
                                     </div>
                                 </Link>
