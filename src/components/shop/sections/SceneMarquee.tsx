@@ -162,6 +162,17 @@ function LiveProductCard({
     product?: Product;
     featured: boolean;
 }) {
+    if (!product) {
+        return (
+            <div aria-hidden className="overflow-hidden border-r border-neutral-800 bg-neutral-950 motion-safe:animate-pulse">
+                <div className="aspect-[1.35/1] bg-neutral-200" />
+                <div className="space-y-2 p-2">
+                    <div className="h-3 w-4/5 bg-neutral-800" />
+                    <div className="h-3 w-1/4 bg-neutral-800" />
+                </div>
+            </div>
+        );
+    }
     const href = product?.slug ? `/product/${product.slug}` : "/new";
 
     return (
@@ -187,10 +198,10 @@ function LiveProductCard({
             </div>
             <div className="bg-neutral-950 p-2 text-white">
                 <p className="line-clamp-1 text-[11px] font-black leading-tight">
-                    {product?.title ?? "Loading drop"}
+                    {product.title}
                 </p>
                 <p className="mt-0.5 text-[11px] text-blue-400">
-                    {typeof product?.price === "number" ? `$${product.price}` : "Checking rack"}
+                    {typeof product.price === "number" ? `$${product.price}` : "View drop"}
                 </p>
             </div>
         </Link>
