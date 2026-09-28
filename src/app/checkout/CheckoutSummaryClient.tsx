@@ -87,11 +87,6 @@ export default function CheckoutSummaryClient({
                                                 Artist price · {((item.artist_discount_cents ?? 0) / 100).toLocaleString("en-AU", { style: "currency", currency: item.currency || "AUD" })} cut removed
                                             </p>
                                         ) : null}
-                                        {item.sku ? (
-                                            <p className="text-[10px] uppercase tracking-[0.12em] text-black/35 mt-0.5">
-                                                {item.sku}
-                                            </p>
-                                        ) : null}
                                     </div>
                                 </div>
                                 <p className="text-sm font-black text-black">

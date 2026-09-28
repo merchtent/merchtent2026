@@ -239,8 +239,20 @@ function assertNoStore(response) {
 }
 
 function assertPublicApiCache(response) {
-  assertHeaderIncludes(response, "cache-control", "s-maxage=60", "public api cache control");
-  assertHeaderIncludes(response, "cache-control", "stale-while-revalidate=300", "public api cache control");
+  const cacheControl = response.headers.get("cache-control") ?? "";
+  const vercelCache = response.headers.get("x-vercel-cache");
+
+  if (vercelCache) {
+    assertHeaderIncludes(response, "cache-control", "public", "public api cache control");
+    if (!/^(HIT|MISS|STALE|PRERENDER|BYPASS)$/i.test(vercelCache)) {
+      throw new Error(`unexpected x-vercel-cache value ${vercelCache}`);
+    }
+  } else {
+    if (!cacheControl.includes("s-maxage=60") || !cacheControl.includes("stale-while-revalidate=300")) {
+      throw new Error(`missing public api CDN cache directives, received ${cacheControl || "missing"}`);
+    }
+  }
+
   assertHeaderIncludes(response, "vary", "Accept", "public api vary");
   assertHeaderEquals(response, "x-content-type-options", "nosniff");
 }

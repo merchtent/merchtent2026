@@ -1,0 +1,36 @@
+name: Production operations
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: production-operations
+  cancel-in-progress: false
+
+jobs:
+  health-and-maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPERATIONS_URL: https://www.merchtent.com.au
+      OPERATIONAL_HEALTH_SECRET: ${{ secrets.OPERATIONAL_HEALTH_SECRET }}
+    steps:
+      - name: Require operational secret
+        run: test -n "$OPERATIONAL_HEALTH_SECRET"
+
+      - name: Check operational health
+        run: |
+          curl --silent --show-error --fail-with-body --retry 2 --max-time 30 \
+            -H "Authorization: Bearer $OPERATIONAL_HEALTH_SECRET" \
+            "$OPERATIONS_URL/api/health/operations" > health.json
+          node -e 'const r=require("./health.json"); if(r.ok!==true||r.status!=="ok") process.exit(1)'
+
+      - name: Run maintenance tasks
+        run: |
+          curl --silent --show-error --fail-with-body --retry 2 --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer $OPERATIONAL_HEALTH_SECRET" \
+            "$OPERATIONS_URL/api/operations/maintenance" > maintenance.json
+          node -e 'const r=require("./maintenance.json"); if(r.ok!==true||r.status!=="ok"||r.audit_logged!==true||!Array.isArray(r.tasks)||r.tasks.some(t=>t.ok!==true)) process.exit(1)'

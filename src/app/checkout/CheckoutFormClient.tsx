@@ -263,6 +263,7 @@ export default function CheckoutFormClient({
                 </p>
                 <input
                     name="email"
+                    aria-label="Email address"
                     placeholder="Email"
                     type="email"
                     value={form.email}
@@ -282,6 +283,7 @@ export default function CheckoutFormClient({
                 <div className="grid md:grid-cols-2 gap-3">
                     <input
                         name="first_name"
+                        aria-label="First name"
                         placeholder="First name"
                     value={form.first_name}
                     onChange={(e) => update("first_name", e.target.value)}
@@ -290,6 +292,7 @@ export default function CheckoutFormClient({
                 />
                     <input
                         name="last_name"
+                        aria-label="Last name"
                         placeholder="Last name"
                     value={form.last_name}
                     onChange={(e) => update("last_name", e.target.value)}
@@ -299,6 +302,7 @@ export default function CheckoutFormClient({
                 </div>
                 <input
                     name="line1"
+                    aria-label="Address line 1"
                     placeholder="Address line 1"
                 value={form.line1}
                 onChange={(e) => update("line1", e.target.value)}
@@ -307,6 +311,7 @@ export default function CheckoutFormClient({
             />
                 <input
                     name="line2"
+                    aria-label="Address line 2"
                     placeholder="Address line 2 (optional)"
                 value={form.line2}
                 onChange={(e) => update("line2", e.target.value)}
@@ -315,6 +320,7 @@ export default function CheckoutFormClient({
                 <div className="grid md:grid-cols-3 gap-3">
                     <input
                         name="city"
+                        aria-label="City or suburb"
                         placeholder="City / Suburb"
                         value={form.city}
                         onChange={(e) => update("city", e.target.value)}
@@ -338,6 +344,7 @@ export default function CheckoutFormClient({
                     ) : (
                         <input
                             name="state"
+                            aria-label="State, province or region"
                             placeholder="State / Province / Region"
                             value={form.state}
                             onChange={(event) => update("state", event.target.value)}
@@ -347,6 +354,7 @@ export default function CheckoutFormClient({
                     )}
                     <input
                         name="postal_code"
+                        aria-label="Postcode"
                         placeholder="Postcode"
                         value={form.postal_code}
                         onChange={(e) => update("postal_code", e.target.value)}
@@ -368,6 +376,7 @@ export default function CheckoutFormClient({
                 </select>
                 <input
                     name="phone"
+                    aria-label="Phone number for delivery"
                     placeholder="Phone (for delivery)"
                     value={form.phone}
                     onChange={(e) => update("phone", e.target.value)}
