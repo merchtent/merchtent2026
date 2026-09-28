@@ -445,6 +445,7 @@ export default function HeaderClient({ initialEmail }: Props) {
 
                             <button
                                 onClick={toggle}
+                                aria-label={count > 0 ? `Open cart with ${count} ${count === 1 ? "item" : "items"}` : "Open cart"}
                                 className="relative ml-1 inline-flex min-h-12 items-center gap-2 border border-white/25 bg-black px-3 text-[0.72rem] font-black uppercase tracking-[0.12em] text-white transition hover:-translate-y-0.5 hover:border-lime-300 hover:bg-lime-300 hover:text-black md:border-white md:bg-white md:text-black md:px-4"
                             >
                                 <ShoppingBag className="h-4 w-4" />
