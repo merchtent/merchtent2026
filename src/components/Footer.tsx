@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Instagram, Music2, Shirt, Sparkles, UserPlus } from "lucide-react";
+import PrivacyChoicesButton from "@/components/PrivacyChoicesButton";
 
 const brand = {
     name: "MERCH TENT",
@@ -136,6 +137,7 @@ export default function Footer() {
                             {item.label}
                         </Link>
                     ))}
+                    <PrivacyChoicesButton />
                 </div>
             </div>
         </footer>

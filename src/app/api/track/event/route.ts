@@ -11,7 +11,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const eventNames = [
-    "view_item_list", "select_item", "view_item", "add_to_cart", "begin_checkout", "purchase",
+    "view_item_list", "select_item", "view_item", "add_to_cart", "view_cart", "remove_from_cart",
+    "view_checkout", "begin_checkout", "checkout_error", "purchase",
     "sign_up", "artist_lead", "artist_activation", "newsletter_signup", "search", "outbound_click",
 ] as const;
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
             attribution: event.attribution ?? {},
             properties: event.properties,
         });
-        if (error) throw error;
+        if (error && error.code !== "23505") throw error;
         return noStoreJson({ ok: true });
     } catch (error) {
         logger.error("marketing event tracking failed", {

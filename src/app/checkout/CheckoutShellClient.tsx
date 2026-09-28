@@ -4,9 +4,10 @@
 import CheckoutFormClient from "./CheckoutFormClient";
 import CheckoutSummaryClient from "./CheckoutSummaryClient";
 import { normaliseShippingMethodId, type ShippingMethodId } from "@/lib/shipping-methods";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { isArtistSelfOrder } from "@/lib/artist-self-orders";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 type Props = {
     userEmail: string;
@@ -51,6 +52,24 @@ export default function CheckoutShellClient({
     const [useMerchCredits, setUseMerchCredits] = useState(false);
     const [shippingCountry, setShippingCountry] = useState(defaultAddress?.country || "AU");
     const effectiveUseMerchCredits = isArtistOrder ? false : useMerchCredits;
+    const checkoutViewed = useRef(false);
+
+    useEffect(() => {
+        if (checkoutViewed.current || items.length === 0) return;
+        checkoutViewed.current = true;
+        trackMarketingEvent("view_checkout", {
+            currency: items[0]?.currency ?? "AUD",
+            value_cents: items.reduce((sum, item) => sum + item.price_cents * item.qty, 0),
+            items: items.map((item) => ({
+                item_id: item.product_id,
+                item_name: item.title,
+                price_cents: item.price_cents,
+                currency: item.currency,
+                quantity: item.qty,
+                item_variant: [item.size, item.color_label].filter(Boolean).join(" / "),
+            })),
+        });
+    }, [items]);
 
     // save shipping method whenever it changes
     useEffect(() => {

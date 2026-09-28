@@ -18,6 +18,8 @@ import {
 } from "@/lib/address-options";
 import { marketingAttributionJson } from "@/lib/marketing/attribution";
 import { trackMarketingEvent } from "@/lib/marketing/events";
+import { hasAnalyticsConsent } from "@/lib/marketing/consent";
+import { getAnalyticsSessionId } from "@/lib/marketing/session";
 import {
     MERCH_CREDIT_REDEMPTION_CENTS,
     MERCH_CREDIT_REDEMPTION_POINTS,
@@ -212,6 +214,8 @@ export default function CheckoutFormClient({
         fd.set("cart_json", JSON.stringify(cartItems));
         fd.set("checkout_attempt_id", crypto.randomUUID());
         fd.set("marketing_attribution", marketingAttributionJson());
+        fd.set("analytics_consent", hasAnalyticsConsent() ? "true" : "false");
+        fd.set("analytics_session_id", getAnalyticsSessionId() ?? "");
 
         trackMarketingEvent("begin_checkout", {
             currency: "AUD",
@@ -232,9 +236,11 @@ export default function CheckoutFormClient({
             if (res?.url) {
                 window.location.href = res.url;
             } else if (res?.error) {
+                trackMarketingEvent("checkout_error", { stage: "create_stripe_session", reason: res.error });
                 setErrorMsg(res.error);
             }
         } catch {
+            trackMarketingEvent("checkout_error", { stage: "create_stripe_session", reason: "unexpected_error" });
             setErrorMsg("Could not start checkout. Please try again.");
         } finally {
             setIsSubmitting(false);

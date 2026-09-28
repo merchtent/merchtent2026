@@ -87,7 +87,8 @@ function hashRateLimitPart(value: string) {
 function compactAttribution(value: Record<string, unknown>) {
     const allowed = [
         "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-        "gclid", "gbraid", "wbraid", "fbclid", "ttclid", "first_landing_page",
+        "gclid", "gbraid", "wbraid", "fbclid", "ttclid",
+        "first_landing_page", "first_referrer", "last_landing_page", "last_referrer",
     ];
     return Object.fromEntries(
         allowed.flatMap((key) => {
@@ -152,6 +153,8 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
     const checkoutAttemptId = checkoutAttemptIdSchema.catch(crypto.randomUUID()).parse(
         cleanMetadataValue(formData.get("checkout_attempt_id"), 80)
     );
+    const analyticsConsent = formData.get("analytics_consent") === "true";
+    const analyticsSessionId = cleanMetadataValue(formData.get("analytics_session_id"), 100);
     const checkoutAllowed = await checkDurableRateLimit(
         supabase,
         await checkoutRateLimitKey(user?.id ?? null, details.email),
@@ -440,6 +443,8 @@ export async function placeOrderAndGoToStripe(formData: FormData) {
                 phone: details.phone,
                 checkout_attempt_id: checkoutAttemptId,
                 marketing_attribution: stripeAttributionMetadata(marketingAttribution),
+                analytics_consent: analyticsConsent ? "true" : "false",
+                analytics_session_id: analyticsConsent ? analyticsSessionId : "",
             },
         }, {
             idempotencyKey: `checkout-session:${user?.id ?? "guest"}:${checkoutAttemptId}`,
