@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { captureMarketingAttribution } from "@/lib/marketing/attribution";
 import { hasAnalyticsConsent } from "@/lib/marketing/consent";
 import { getAnalyticsSessionId } from "@/lib/marketing/session";
+import { trackGooglePageView } from "@/lib/marketing/google";
 
 export function usePageView(userId?: string | null) {
     const pathname = usePathname();
@@ -20,6 +21,7 @@ export function usePageView(userId?: string | null) {
             captureMarketingAttribution();
             const query = searchParams.toString();
             const path = query ? `${pathname}?${query}` : pathname;
+            trackGooglePageView(path);
 
             fetch("/api/track/page-view", {
                 method: "POST",

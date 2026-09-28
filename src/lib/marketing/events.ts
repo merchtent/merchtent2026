@@ -3,6 +3,7 @@
 import { captureMarketingAttribution, readMarketingAttribution } from "@/lib/marketing/attribution";
 import { hasAnalyticsConsent } from "@/lib/marketing/consent";
 import { getAnalyticsSessionId } from "@/lib/marketing/session";
+import { trackGoogleAnalyticsEvent } from "@/lib/marketing/google";
 
 export type MarketingEventName =
     | "view_item_list"
@@ -37,6 +38,8 @@ export function trackMarketingEvent(
 ) {
     if (typeof window === "undefined") return;
     if (!hasAnalyticsConsent()) return;
+
+    trackGoogleAnalyticsEvent(eventName, properties);
 
     const attribution = readMarketingAttribution() ?? captureMarketingAttribution();
     const payload = JSON.stringify({

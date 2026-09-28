@@ -20,6 +20,9 @@ export function proxy(request: NextRequest) {
     supabaseOrigin,
     supabaseSocketOrigin,
     "https://*.ingest.sentry.io",
+    "https://*.google-analytics.com",
+    "https://*.analytics.google.com",
+    "https://www.googletagmanager.com",
   ].filter(Boolean).join(" ");
   const imageSources = [
     "'self'",
@@ -29,6 +32,8 @@ export function proxy(request: NextRequest) {
     "https://plus.unsplash.com",
     "https://picsum.photos",
     supabaseOrigin,
+    "https://*.google-analytics.com",
+    "https://www.googletagmanager.com",
   ].filter(Boolean).join(" ");
 
   const contentSecurityPolicy = [

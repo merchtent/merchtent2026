@@ -2,6 +2,7 @@ const required = [
   { key: "NEXT_PUBLIC_SUPABASE_URL", kind: "url" },
   { key: "NEXT_PUBLIC_SUPABASE_ANON_KEY", minLength: 32 },
   { key: "NEXT_PUBLIC_SITE_URL", kind: "url" },
+  { key: "NEXT_PUBLIC_GA4_MEASUREMENT_ID", prefix: "G-", minLength: 5 },
   { key: "SUPABASE_SERVICE_ROLE_KEY", minLength: 32 },
   { key: "STRIPE_SECRET_KEY", prefix: "sk_", minLength: 16 },
   { key: "STRIPE_WEBHOOK_SECRET", prefix: "whsec_", minLength: 16 },

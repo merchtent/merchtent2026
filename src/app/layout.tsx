@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import "./globals.css";
@@ -71,6 +72,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Strict per-request CSP nonces require request-time rendering.
   await connection();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const siteUrl = publicEnv.siteUrl();
 
   return (
@@ -136,7 +138,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {children}
               </div>
               <FooterVisibility />
-              <ConsentBanner />
+              <ConsentBanner nonce={nonce} />
             </div>
           </CartProvider>
         </ToastProvider>
