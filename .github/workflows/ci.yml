@@ -85,7 +85,7 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: npx supabase db lint --project-ref "$SUPABASE_PROJECT_REF" --level warning --fail-on error
+        run: npx supabase db lint --linked --project-ref "$SUPABASE_PROJECT_REF" --level warning --fail-on error
 
   production-environment:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
