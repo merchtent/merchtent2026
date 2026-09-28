@@ -28,6 +28,7 @@ export function proxy(request: NextRequest) {
     "https://*.ingest.de.sentry.io",
     "https://*.google-analytics.com",
     "https://*.analytics.google.com",
+    "https://*.google.com",
     "https://www.googletagmanager.com",
   ].filter(Boolean).join(" ");
   const imageSources = [
@@ -39,6 +40,7 @@ export function proxy(request: NextRequest) {
     "https://picsum.photos",
     supabaseOrigin,
     "https://*.google-analytics.com",
+    "https://*.google.com",
     "https://www.googletagmanager.com",
   ].filter(Boolean).join(" ");
 
@@ -54,7 +56,7 @@ export function proxy(request: NextRequest) {
     "object-src 'none';",
     "base-uri 'self';",
     "form-action 'self' https://checkout.stripe.com;",
-    "frame-src https://js.stripe.com https://hooks.stripe.com;",
+    "frame-src https://js.stripe.com https://hooks.stripe.com https://www.googletagmanager.com;",
     "frame-ancestors 'none';",
     upgradeInsecureRequests,
   ].filter(Boolean).join(" ");

@@ -948,7 +948,7 @@ function CollectionBundle({ products, loading }: { products: Product[]; loading:
             <div className="bg-neutral-950">
                 <div className="border-b border-neutral-800 p-6 md:p-12">
                     <p className="text-[11px] font-black uppercase tracking-[0.28em] text-lime-300">Mixtape bundle</p>
-                    <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-6xl">Band merch on a budget.</h2>
+                    <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-6xl">More merch. More music.</h2>
                     <p className="mt-4 text-sm leading-6 text-neutral-400">
                         Bundle tees, hoodies, tour packs and fan credits into one proper scene purchase.
                     </p>

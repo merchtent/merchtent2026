@@ -468,7 +468,7 @@ function HybridFeatureGrid({ products, loading }: { products: Product[]; loading
                 <div className="grid bg-neutral-950">
                     <div className="border-b border-neutral-800 p-5 md:p-8">
                         <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-400">Mixtape bundle</p>
-                        <h2 className="mt-2 text-4xl font-black uppercase leading-none">Band merch on a budget.</h2>
+                        <h2 className="mt-2 text-4xl font-black uppercase leading-none">More merch. More music.</h2>
                         <p className="mt-4 text-sm leading-6 text-neutral-400">Bring back the original bundle idea as a proper drop mechanic: two tees, a hoodie, or a tour pack with fan credits attached.</p>
                     </div>
                     <div className="grid grid-cols-[1fr_160px] gap-4 p-5 md:p-8">
