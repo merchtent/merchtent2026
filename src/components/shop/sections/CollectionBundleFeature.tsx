@@ -127,7 +127,7 @@ export default function CollectionBundleFeature() {
                             Mixtape bundle
                         </p>
                         <h2 className="mt-2 text-4xl font-black uppercase leading-none md:text-5xl">
-                            Band merch on a budget.
+                            More merch. More music.
                         </h2>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
                             Build proper merch packs without making artists guess the stock first: two tees, a

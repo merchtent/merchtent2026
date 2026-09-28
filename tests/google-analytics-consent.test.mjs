@@ -48,6 +48,15 @@ test("first-party events and page views also reach the GA4 bridge", () => {
     assert.match(google, /value_cents \/ 100/);
     assert.match(google, /send_page_view: false/);
     assert.match(google, /eventName === "artist_lead" \|\| eventName === "newsletter_signup"/);
+    assert.doesNotMatch(google, /transport_type/);
+});
+
+test("the content security policy permits Google Analytics collection and diagnostics", () => {
+    const proxy = read("src/proxy.ts");
+
+    assert.match(proxy, /"https:\/\/\*\.google-analytics\.com"/);
+    assert.match(proxy, /"https:\/\/\*\.google\.com"/);
+    assert.match(proxy, /frame-src[^\n]+www\.googletagmanager\.com/);
 });
 
 test("visitors can reopen their privacy choices", () => {

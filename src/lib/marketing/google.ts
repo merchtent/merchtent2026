@@ -43,7 +43,6 @@ export function configureGoogleAnalytics() {
     gtag("config", GA4_MEASUREMENT_ID, {
         send_page_view: false,
         currency: "AUD",
-        transport_type: "beacon",
     });
 }
 
