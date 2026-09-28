@@ -39,6 +39,17 @@ export default function ConsentBanner({ nonce }: { nonce?: string }) {
     }, []);
 
     function choose(analytics: boolean, marketing: boolean) {
+        // Apply Google's consent state before saveConsent dispatches the event
+        // consumed by page-view tracking. Otherwise the first hit can be queued
+        // while analytics_storage is still denied.
+        const nextConsent: ConsentPreferences = {
+            analytics,
+            marketing,
+            updated_at: new Date().toISOString(),
+        };
+        updateGoogleConsent(nextConsent);
+        setAnalyticsEnabled(nextConsent.analytics);
+        if (nextConsent.analytics) configureGoogleAnalytics();
         saveConsent({ analytics, marketing });
         if (marketing) captureMarketingAttribution();
         setVisible(false);
