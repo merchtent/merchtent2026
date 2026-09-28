@@ -22,6 +22,7 @@ export default function BrandLogo({ className = "", compact = false }: BrandLogo
                     alt=""
                     fill
                     sizes={imageSize}
+                    quality={60}
                     className="object-contain drop-shadow-[0_8px_24px_rgba(239,0,0,0.25)]"
                 />
             </span>

@@ -13,13 +13,19 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const supabaseOrigin = originFromEnvironment(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const supabaseSocketOrigin = supabaseOrigin?.replace(/^https:/, "wss:");
+  const sentryOrigins = [process.env.NEXT_PUBLIC_SENTRY_DSN, process.env.SENTRY_DSN]
+    .map(originFromEnvironment)
+    .filter(Boolean);
   const developmentScriptSource = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
   const upgradeInsecureRequests = process.env.NODE_ENV === "production" ? "upgrade-insecure-requests;" : "";
   const connectSources = [
     "'self'",
     supabaseOrigin,
     supabaseSocketOrigin,
+    ...sentryOrigins,
     "https://*.ingest.sentry.io",
+    "https://*.ingest.us.sentry.io",
+    "https://*.ingest.de.sentry.io",
     "https://*.google-analytics.com",
     "https://*.analytics.google.com",
     "https://www.googletagmanager.com",

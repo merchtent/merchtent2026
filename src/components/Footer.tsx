@@ -62,14 +62,14 @@ export default function Footer() {
                     <div className="mt-5 grid gap-3 sm:grid-cols-2">
                         <Link
                             href="/auth/sign-up?type=artist"
-                            className="group flex min-h-24 items-center justify-between gap-4 border border-red-500 bg-red-600 p-4 text-white transition hover:bg-red-500"
+                            className="group flex min-h-24 items-center justify-between gap-4 border border-red-700 bg-red-700 p-4 text-white transition hover:bg-red-600"
                         >
                             <Music2 className="h-6 w-6 shrink-0" />
                             <div className="min-w-0 flex-1">
                                 <p className="text-xl font-black uppercase leading-none">
                                     Sign up as artist
                                 </p>
-                                <p className="mt-2 text-xs font-bold leading-5 text-red-50">
+                                <p className="mt-2 text-xs font-bold leading-5 text-white">
                                     Design products, publish drops, sell without stock risk.
                                 </p>
                             </div>
@@ -99,7 +99,7 @@ export default function Footer() {
                     <FooterColumn title="Platform" links={platformNav} icon={<Sparkles className="h-4 w-4 text-lime-300" />} />
                     <FooterColumn title="Support" links={supportNav} />
                     <div className="border-b border-r border-neutral-800 p-5">
-                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-neutral-500">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-neutral-400">
                             Social
                         </p>
                         <div className="mt-4 grid gap-3">
@@ -127,7 +127,7 @@ export default function Footer() {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-4 px-4 py-5 text-xs text-neutral-500 md:flex-row md:items-center md:justify-between md:px-8">
+            <div className="flex flex-col gap-4 px-4 py-5 text-xs text-neutral-400 md:flex-row md:items-center md:justify-between md:px-8">
                 <p>
                     © {new Date().getFullYear()} {brand.name}. All rights reserved.
                 </p>
@@ -157,7 +157,7 @@ function FooterColumn({
         <div className="border-b border-r border-neutral-800 p-5">
             <div className="flex items-center gap-2">
                 {icon}
-                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-neutral-500">
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-neutral-400">
                     {title}
                 </p>
             </div>

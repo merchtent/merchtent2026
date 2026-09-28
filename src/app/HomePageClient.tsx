@@ -211,7 +211,7 @@ function Hero({ products, loading }: { products: Product[]; loading: boolean }) 
     return (
         <section className="relative overflow-hidden border-b border-neutral-800 bg-[#080808]">
             <div className="relative min-h-[430px] overflow-hidden md:min-h-[455px] xl:min-h-[475px]">
-                <Image src={heroMerchImage} alt="" fill priority loading="eager" sizes="100vw" className="object-cover object-[62%_center] md:object-[58%_center]" />
+                <Image src={heroMerchImage} alt="" fill priority fetchPriority="high" loading="eager" quality={65} sizes="100vw" className="object-cover object-[62%_center] md:object-[58%_center]" />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,7,0.78)_0%,rgba(7,7,7,0.55)_28%,rgba(7,7,7,0.12)_52%,rgba(7,7,7,0)_68%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_12%,rgba(255,255,255,0.1),transparent_22%)] opacity-70" />
                 <div className="absolute inset-y-0 left-0 w-[49%] bg-[linear-gradient(90deg,rgba(0,0,0,0.08),rgba(0,0,0,0))]" />
@@ -238,7 +238,7 @@ function Hero({ products, loading }: { products: Product[]; loading: boolean }) 
                             <span className="block">Fresh drops made after you order.</span>
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
-                            <Link href="/new" className="inline-flex h-12 items-center gap-3 bg-[#ef0000] px-6 text-sm font-black shadow-[7px_7px_0_rgba(0,0,0,0.32)] hover:bg-red-500">
+                            <Link href="/new" className="inline-flex h-12 items-center gap-3 bg-[#d60000] px-6 text-sm font-black shadow-[7px_7px_0_rgba(0,0,0,0.32)] hover:bg-red-700">
                                 Shop the scene <ArrowRight className="h-5 w-5" />
                             </Link>
                             <Link href="/start" className="inline-flex h-12 items-center gap-3 border border-lime-300 bg-black/35 px-6 text-sm font-black text-lime-300 shadow-[0_0_22px_rgba(190,242,100,0.18),7px_7px_0_rgba(0,0,0,0.22)] hover:bg-lime-300 hover:text-black">
@@ -316,7 +316,8 @@ function DesignerPreview() {
                             src="/images/home-new-designer-shirt-preview.png"
                             alt="Black band tee preview inside the product designer"
                             fill
-                            sizes="360px"
+                            sizes="(max-width: 639px) 196px, 360px"
+                            quality={70}
                             className="object-contain p-3 drop-shadow-[0_18px_28px_rgba(0,0,0,0.62)]"
                         />
                     </div>
@@ -372,7 +373,7 @@ function FeatureStack() {
                     </div>
                 ))}
             </div>
-            <Link href="/start" className="mt-5 inline-flex items-center gap-2 text-sm font-black text-lime-700">
+            <Link href="/start" className="mt-5 inline-flex items-center gap-2 text-sm font-black text-lime-800">
                 Learn how it works <ArrowRight className="h-4 w-4" />
             </Link>
         </aside>
@@ -401,7 +402,7 @@ function QuickRacks({ products, loading }: { products: Product[]; loading: boole
             <div className="mx-auto max-w-[1600px]">
                 <div className="flex flex-wrap items-end justify-between gap-5">
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-600">Retail floor</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-700">Retail floor</p>
                         <h2 className="mt-2 text-5xl font-black uppercase leading-none md:text-7xl">Quick racks from the scene.</h2>
                         <p className="mt-3 max-w-2xl text-sm font-bold leading-6 text-neutral-600">
                             A calmer shop rack after the hero: clear categories, visible products, and room to browse.
@@ -425,7 +426,7 @@ function QuickRacks({ products, loading }: { products: Product[]; loading: boole
                             >
                                 <Icon className={`h-5 w-5 ${selected ? "text-black" : "text-red-600"}`} />
                                 <p className="mt-4 text-2xl font-black uppercase leading-none">{lane.title}</p>
-                                <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.16em] ${selected ? "text-black/60" : "text-neutral-500"}`}>{lane.note}</p>
+                                <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.16em] ${selected ? "text-black/70" : "text-neutral-600"}`}>{lane.note}</p>
                             </button>
                         );
                     })}
@@ -448,9 +449,9 @@ function QuickRacks({ products, loading }: { products: Product[]; loading: boole
                                 )}
                             </div>
                             <div className="border-t border-black/10 p-3">
-                                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-red-600">{item?.badge ?? "Artist"}</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-red-700">{item?.badge ?? "Artist"}</p>
                                 <p className="mt-1 line-clamp-2 min-h-8 text-xs font-black leading-4">{item.title}</p>
-                                <p className="mt-2 text-sm font-black text-lime-700">{typeof item?.price === "number" ? `$${item.price}` : ""}</p>
+                                <p className="mt-2 text-sm font-black text-lime-800">{typeof item?.price === "number" ? `$${item.price}` : ""}</p>
                             </div>
                         </Link>
                     );
@@ -458,7 +459,7 @@ function QuickRacks({ products, loading }: { products: Product[]; loading: boole
                 </div>
             ) : (
                 <div className="mx-auto mt-8 max-w-[1600px] border border-dashed border-black/25 bg-white/45 px-6 py-14 text-center">
-                    <p className="text-sm font-black uppercase tracking-[0.16em] text-neutral-500">
+                    <p className="text-sm font-black uppercase tracking-[0.16em] text-neutral-600">
                         No {activeLane.title.toLowerCase()} on the rack yet.
                     </p>
                 </div>
@@ -478,7 +479,7 @@ function SceneTicker() {
     ];
 
     return (
-        <section className="overflow-hidden border-y border-black bg-[#ef0000] text-black">
+        <section className="overflow-hidden border-y border-black bg-[#d60000] text-white">
             <div
                 data-marquee
                 className="flex w-max gap-10 py-3 text-[13px] font-black uppercase tracking-[0.24em]"
@@ -488,7 +489,6 @@ function SceneTicker() {
                     <span
                         key={`${phrase}-${index}`}
                         aria-hidden={index >= phrases.length}
-                        className={index % 2 ? "text-white" : ""}
                     >
                         {phrase} <ArrowRight className="ml-2 inline h-3.5 w-3.5" />
                     </span>
@@ -538,7 +538,7 @@ function SceneEngine({ products, loading }: { products: Product[]; loading: bool
                 </div>
                 <div className="grid bg-[#f2f0ea] text-black md:grid-cols-[0.95fr_1.05fr]">
                     <div className="border-b border-black/15 p-6 md:p-8 lg:border-b-0 lg:border-r">
-                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#ef0000]">Live products</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-red-700">Live products</p>
                         <h3 className="mt-3 text-4xl font-black uppercase leading-none">Fresh merch fans can buy now.</h3>
                         <div className="mt-6 space-y-3">
                             {cards.map((product, index) => {
@@ -558,12 +558,12 @@ function SceneEngine({ products, loading }: { products: Product[]; loading: bool
                                             )}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ef0000]">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-700">
                                                 {index === 0 ? "Counter pick" : "New drop"}
                                             </p>
                                             <p className="mt-1 line-clamp-2 text-sm font-black leading-5">{item.title}</p>
                                             {typeof item?.price === "number" ? (
-                                                <p className="mt-1 text-lg font-black text-lime-700">${item.price.toFixed(2)}</p>
+                                                <p className="mt-1 text-lg font-black text-lime-800">${item.price.toFixed(2)}</p>
                                             ) : (
                                                 <div className="mt-2 h-6 w-20 animate-pulse rounded bg-neutral-200" aria-label="Loading price" />
                                             )}
@@ -603,7 +603,7 @@ function SceneEngine({ products, loading }: { products: Product[]; loading: bool
                             ].map(([title, label]) => (
                                 <div key={title} className="border-r border-white/12 p-4 last:border-r-0">
                                     <p className="text-sm font-black">{title}</p>
-                                    <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-neutral-500">{label}</p>
+                                    <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-neutral-400">{label}</p>
                                 </div>
                             ))}
                         </div>
@@ -717,7 +717,7 @@ function RotatingArtistFeature({
 
                 <div className="bg-[#f2f0ea] text-black">
                     <div className="border-b border-black/15 p-5 md:p-8">
-                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-600">Real artist feed</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-700">Real artist feed</p>
                         <h2 className="mt-2 max-w-3xl text-4xl font-black uppercase leading-[0.88] md:text-6xl">
                             Photos from the band. Products from the shop.
                         </h2>
@@ -747,7 +747,7 @@ function RotatingArtistFeature({
 
                     <div className="p-5 md:p-8">
                         <div className="mb-4 flex items-center justify-between gap-3">
-                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-lime-700">
+                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-lime-800">
                                 Current merch
                             </p>
                             <Link href={active?.slug ? `/artists/${active.slug}` : "/new"} className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em]">
@@ -803,7 +803,7 @@ function AccountPaths() {
                 </p>
             </div>
             <div className="grid sm:grid-cols-2">
-                <Link href="/auth/sign-up?type=artist" className="group border-b border-r border-neutral-800 bg-[#ef0000] p-6 text-white md:p-10">
+                <Link href="/auth/sign-up?type=artist" className="group border-b border-r border-neutral-800 bg-[#d60000] p-6 text-white md:p-10">
                     <Shirt className="h-7 w-7" />
                     <h3 className="mt-16 text-4xl font-black uppercase leading-none">Artist account</h3>
                     <p className="mt-4 text-sm font-bold leading-6">Open your profile, design products, publish drops and sell without stock risk.</p>
@@ -828,7 +828,7 @@ function LatestDropWall({ products, loading }: { products: Product[]; loading: b
             <div className="mx-auto max-w-[1600px]">
                 <div className="flex items-end justify-between gap-4">
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-600">Fresh from the table</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-700">Fresh from the table</p>
                         <h2 className="mt-2 text-5xl font-black uppercase leading-none md:text-7xl">Latest drop</h2>
                         <p className="mt-2 text-sm font-bold text-neutral-600">Graphic tees, vinyl, posters and more.</p>
                     </div>
@@ -844,7 +844,7 @@ function LatestDropWall({ products, loading }: { products: Product[]; loading: b
                     return (
                         <Link key={`${item?.id ?? "latest"}-${index}`} href={item?.slug ? `/product/${item.slug}` : "/new"} className={`group border border-black/15 bg-white text-black shadow-[8px_8px_0_rgba(0,0,0,0.08)] ${index >= 6 ? "hidden md:block" : ""}`}>
                             <div className="relative aspect-[4/4.5] bg-[#f7f6f1]">
-                                <span className={`absolute left-3 top-3 z-10 px-2 py-1 text-[10px] font-black uppercase ${index % 2 === 0 ? "bg-[#ef0000] text-white" : "bg-lime-300 text-black"}`}>
+                                <span className={`absolute left-3 top-3 z-10 px-2 py-1 text-[10px] font-black uppercase ${index % 2 === 0 ? "bg-[#d60000] text-white" : "bg-lime-300 text-black"}`}>
                                     {index === 0 ? "Counter pick" : item?.badge ?? "Live"}
                                 </span>
                                 <span className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center border border-black/15 bg-white">♡</span>
@@ -855,10 +855,10 @@ function LatestDropWall({ products, loading }: { products: Product[]; loading: b
                                 )}
                             </div>
                             <div className="min-h-32 border-t border-black/10 p-4 text-black">
-                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-red-600">{item.badge ?? "Merch Tent artist"}</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-red-700">{item.badge ?? "Merch Tent artist"}</p>
                                 <p className="mt-2 line-clamp-2 text-sm font-black leading-tight">{item.title}</p>
                                 <div className="mt-4 flex items-center justify-between">
-                                    <p className="text-lg font-black text-lime-700">{typeof item.price === "number" ? `$${item.price}` : "View drop"}</p>
+                                    <p className="text-lg font-black text-lime-800">{typeof item.price === "number" ? `$${item.price}` : "View drop"}</p>
                                     <span className="grid h-8 w-8 place-items-center bg-black text-white transition group-hover:bg-lime-300 group-hover:text-black">
                                         <ArrowRight className="h-4 w-4" />
                                     </span>
@@ -900,7 +900,7 @@ function FeaturedArtistsNew({ artists, loading }: { artists: Artist[]; loading: 
                                 ) : (
                                     <div className="grid h-full place-items-center text-5xl font-black text-neutral-700">{name.slice(0, 2).toUpperCase()}</div>
                                 )}
-                                <span className={`absolute left-3 top-3 px-2 py-1 text-[10px] font-black uppercase ${index % 2 === 0 ? "bg-[#ef0000] text-white" : "bg-lime-300 text-black"}`}>Slot {String(index + 1).padStart(2, "0")}</span>
+                                <span className={`absolute left-3 top-3 px-2 py-1 text-[10px] font-black uppercase ${index % 2 === 0 ? "bg-[#d60000] text-white" : "bg-lime-300 text-black"}`}>Slot {String(index + 1).padStart(2, "0")}</span>
                             </div>
                             <div className="flex items-center justify-between p-4">
                                 <p className="font-black">{name}</p>
@@ -1210,10 +1210,10 @@ function JoinTheListNew() {
                         onChange={(event) => setEmail(event.target.value)}
                         className="h-14 border border-neutral-800 bg-neutral-950 px-4 text-sm font-bold text-white outline-none focus:border-red-500"
                     />
-                    <button type="submit" disabled={loading} className="h-14 bg-[#ef0000] px-7 text-sm font-black text-white disabled:opacity-60">
+                    <button type="submit" disabled={loading} className="h-14 bg-[#d60000] px-7 text-sm font-black text-white disabled:opacity-60">
                         {loading ? "Joining" : "Join"}
                     </button>
-                    <p className="text-xs leading-5 text-neutral-500 sm:col-span-3">By joining, you agree to receive Merch Tent drop and platform emails. Unsubscribe any time. See our <Link href="/privacy" className="underline">privacy policy</Link>.</p>
+                    <p className="text-xs leading-5 text-neutral-400 sm:col-span-3">By joining, you agree to receive Merch Tent drop and platform emails. Unsubscribe any time. See our <Link href="/privacy" className="underline">privacy policy</Link>.</p>
                     {message && <p className="text-sm font-bold text-lime-300 sm:col-span-3">{message}</p>}
                     {error && <p className="text-sm font-bold text-red-400 sm:col-span-3">{error}</p>}
                 </form>
@@ -1244,7 +1244,7 @@ function DropCard({ product, compact = false }: { product?: Product; index: numb
                 <p className="mt-1 line-clamp-2 min-h-9 text-sm leading-[1.15] text-neutral-700">{product.title}</p>
             </div>
             <div className="px-3 pb-3 text-sm">
-                <span className="font-black text-lime-700">{typeof product.price === "number" ? `$${product.price}` : "View drop"}</span>
+                <span className="font-black text-lime-800">{typeof product.price === "number" ? `$${product.price}` : "View drop"}</span>
             </div>
         </Link>
     );
