@@ -155,7 +155,7 @@ export default function MiniCartDrawer() {
                             <ul className="divide-y divide-white/10">
                                 {items.map((item) => {
                                     const lineId = item.sku ?? item.product_id;
-                                    const variantLine = item.sku || item.color_label || item.size;
+                                    const variantLine = item.color_label || item.size;
                                     const resolvedImg = publicProductImageUrlOrSource(item.image_path);
 
                                     return (
@@ -189,11 +189,6 @@ export default function MiniCartDrawer() {
 
                                                 {variantLine ? (
                                                     <div className="mt-1 space-x-2 text-[11px] uppercase tracking-[0.14em] text-white/40">
-                                                        {item.sku ? (
-                                                            <span className="inline-block border border-white/10 bg-white/5 px-1.5 py-0.5">
-                                                                {item.sku}
-                                                            </span>
-                                                        ) : null}
                                                         {item.color_label ? <span>{item.color_label}</span> : null}
                                                         {item.size ? <span>{item.size}</span> : null}
                                                     </div>

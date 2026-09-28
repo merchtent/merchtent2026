@@ -400,6 +400,7 @@ export default function HeaderClient({ initialEmail }: Props) {
                                         onBlur={() => window.setTimeout(() => setSearchOpen(false), 140)}
                                         type="search"
                                         placeholder="Search artists, merch, drops"
+                                        aria-label="Search artists, merch and drops"
                                         className="min-w-0 flex-1 bg-transparent text-sm font-medium text-white outline-none placeholder:text-neutral-500"
                                     />
                                 </form>
@@ -480,6 +481,7 @@ export default function HeaderClient({ initialEmail }: Props) {
                                     onBlur={() => window.setTimeout(() => setSearchOpen(false), 140)}
                                     type="search"
                                     placeholder="Search artists, merch, drops"
+                                    aria-label="Search artists, merch and drops"
                                     className="min-w-0 flex-1 bg-transparent text-sm font-medium text-white outline-none placeholder:text-neutral-500"
                                 />
                                 <button type="submit" className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-lime-300">

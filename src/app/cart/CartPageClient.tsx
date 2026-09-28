@@ -140,7 +140,7 @@ export default function CartPageClient() {
                                 {items.map((item) => {
                                     const lineId = item.sku ?? item.product_id;
                                     const resolvedImg = publicProductImageUrlOrSource(item.image_path);
-                                    const hasVariantLine = item.sku || item.color_label || item.size;
+                                    const hasVariantLine = item.color_label || item.size;
 
                                     return (
                                         <li
@@ -178,11 +178,6 @@ export default function CartPageClient() {
 
                                                         {hasVariantLine ? (
                                                             <div className="mt-2 text-[11px] uppercase tracking-[0.16em] text-white/45 space-x-2">
-                                                                {item.sku ? (
-                                                                    <span className="inline-block border border-white/10 bg-white/5 px-1.5 py-0.5">
-                                                                        {item.sku}
-                                                                    </span>
-                                                                ) : null}
                                                                 {item.color_label ? <span>{item.color_label}</span> : null}
                                                                 {item.size ? <span>{item.size}</span> : null}
                                                             </div>
