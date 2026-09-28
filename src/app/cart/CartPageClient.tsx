@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { publicProductImageUrlOrSource } from "@/lib/storage";
+import { useEffect, useRef } from "react";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 function fmt(amount_cents: number, currency: string | null) {
     const c = currency ?? "AUD";
@@ -33,6 +35,56 @@ export default function CartPageClient() {
         payable_subtotal_cents,
         currency,
     } = useCart();
+    const trackedCart = useRef(false);
+
+    useEffect(() => {
+        if (trackedCart.current || items.length === 0) return;
+        trackedCart.current = true;
+        trackMarketingEvent("view_cart", {
+            currency: currency ?? "AUD",
+            value_cents: subtotal_cents,
+            items: items.map((item) => ({
+                item_id: item.product_id,
+                item_name: item.title,
+                price_cents: item.price_cents,
+                currency: item.currency,
+                quantity: item.qty,
+                item_variant: [item.size, item.color_label].filter(Boolean).join(" / "),
+            })),
+        });
+    }, [currency, items, subtotal_cents]);
+
+    function removeItem(lineId: string, item: (typeof items)[number]) {
+        trackMarketingEvent("remove_from_cart", {
+            currency: item.currency,
+            value_cents: item.price_cents * item.qty,
+            items: [{
+                item_id: item.product_id,
+                item_name: item.title,
+                price_cents: item.price_cents,
+                currency: item.currency,
+                quantity: item.qty,
+                item_variant: [item.size, item.color_label].filter(Boolean).join(" / "),
+            }],
+        });
+        remove(lineId, { by: item.sku ? "sku" : "product_id" });
+    }
+
+    function clearTrackedCart() {
+        trackMarketingEvent("remove_from_cart", {
+            currency: currency ?? "AUD",
+            value_cents: subtotal_cents,
+            reason: "clear_cart",
+            items: items.map((item) => ({
+                item_id: item.product_id,
+                item_name: item.title,
+                price_cents: item.price_cents,
+                currency: item.currency,
+                quantity: item.qty,
+            })),
+        });
+        clear();
+    }
 
     function goToCheckout() {
         // no POST needed anymore — checkout reads local cart
@@ -56,7 +108,7 @@ export default function CartPageClient() {
                     </div>
                     {!!items.length && (
                         <button
-                            onClick={clear}
+                            onClick={clearTrackedCart}
                             className="inline-flex items-center gap-2 border border-white/15 px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-white/70 hover:border-red-500 hover:text-red-400"
                         >
                             <Trash2 className="h-4 w-4" />
@@ -138,9 +190,7 @@ export default function CartPageClient() {
                                                     </div>
                                                     <button
                                                         onClick={() =>
-                                                            remove(lineId, {
-                                                                by: item.sku ? "sku" : "product_id",
-                                                            })
+                                                            removeItem(lineId, item)
                                                         }
                                                         className="text-xs font-black uppercase tracking-[0.16em] text-white/45 underline decoration-red-500 underline-offset-4 hover:text-red-400"
                                                     >
@@ -207,7 +257,7 @@ export default function CartPageClient() {
                                 <Link href="/" className="text-sm font-black uppercase text-[#b6ff3f]">
                                     Continue shopping
                                 </Link>
-                                <button onClick={clear} className="text-xs font-black uppercase tracking-[0.16em] text-white/45 underline">
+                                <button onClick={clearTrackedCart} className="text-xs font-black uppercase tracking-[0.16em] text-white/45 underline">
                                     Clear cart
                                 </button>
                             </div>

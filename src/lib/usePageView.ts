@@ -4,50 +4,41 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { captureMarketingAttribution } from "@/lib/marketing/attribution";
 import { hasAnalyticsConsent } from "@/lib/marketing/consent";
-
-function getSessionId() {
-    if (typeof window === "undefined") return null;
-
-    try {
-        let id = localStorage.getItem("mt_session_id");
-        if (!id) {
-            if (typeof crypto.randomUUID !== "function") return null;
-            id = crypto.randomUUID();
-            localStorage.setItem("mt_session_id", id);
-        }
-        return id;
-    } catch {
-        if (typeof crypto.randomUUID === "function") {
-            return crypto.randomUUID();
-        }
-        return null;
-    }
-}
+import { getAnalyticsSessionId } from "@/lib/marketing/session";
 
 export function usePageView(userId?: string | null) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     useEffect(() => {
-        if (!hasAnalyticsConsent()) return;
-        const session_id = getSessionId();
-        captureMarketingAttribution();
-        const query = searchParams.toString();
-        const path = query ? `${pathname}?${query}` : pathname;
+        let recorded = false;
 
-        fetch("/api/track/page-view", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            keepalive: true, // important for unloads
-            body: JSON.stringify({
-                path,
-                referrer: document.referrer || null,
-                user_agent: navigator.userAgent,
-                user_id: userId ?? null,
-                session_id,
-            }),
-        }).catch(() => {
-            // never throw
-        });
+        const recordPageView = () => {
+            if (recorded || !hasAnalyticsConsent()) return;
+            recorded = true;
+            const session_id = getAnalyticsSessionId();
+            captureMarketingAttribution();
+            const query = searchParams.toString();
+            const path = query ? `${pathname}?${query}` : pathname;
+
+            fetch("/api/track/page-view", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                keepalive: true,
+                body: JSON.stringify({
+                    path,
+                    referrer: document.referrer || null,
+                    user_agent: navigator.userAgent,
+                    user_id: userId ?? null,
+                    session_id,
+                }),
+            }).catch(() => {
+                // Analytics must never interrupt navigation.
+            });
+        };
+
+        recordPageView();
+        window.addEventListener("merch-tent:consent", recordPageView);
+        return () => window.removeEventListener("merch-tent:consent", recordPageView);
     }, [pathname, searchParams, userId]);
 }

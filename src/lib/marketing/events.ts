@@ -2,13 +2,18 @@
 
 import { captureMarketingAttribution, readMarketingAttribution } from "@/lib/marketing/attribution";
 import { hasAnalyticsConsent } from "@/lib/marketing/consent";
+import { getAnalyticsSessionId } from "@/lib/marketing/session";
 
 export type MarketingEventName =
     | "view_item_list"
     | "select_item"
     | "view_item"
     | "add_to_cart"
+    | "view_cart"
+    | "remove_from_cart"
+    | "view_checkout"
     | "begin_checkout"
+    | "checkout_error"
     | "purchase"
     | "sign_up"
     | "artist_lead"
@@ -37,7 +42,7 @@ export function trackMarketingEvent(
     const payload = JSON.stringify({
         event_name: eventName,
         path: `${window.location.pathname}${window.location.search}`,
-        session_id: localStorage.getItem("mt_session_id"),
+        session_id: getAnalyticsSessionId(),
         attribution,
         properties,
     });

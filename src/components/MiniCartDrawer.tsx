@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { X, Minus, Plus } from "lucide-react";
 import { publicProductImageUrlOrSource } from "@/lib/storage";
+import { trackMarketingEvent } from "@/lib/marketing/events";
 
 function fmt(amount_cents: number, currency: string | null) {
     const c = currency ?? "AUD";
@@ -36,6 +37,42 @@ export default function MiniCartDrawer() {
         currency,
         clear,
     } = useCart();
+    const wasOpen = useRef(false);
+
+    useEffect(() => {
+        if (isOpen && !wasOpen.current && items.length > 0) {
+            trackMarketingEvent("view_cart", {
+                cart_surface: "drawer",
+                currency: currency ?? "AUD",
+                value_cents: subtotal_cents,
+                items: items.map((item) => ({
+                    item_id: item.product_id,
+                    item_name: item.title,
+                    price_cents: item.price_cents,
+                    currency: item.currency,
+                    quantity: item.qty,
+                })),
+            });
+        }
+        wasOpen.current = isOpen;
+    }, [currency, isOpen, items, subtotal_cents]);
+
+    function removeItem(lineId: string, item: (typeof items)[number]) {
+        trackMarketingEvent("remove_from_cart", {
+            cart_surface: "drawer",
+            currency: item.currency,
+            value_cents: item.price_cents * item.qty,
+            items: [{
+                item_id: item.product_id,
+                item_name: item.title,
+                price_cents: item.price_cents,
+                currency: item.currency,
+                quantity: item.qty,
+                item_variant: [item.size, item.color_label].filter(Boolean).join(" / "),
+            }],
+        });
+        remove(lineId, { by: item.sku ? "sku" : "product_id" });
+    }
     const pathname = usePathname();
     const previousPathnameRef = useRef(pathname);
 
@@ -213,9 +250,7 @@ export default function MiniCartDrawer() {
                                                     <button
                                                         className="ml-2 text-xs font-black uppercase tracking-[0.14em] text-white/45 underline decoration-red-500 underline-offset-4 hover:text-red-400"
                                                         onClick={() =>
-                                                            remove(lineId, {
-                                                                by: item.sku ? "sku" : "product_id",
-                                                            })
+                                                            removeItem(lineId, item)
                                                         }
                                                     >
                                                         Remove

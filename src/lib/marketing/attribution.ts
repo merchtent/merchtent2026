@@ -57,13 +57,13 @@ export function captureMarketingAttribution(): MarketingAttribution | null {
     }
 
     const next: MarketingAttribution = {
+        ...previous,
         first_landing_page: previous?.first_landing_page ?? landingPage,
         first_referrer: previous?.first_referrer ?? clipped(document.referrer, 1000) ?? null,
         first_seen_at: previous?.first_seen_at ?? now,
         last_landing_page: landingPage,
         last_referrer: clipped(document.referrer, 1000) ?? null,
         last_seen_at: now,
-        ...previous,
         ...campaign,
     };
 

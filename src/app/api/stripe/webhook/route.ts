@@ -42,6 +42,52 @@ function getSupabaseAdmin() {
     return supabaseAdminClient;
 }
 
+async function recordPurchaseAnalytics(input: {
+    orderId: string;
+    transactionId: string;
+    sessionId: string | null;
+    userId: string | null;
+    attribution: Record<string, unknown>;
+    valueCents: number;
+    currency: string;
+    items: Array<{
+        product_id?: string | null;
+        title?: string | null;
+        unit_price_cents?: number | null;
+        qty?: number | null;
+        size_label?: string | null;
+        color_label?: string | null;
+    } | null>;
+}) {
+    const { error } = await getSupabaseAdmin().from("marketing_events").insert({
+        event_name: "purchase",
+        path: "/checkout/success",
+        session_id: input.sessionId,
+        user_id: input.userId,
+        attribution: input.attribution,
+        properties: {
+            transaction_id: input.transactionId,
+            order_id: input.orderId,
+            value_cents: input.valueCents,
+            currency: input.currency,
+            items: input.items.map((item) => ({
+                item_id: item?.product_id,
+                item_name: item?.title,
+                price_cents: item?.unit_price_cents,
+                quantity: item?.qty,
+                item_variant: [item?.size_label, item?.color_label].filter(Boolean).join(" / "),
+            })),
+        },
+    });
+
+    if (error && error.code !== "23505") {
+        logger.warn("server purchase analytics insert failed", {
+            order_id: input.orderId,
+            error: error.message,
+        });
+    }
+}
+
 function parseAttribution(value: string | null | undefined) {
     if (!value) return {};
     try {
@@ -658,6 +704,19 @@ export async function POST(req: NextRequest) {
                     error: attributionError.message,
                 });
             }
+        }
+
+        if (session.metadata?.analytics_consent === "true") {
+            await recordPurchaseAnalytics({
+                orderId,
+                transactionId: orderNumber,
+                sessionId: session.metadata?.analytics_session_id || null,
+                userId: safeUserId,
+                attribution,
+                valueCents: Number(session.amount_total ?? 0),
+                currency: session.currency?.toUpperCase() ?? "AUD",
+                items: itemsToProcess,
+            });
         }
 
         const creditReservationId = session.metadata?.merch_credit_reservation_id || null;
