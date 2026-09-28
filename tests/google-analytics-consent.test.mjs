@@ -27,6 +27,17 @@ test("GA4 consent choices map analytics and advertising independently", () => {
     assert.match(google, /ad_personalization: consent\?\.marketing \? "granted" : "denied"/);
 });
 
+test("GA4 receives granted consent before the first consent-triggered page view", () => {
+    const banner = read("src/components/ConsentBanner.tsx");
+    const chooseStart = banner.indexOf("function choose(");
+    const applyIndex = banner.indexOf("updateGoogleConsent(nextConsent)", chooseStart);
+    const saveIndex = banner.indexOf("saveConsent({ analytics, marketing })", chooseStart);
+
+    assert.ok(chooseStart > -1);
+    assert.ok(applyIndex > chooseStart);
+    assert.ok(saveIndex > applyIndex);
+});
+
 test("first-party events and page views also reach the GA4 bridge", () => {
     const events = read("src/lib/marketing/events.ts");
     const pageViews = read("src/lib/usePageView.ts");
