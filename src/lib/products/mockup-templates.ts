@@ -527,6 +527,16 @@ const YUPOONG_6089M_TEMPLATES: Record<string, Record<MockupSide, MockupTemplate>
     white: createYupoong6089MTemplate("white"),
 };
 
+const AS_COLOUR_AS1140_BLACK: Record<MockupSide, MockupTemplate> = (() => {
+    const template: MockupTemplate = {
+        publicPath: "/images/mockups/as-colour-as1140/black-front.jpg",
+        fit: "contain",
+        canvasPlacement: { x: 0, y: 0, width: 1, height: 1, units: "ratio" },
+        background: "#ffffff",
+    };
+    return { front: template, back: template };
+})();
+
 function createHatLifestylePrintMesh(left: number, top: number, right: number) {
     const printRatio = 1654 / 750;
     const bottom = top + (right - left) / printRatio;
@@ -681,6 +691,13 @@ function isYupoong6089M(product: MockupProductIdentity) {
     return key === "printify-1703" || (brand === "yupoong" && model === "6089m");
 }
 
+function isAsColourAs1140(product: MockupProductIdentity) {
+    const key = product.key?.toLowerCase() ?? "";
+    const brand = product.brand?.toLowerCase().replaceAll(" ", "") ?? "";
+    const model = product.model?.toLowerCase() ?? "";
+    return key === "printify-5384" || (brand === "ascolour" && model === "as1140");
+}
+
 function isBlack(color: string) {
     const normalized = color.toLowerCase();
     return normalized === "#111111" || normalized === "#000000" || normalized === "#0b0b0b";
@@ -692,6 +709,9 @@ export function getMockupTemplate(
     side: MockupSide,
     supplierColorName?: string
 ) {
+    if (isAsColourAs1140(product) && (supplierColorName?.trim().toLowerCase() === "black" || isBlack(color))) {
+        return AS_COLOUR_AS1140_BLACK[side];
+    }
     if (isYupoong6089M(product)) {
         const template = YUPOONG_6089M_TEMPLATES[supplierColorName?.trim().toLowerCase() ?? ""];
         if (template) return template[side];

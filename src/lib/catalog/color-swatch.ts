@@ -1,6 +1,9 @@
 const NAMED_SWATCHES: Record<string, string> = {
     ash: "#b7b8b3",
     "ash stone": "#8f918c",
+    atlantic: "#006b70",
+    bone: "#ded9cd",
+    cypress: "#697260",
     "dark chocolate": "#3b2925",
     "dark heather": "#555154",
     "forest green": "#14532d",
@@ -8,12 +11,17 @@ const NAMED_SWATCHES: Record<string, string> = {
     "light blue": "#69a9dc",
     "light pink": "#efb6c8",
     maroon: "#7f1d3b",
+    "midnight blue": "#34384d",
     "moss stone": "#59654b",
     navy: "#172033",
+    "petrol blue": "#34454f",
+    plum: "#32232f",
     red: "#c62828",
     royal: "#2855b6",
     sand: "#c8b99b",
     "sport grey": "#aeb4bd",
+    ecru: "#e8dfcf",
+    walnut: "#5a4638",
 };
 
 export function colorSwatchHex(label: string) {

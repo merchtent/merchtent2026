@@ -27,6 +27,31 @@ test("Yupoong 6089M uses the supplied colour photography", () => {
     }
 });
 
+test("AS Colour AS1140 uses the supplied black Icon Cap photography", () => {
+    const product = { key: "printify-5384", brand: "AS Colour", model: "AS1140" };
+    const template = getMockupTemplate(product, "#111111", "front", "Black");
+
+    assert.equal(template?.publicPath, "/images/mockups/as-colour-as1140/black-front.jpg");
+    assert.equal(template?.fit, "contain");
+    assert.ok(existsSync(path.join(process.cwd(), "public", template.publicPath.slice(1))));
+    assert.equal(getMockupTemplate(product, "#e8dfcf", "front", "Ecru"), null);
+});
+
+test("Icon Cap setup records Australian fulfilment, pricing, shipping, and exact print geometry", () => {
+    const migration = read("supabase/migrations/202610030001_setup_as_colour_as1140_icon_cap.sql");
+
+    assert.match(migration, /supplier_product_id = '5384'/);
+    assert.match(migration, /supplier_provider_id = '34'/);
+    assert.match(migration, /merch_tent_name = 'Classic Icon Cap'/);
+    assert.match(migration, /360\.0 \* 675\.0 \/ 1200\.0/);
+    assert.match(migration, /'shipping_origin', jsonb_build_object\('country', 'AU'/);
+    assert.match(migration, /cost_cents = 2365/);
+    assert.match(migration, /premium_reference_cents', 1745/);
+    assert.match(migration, /default_price_cents = 4900/);
+    assert.match(migration, /'AU'.*'3 - 6 business days'.*966, 201/s);
+    assert.match(migration, /'NZ'.*'10 - 30 business days'.*1877, 201/s);
+});
+
 test("hat setup records front DTF geometry, international shipping, pricing, and product details", () => {
     const migration = read("supabase/migrations/202609240008_setup_yupoong_6089m_snapback.sql");
 
