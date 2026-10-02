@@ -111,13 +111,13 @@ test("AS Colour 5039 offers the four approved front-facing lifestyle mockups", (
     }
 });
 
-test("the female tank mockups use a reduced, centred supplier-style print size", () => {
+test("the tank lifestyle mockups use a reduced, centred supplier-style print size", () => {
     const templates = read("src/lib/products/mockup-templates.ts");
 
     assert.match(templates, /id: "tank-rehearsal-front"[\s\S]*createTankLifestylePrintMesh\(374, 558, 650\)/);
     assert.match(templates, /id: "tank-backstage-front"[\s\S]*createTankLifestylePrintMesh\(371, 526, 651\)/);
-    assert.match(templates, /id: "tank-record-shop-front"[\s\S]*createTankLifestylePrintMesh\(344, 490, 682\)/);
-    assert.match(templates, /id: "tank-loading-dock-front"[\s\S]*createTankLifestylePrintMesh\(350, 500, 690\)/);
+    assert.match(templates, /id: "tank-record-shop-front"[\s\S]*createTankLifestylePrintMesh\(375, 525, 651\)/);
+    assert.match(templates, /id: "tank-loading-dock-front"[\s\S]*createTankLifestylePrintMesh\(381, 536, 659\)/);
 });
 
 test("Classic Tank Top migrations record the corrected full-product Premium calculation", () => {

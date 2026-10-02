@@ -394,7 +394,7 @@ const AS_COLOUR_5039_LIFESTYLE_TEMPLATES: LifestyleMockupTemplate[] = [
         publicPath: "/images/mockups/as-colour-5039/lifestyle/man-record-shop-front.png",
         imageWidth: 1024,
         imageHeight: 1536,
-        printMesh: createTankLifestylePrintMesh(344, 490, 682),
+        printMesh: createTankLifestylePrintMesh(375, 525, 651),
     },
     {
         id: "tank-loading-dock-front",
@@ -404,7 +404,7 @@ const AS_COLOUR_5039_LIFESTYLE_TEMPLATES: LifestyleMockupTemplate[] = [
         publicPath: "/images/mockups/as-colour-5039/lifestyle/man-loading-dock-front.png",
         imageWidth: 1024,
         imageHeight: 1536,
-        printMesh: createTankLifestylePrintMesh(350, 500, 690),
+        printMesh: createTankLifestylePrintMesh(381, 536, 659),
     },
 ];
 
