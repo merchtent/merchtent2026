@@ -471,6 +471,13 @@ function createAsColour5039Template(colorSlug: string): Record<MockupSide, Mocku
             publicPath: `/images/mockups/as-colour-5039/${colorSlug}-back.jpg`,
             fit: "cover",
             canvasPlacement: { x: 0, y: 0, width: 1, height: 1, units: "ratio" },
+            artworkPlacement: {
+                x: 296 / 900,
+                y: 326 / 1200,
+                width: 308 / 900,
+                height: (308 * 3508 / 3071) / 1200,
+                units: "ratio",
+            },
             background: "#ffffff",
         },
     };

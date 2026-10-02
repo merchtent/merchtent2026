@@ -49,7 +49,7 @@ test("AS Colour 5039 stone colours use their supplied front and back tank images
     assert.equal(getMockupTemplate(product, "#444444", "front", "Unknown Stone"), null);
 });
 
-test("AS Colour 5039 raises only the front product mockup artwork", () => {
+test("AS Colour 5039 slightly raises the front and back product mockup artwork", () => {
     const product = { key: "printify-995", brand: "AS Colour", model: "5039" };
     const front = getMockupTemplate(product, "#111111", "front", "Black Stone");
     const back = getMockupTemplate(product, "#111111", "back", "Black Stone");
@@ -58,7 +58,10 @@ test("AS Colour 5039 raises only the front product mockup artwork", () => {
     assert.equal(front?.artworkPlacement?.y, 375 / 1200);
     assert.equal(front?.artworkPlacement?.width, 308 / 900);
     assert.equal(front?.artworkPlacement?.height, (308 * 3508 / 3071) / 1200);
-    assert.equal(back?.artworkPlacement, undefined);
+    assert.equal(back?.artworkPlacement?.x, 296 / 900);
+    assert.equal(back?.artworkPlacement?.y, 326 / 1200);
+    assert.equal(back?.artworkPlacement?.width, 308 / 900);
+    assert.equal(back?.artworkPlacement?.height, (308 * 3508 / 3071) / 1200);
 });
 
 test("the catalogue uses Black Stone for the tank's main preview", () => {
