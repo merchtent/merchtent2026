@@ -374,7 +374,7 @@ const AS_COLOUR_5039_LIFESTYLE_TEMPLATES: LifestyleMockupTemplate[] = [
         publicPath: "/images/mockups/as-colour-5039/lifestyle/woman-rehearsal-front.png",
         imageWidth: 1024,
         imageHeight: 1536,
-        printMesh: createTankLifestylePrintMesh(344, 524, 680),
+        printMesh: createTankLifestylePrintMesh(374, 558, 650),
     },
     {
         id: "tank-backstage-front",
@@ -384,7 +384,7 @@ const AS_COLOUR_5039_LIFESTYLE_TEMPLATES: LifestyleMockupTemplate[] = [
         publicPath: "/images/mockups/as-colour-5039/lifestyle/woman-backstage-front.png",
         imageWidth: 1024,
         imageHeight: 1536,
-        printMesh: createTankLifestylePrintMesh(340, 490, 682),
+        printMesh: createTankLifestylePrintMesh(371, 526, 651),
     },
     {
         id: "tank-record-shop-front",
