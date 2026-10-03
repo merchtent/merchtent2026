@@ -52,6 +52,15 @@ test("Icon Cap setup records Australian fulfilment, pricing, shipping, and exact
     assert.match(migration, /'NZ'.*'10 - 30 business days'.*1877, 201/s);
 });
 
+test("Icon Cap print boundary is lowered without changing its supplier ratio", () => {
+    const migration = read("supabase/migrations/202610040001_lower_as_colour_as1140_print_area.sql");
+
+    assert.match(migration, /supplier_product_id = '5384'/);
+    assert.match(migration, /'y', 420\.0 \/ 1200\.0/g);
+    assert.match(migration, /'width', 360\.0 \/ 900\.0/g);
+    assert.match(migration, /360\.0 \* 675\.0 \/ 1200\.0/g);
+});
+
 test("hat setup records front DTF geometry, international shipping, pricing, and product details", () => {
     const migration = read("supabase/migrations/202609240008_setup_yupoong_6089m_snapback.sql");
 
